@@ -88,6 +88,7 @@ public class PrismCL implements PrismModelListener
 	private boolean simulate = false;
 	private boolean simpath = false;
 	private boolean param = false;
+	private boolean explore = false;
 	private ModelType typeOverride = null;
 	private boolean orderingOverride = false;
 	private boolean explicitbuild = false;
@@ -111,6 +112,9 @@ public class PrismCL implements PrismModelListener
 
 	// argument to -param switch
 	private String paramSwitch = null;
+
+	// argument to -explore switch
+	private String exploreSwitch = null;
 
 	// files/filenames
 	private String mainLogFilename = "stdout";
@@ -197,6 +201,11 @@ public class PrismCL implements PrismModelListener
 	private String[] paramUpperBounds = null;
 	private String[] paramNames = null;
 
+	// parameter space exploration info
+	private String[] exploreLowerBounds = null;
+	private String[] exploreUpperBounds = null;
+	private String[] exploreNames = null;
+
 	// entry point - run method
 
 	public void run(String[] args)
@@ -230,6 +239,12 @@ public class PrismCL implements PrismModelListener
 				undefinedMFConstants.removeConstants(paramNames);
 				for (i = 0; i < numPropertiesToCheck; i++) {
 					undefinedConstants[i].removeConstants(paramNames);
+				}
+			}
+			if (explore) {
+				undefinedMFConstants.removeConstants(exploreNames);
+				for (i = 0; i < numPropertiesToCheck; i++) {
+					undefinedConstants[i].removeConstants(exploreNames);
 				}
 			}
 			// then set up value using const switch definitions
@@ -842,6 +857,10 @@ public class PrismCL implements PrismModelListener
 
 		if (dotransient) {
 			try {
+				if (explore && !prism.getExplicit()) {
+					throw new PrismException("Parameter space exploration requires the explicit engine");
+				}
+
 				// Choose destination for output (file or log)
 				if (exportTransientFilename == null || exportTransientFilename.equals("stdout"))
 					exportTransientFile = null;
@@ -864,7 +883,7 @@ public class PrismCL implements PrismModelListener
 				}
 
 				// Compute transient probabilities
-				prism.doTransient(ucTransient, exportType, exportTransientFile, importinitdist ? new File(importInitDistFilename) : null);
+				prism.doTransient(ucTransient, exportType, exportTransientFile, importinitdist ? new File(importInitDistFilename) : null, explore);
 			}
 			// In case of error, report it and proceed
 			catch (PrismException e) {
@@ -920,6 +939,7 @@ public class PrismCL implements PrismModelListener
 
 		constSwitch = "";
 		paramSwitch = "";
+		exploreSwitch = "";
 
 		for (i = 0; i < args.length; i++) {
 
@@ -1013,6 +1033,21 @@ public class PrismCL implements PrismModelListener
 						errorAndExit("Incomplete -" + sw + " switch");
 					}
 				}
+				// param ranges to explore
+				else if (sw.equals("explore")) {
+					explore = true;
+					if (i < args.length - 1) {
+						// store argument for later use (append if already partially specified)
+						if ("".equals(exploreSwitch)) {
+							exploreSwitch = args[++i].trim();
+						} else {
+							exploreSwitch += "," + args[++i].trim();
+						}
+					} else {
+						errorAndExit("Incomplete -" + sw + " switch");
+					}
+				}
+
 				// do steady-state probability computation
 				else if (sw.equals("steadystate") || sw.equals("ss")) {
 					steadystate = true;
@@ -1944,6 +1979,30 @@ public class PrismCL implements PrismModelListener
 						throw new PrismException("Invalid range \"" + paramDefSplit[1] + "\" for parameter " + paramNames[pdNr]);
 					paramLowerBounds[pdNr] = upperLower[0].trim();
 					paramUpperBounds[pdNr] = upperLower[1].trim();
+				}
+			}
+		}
+
+		// process info about exploration constants (param ranges)
+		if (explore) {
+			String[] exploreDefs = exploreSwitch.split(",");
+			exploreNames = new String[exploreDefs.length];
+			exploreLowerBounds = new String[exploreDefs.length];
+			exploreUpperBounds = new String[exploreDefs.length];
+			for (int pdNr = 0; pdNr < exploreDefs.length; pdNr++) {
+				if (!exploreDefs[pdNr].contains("=")) {
+					exploreNames[pdNr] = exploreDefs[pdNr];
+					exploreLowerBounds[pdNr] = "0";
+					exploreUpperBounds[pdNr] = "1";
+				} else {
+					String[] exploreDefSplit = exploreDefs[pdNr].split("=");
+					exploreNames[pdNr] = exploreDefSplit[0];
+					exploreDefSplit[1] = exploreDefSplit[1].trim();
+					String[] upperLower = exploreDefSplit[1].split(":");
+					if (upperLower.length != 2)
+						throw new PrismException("Invalid range \"" + exploreDefSplit[1] + "\" for parameter " + exploreNames[pdNr]);
+					exploreLowerBounds[pdNr] = upperLower[0].trim();
+					exploreUpperBounds[pdNr] = upperLower[1].trim();
 				}
 			}
 		}

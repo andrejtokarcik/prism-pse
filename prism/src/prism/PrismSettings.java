@@ -108,7 +108,7 @@ public class PrismSettings implements Observer
 	public static final	String PRISM_MULTI_MAX_POINTS				= "prism.multiMaxIters";
 	public static final	String PRISM_PARETO_EPSILON					= "prism.paretoEpsilon";
 	public static final	String PRISM_EXPORT_PARETO_FILENAME			= "prism.exportParetoFileName";
-	
+
 	public static final	String PRISM_PARAM_ENABLED					= "prism.param.enabled";
 	public static final	String PRISM_PARAM_PRECISION				= "prism.param.precision";
 	public static final	String PRISM_PARAM_SPLIT					= "prism.param.split";
@@ -118,6 +118,8 @@ public class PrismSettings implements Observer
 	public static final	String PRISM_PARAM_RANDOM_POINTS			= "prism.param.randomPoints";
 	public static final	String PRISM_PARAM_SUBSUME_REGIONS			= "prism.param.subsumeRegions";
 	public static final String PRISM_PARAM_DAG_MAX_ERROR			= "prism.param.functionDagMaxError";
+
+	public static final	String PRISM_EXPLORE_ENABLED					= "prism.explore.enabled";
 
 	public static final String PRISM_FAU_EPSILON					= "prism.fau.epsilon";
 	public static final String PRISM_FAU_DELTA						= "prism.fau.delta";
@@ -312,6 +314,13 @@ public class PrismSettings implements Observer
 																			"Subsume adjacent regions during parametric model checking." },
 			{ DOUBLE_TYPE,		PRISM_PARAM_DAG_MAX_ERROR,				"Parametric model checking max. DAG error",	"4.1",			new Double(1E-100),															"",
 																			"Maximal error probability (i.e. maximum probability of of a wrong result) in DAG function representation used for parametric model checking." },
+
+
+			// PARAMETER SPACE EXPLORATION
+
+			{ BOOLEAN_TYPE,		PRISM_EXPLORE_ENABLED,					"Parameter space exploration",			"4.1",			new Boolean(false),															"",
+																			"Perform exploration of parameter space using quantitative model checking" },
+
 			
 			// FAST ADAPTIVE UNIFORMISATION																
 			{ DOUBLE_TYPE,      PRISM_FAU_EPSILON,						"FAU epsilon",		 					"4.1",   	 	new Double(1E-6),     													"",
@@ -1313,8 +1322,16 @@ public class PrismSettings implements Observer
 				throw new PrismException("Invalid value for -" + sw + " switch");
 			}
 		}
+
+
+		// PARAMETRIC MODEL CHECKING:
 		
-		// FAST ADAPTIVE UNIFORMISATION
+		else if (sw.equals("explore")) {
+			set(PRISM_EXPLORE_ENABLED, true);
+		}
+
+
+		// FAST ADAPTIVE UNIFORMISATION:
 		
 		// Epsilon for fast adaptive uniformisation
 		else if (sw.equals("fauepsilon")) {
@@ -1488,6 +1505,9 @@ public class PrismSettings implements Observer
 		mainLog.println("-paramrandompoints <n> ......... Set number of random points to evaluate per region [default: 5]");
 		mainLog.println("-paramsubsumeregions <b> ....... Subsume adjacent regions during analysis [default: true]");
 		mainLog.println("-paramdagmaxerror <b> .......... Maximal error probability allowed for DAG function representation [default: 1E-100]");
+		mainLog.println();
+		mainLog.println("PARAMETER SPACE EXPLORATION OPTIONS:");
+		mainLog.println("-explore <vals> ................ Perform parameter space exploration with parameter ranges <vals>");
 		mainLog.println();
 		mainLog.println("FAST ADAPTIVE UNIFORMISATION (FAU) OPTIONS:");
 		mainLog.println("-faudelta <x> .................. Set probability threshold for irrelevant states in FAU [default: 1e-12]");

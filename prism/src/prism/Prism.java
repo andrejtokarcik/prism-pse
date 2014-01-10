@@ -3220,7 +3220,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	 * The exportType should be EXPORT_PLAIN or EXPORT_MATLAB.
 	 * Optionally (if non-null), read in the initial probability distribution from a file.
 	 */
-	public void doTransient(UndefinedConstants times, int exportType, File fileOut, File fileIn) throws PrismException
+	public void doTransient(UndefinedConstants times, int exportType, File fileOut, File fileIn, boolean explore) throws PrismException
 	{
 		int i, timeInt = 0, initTimeInt = 0;
 		double timeDouble = 0, initTimeDouble = 0;
@@ -3288,7 +3288,11 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			}
 			// Explicit
 			else {
-				buildModelIfRequired();
+				if (explore) {
+					// TODO explore-friendly model based on explicit?
+				} else {
+					buildModelIfRequired();
+				}
 				if (currentModelType.continuousTime()) {
 					CTMCModelChecker mc = new CTMCModelChecker(this);
 					if (i == 0) {
