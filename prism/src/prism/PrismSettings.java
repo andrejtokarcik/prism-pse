@@ -119,7 +119,7 @@ public class PrismSettings implements Observer
 	public static final	String PRISM_PARAM_SUBSUME_REGIONS			= "prism.param.subsumeRegions";
 	public static final String PRISM_PARAM_DAG_MAX_ERROR			= "prism.param.functionDagMaxError";
 
-	public static final	String PRISM_EXPLORE_ENABLED					= "prism.explore.enabled";
+	public static final	String PRISM_PSE_ENABLED				= "prism.pse.enabled";
 
 	public static final String PRISM_FAU_EPSILON					= "prism.fau.epsilon";
 	public static final String PRISM_FAU_DELTA						= "prism.fau.delta";
@@ -318,8 +318,8 @@ public class PrismSettings implements Observer
 
 			// PARAMETER SPACE EXPLORATION
 
-			{ BOOLEAN_TYPE,		PRISM_EXPLORE_ENABLED,					"Parameter space exploration",			"4.1",			new Boolean(false),															"",
-																			"Perform exploration of parameter space using quantitative model checking" },
+			{ BOOLEAN_TYPE,		PRISM_PSE_ENABLED,					"Parameter space exploration",			"4.1",			new Boolean(false),															"",
+																			"Perform parameter space exploration." },
 
 			
 			// FAST ADAPTIVE UNIFORMISATION																
@@ -1324,10 +1324,10 @@ public class PrismSettings implements Observer
 		}
 
 
-		// PARAMETRIC MODEL CHECKING:
+		// PARAMETER SPACE EXPLORATION:
 		
-		else if (sw.equals("explore")) {
-			set(PRISM_EXPLORE_ENABLED, true);
+		else if (sw.equals("pse")) {
+			set(PRISM_PSE_ENABLED, true);
 		}
 
 
@@ -1507,7 +1507,7 @@ public class PrismSettings implements Observer
 		mainLog.println("-paramdagmaxerror <b> .......... Maximal error probability allowed for DAG function representation [default: 1E-100]");
 		mainLog.println();
 		mainLog.println("PARAMETER SPACE EXPLORATION OPTIONS:");
-		mainLog.println("-explore <vals> ................ Perform parameter space exploration with parameter ranges <vals>");
+		mainLog.println("pse <vals> ..................... Perform parameter space exploration with parameter ranges <vals>");
 		mainLog.println();
 		mainLog.println("FAST ADAPTIVE UNIFORMISATION (FAU) OPTIONS:");
 		mainLog.println("-faudelta <x> .................. Set probability threshold for irrelevant states in FAU [default: 1e-12]");
