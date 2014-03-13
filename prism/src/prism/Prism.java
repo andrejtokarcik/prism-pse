@@ -1824,7 +1824,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	private void doBuildModel() throws PrismException
 	{
 		long l; // timer
-		
+
 		// Clear any existing built model(s)
 		clearBuiltModel();
 
@@ -3343,6 +3343,111 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		if (fileOut != null)
 			tmpLog.close();
 	}
+
+
+	/**
+	 */
+	public void doParamSpaceExplore(UndefinedConstants times, String[] pseNames, String[] pseLowerBounds, String[] pseUpperBounds, File fileIn) throws PrismException
+	{
+		int i;
+		double timeDouble = 0, initTimeDouble = 0;
+		Object time;
+		long l = 0; // timer
+		explicit.StateValues probsExpl = null, initDistExpl = null;
+		ConstructModel constructModel;
+		explicit.Model modelExpl;
+		ModulesFile modulesFile;
+
+		// Some checks
+		if (pseNames == null)
+			throw new PrismException("Must specify some parameters in order to perform parameter space exploration");
+		if (currentModelType != ModelType.CTMC)
+			throw new PrismException("Parameter space exploration supported for CTMCs only");
+		/*
+		// We're gonna build our own representation anyway
+		if (!getExplicit())
+			throw new PrismException("Parameter space exploration supported for the explicit engine only");
+		*/
+
+		// Step through required time points
+		for (i = 0; i < times.getNumPropertyIterations(); i++) {
+
+			// Get time, check non-negative
+			time = times.getPFConstantValues().getValue(0);
+			timeDouble = ((Double) time).doubleValue();
+			if (timeDouble < 0)
+				throw new PrismException("Cannot perform parameter space exploration for negative time value");
+
+			/*
+			// Undefined MF constants have been already taken care of in prism.PrismCL,
+			// the defined ones may still be there, though
+			// TODO: propertiesFile.getConstantValues
+			// XXX: currentDefinedMFConstants ==? currentModulesFile.getConstantValues() ?
+			Values constlist = currentModulesFile.getConstantValues();
+			for (int pnr = 0; pnr < pseNames.length; pnr++) {
+				constlist.removeValue(pseNames[pnr]);
+			}
+			*/
+
+			// Print initialization info
+			mainLog.printSeparator();
+			mainLog.println("\nPerforming parameter space exploration (time = " + time + ")...");
+			if (currentDefinedMFConstants != null && currentDefinedMFConstants.getNumValues() > 0)
+				mainLog.println("Model constants: " + currentDefinedMFConstants);
+			// XXX: create a special ParamRanges class to make passing of pse{Name,Lower,Upper}
+			// between methods more straightforward and also to handle printing and the like?
+			mainLog.print("Parameter space: ");
+			for (int pnr = 0; pnr < pseNames.length; pnr++) {
+				if (pnr != 0) mainLog.print(", ");
+				mainLog.print(pseNames[pnr] + "=" + pseLowerBounds[pnr] + ":" + pseUpperBounds[pnr]);
+			}
+			mainLog.println();
+
+			// Build model
+			l = System.currentTimeMillis();
+
+			Values extendedMFConstants = currentDefinedMFConstants;
+			for (String pseName : pseNames) {
+				extendedMFConstants.addValue(pseName, 0);
+			}
+			modulesFile = (ModulesFile) currentModulesFile.deepCopy().replaceConstants(extendedMFConstants).simplify();
+			constructModel = new ConstructModel(this, getSimulator());
+			modelExpl = constructModel.constructModel(modulesFile);
+
+			if (currentModelType.continuousTime()) {
+				CTMCModelChecker mc = new CTMCModelChecker(this);
+				if (i == 0) {
+					initDistExpl = mc.readDistributionFromFile(fileIn, modelExpl);
+					initTimeDouble = 0;
+				}
+				probsExpl = mc.doTransient((CTMC) modelExpl, timeDouble - initTimeDouble, initDistExpl);
+			} else {
+				throw new PrismException("Not implemented yet");
+			}
+
+			l = System.currentTimeMillis() - l;
+
+			// Results report
+			mainLog.print("\nPrinting transient probabilities w.r.t. the given parameter space");
+			// TODO: printing to other log files (cf. tmpLog)
+
+			// print out or export probabilities
+			probsExpl.print(mainLog, true, false, true, true);
+
+			// print out computation time
+			mainLog.println("\nTotal time for parameter space exploration: " + l / 1000.0 + " seconds.");
+
+			// Prepare for next iteration
+			initDistExpl = probsExpl;
+			initTimeDouble = timeDouble;
+			times.iterateProperty();
+		}
+
+		// tidy up
+		if (probsExpl != null)
+			probsExpl.clear();
+	}
+
 
 	public void explicitBuildTest() throws PrismException
 	{

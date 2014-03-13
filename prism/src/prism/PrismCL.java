@@ -202,6 +202,7 @@ public class PrismCL implements PrismModelListener
 	private String[] paramNames = null;
 
 	// parameter space exploration info
+	private String pseTime;
 	private String[] pseLowerBounds = null;
 	private String[] pseUpperBounds = null;
 	private String[] pseNames = null;
@@ -234,6 +235,7 @@ public class PrismCL implements PrismModelListener
 			for (i = 0; i < numPropertiesToCheck; i++) {
 				undefinedConstants[i] = new UndefinedConstants(modulesFile, propertiesFile, propertiesToCheck.get(i));
 			}
+
 			// may need to remove some constants if they are used for parametric methods
 			if (param) {
 				undefinedMFConstants.removeConstants(paramNames);
@@ -247,6 +249,7 @@ public class PrismCL implements PrismModelListener
 					undefinedConstants[i].removeConstants(pseNames);
 				}
 			}
+
 			// then set up value using const switch definitions
 			undefinedMFConstants.defineUsingConstSwitch(constSwitch);
 			for (i = 0; i < numPropertiesToCheck; i++) {
@@ -313,6 +316,11 @@ public class PrismCL implements PrismModelListener
 			if (modelBuildFail)
 				continue;
 			doTransient();
+			if (modelBuildFail)
+				continue;
+
+			// Do parameter space exploration, if required
+			doParamSpaceExplore();
 			if (modelBuildFail)
 				continue;
 
@@ -438,7 +446,7 @@ public class PrismCL implements PrismModelListener
 			}
 
 			// Explicitly request a build if necessary
-			if (propertiesToCheck.size() == 0 && !steadystate && !dotransient && !simpath && !nobuild && prism.modelCanBeBuilt() && !prism.modelIsBuilt()) {
+			if (propertiesToCheck.size() == 0 && !steadystate && !dotransient && !paramSpaceExplore && !simpath && !nobuild && prism.modelCanBeBuilt() && !prism.modelIsBuilt()) {
 				try {
 					prism.buildModel();
 				} catch (PrismException e) {
@@ -889,6 +897,44 @@ public class PrismCL implements PrismModelListener
 	}
 
 	/**
+	 * Do parameter space exploration (if required).
+	 */
+	private void doParamSpaceExplore()
+	{
+		ModelType modelType;
+
+		if (paramSpaceExplore) {
+			try {
+				// TODO: PSE results export
+
+				// Determine model type
+				modelType = prism.getModelType();
+
+				// Parse time specification, store as UndefinedConstant for constant T
+				String timeType = modelType.continuousTime() ? "double" : "int";
+				UndefinedConstants ucPSE = new UndefinedConstants(null, prism.parsePropertiesString(null, "const " + timeType + " T; T;"));
+				try {
+					ucPSE.defineUsingConstSwitch("T=" + pseTime);
+				} catch (PrismException e) {
+					if (pseTime.contains(":"))
+						errorAndExit("\"" + pseTime + "\" is not a valid time range for a " + modelType);
+					else
+						errorAndExit("\"" + pseTime + "\" is not a valid time for a " + modelType);
+				}
+
+				// Perform the exploration
+				prism.doParamSpaceExplore(ucPSE, pseNames, pseLowerBounds, pseUpperBounds, importinitdist ? new File(importInitDistFilename) : null);
+			}
+			// In case of error, report it and proceed
+			catch (PrismException e) {
+				error(e.getMessage());
+			}
+		}
+	}
+
+
+
+	/**
 	 * Close down.
 	 */
 	private void closeDown()
@@ -1032,13 +1078,9 @@ public class PrismCL implements PrismModelListener
 				// explore parameter space with given ranges
 				else if (sw.equals("pse")) {
 					paramSpaceExplore = true;
-					if (i < args.length - 1) {
-						// store argument for later use (append if already partially specified)
-						if ("".equals(pseSwitch)) {
-							pseSwitch = args[++i].trim();
-						} else {
-							pseSwitch += "," + args[++i].trim();
-						}
+					if (i < args.length - 2) {
+						pseTime = args[++i];
+						pseSwitch = args[++i].trim();
 					} else {
 						errorAndExit("Incomplete -" + sw + " switch");
 					}
@@ -1986,6 +2028,7 @@ public class PrismCL implements PrismModelListener
 			pseUpperBounds = new String[pseDefs.length];
 			for (int pdNr = 0; pdNr < pseDefs.length; pdNr++) {
 				if (!pseDefs[pdNr].contains("=")) {
+					// XXX: raise an error instead of using 0:1 as the default range?
 					pseNames[pdNr] = pseDefs[pdNr];
 					pseLowerBounds[pdNr] = "0";
 					pseUpperBounds[pdNr] = "1";
