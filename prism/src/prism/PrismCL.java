@@ -203,8 +203,8 @@ public class PrismCL implements PrismModelListener
 
 	// parameter space exploration info
 	private String pseTime;
-	private String[] pseLowerBounds = null;
-	private String[] pseUpperBounds = null;
+	private double[] pseLowerBounds = null;
+	private double[] pseUpperBounds = null;
 	private String[] pseNames = null;
 
 	// entry point - run method
@@ -2024,14 +2024,14 @@ public class PrismCL implements PrismModelListener
 		if (paramSpaceExplore) {
 			String[] pseDefs = pseSwitch.split(",");
 			pseNames = new String[pseDefs.length];
-			pseLowerBounds = new String[pseDefs.length];
-			pseUpperBounds = new String[pseDefs.length];
+			pseLowerBounds = new double[pseDefs.length];
+			pseUpperBounds = new double[pseDefs.length];
 			for (int pdNr = 0; pdNr < pseDefs.length; pdNr++) {
 				if (!pseDefs[pdNr].contains("=")) {
 					// XXX: raise an error instead of using 0:1 as the default range?
 					pseNames[pdNr] = pseDefs[pdNr];
-					pseLowerBounds[pdNr] = "0";
-					pseUpperBounds[pdNr] = "1";
+					pseLowerBounds[pdNr] = 0;
+					pseUpperBounds[pdNr] = 1;
 				} else {
 					String[] pseDefSplit = pseDefs[pdNr].split("=");
 					pseNames[pdNr] = pseDefSplit[0];
@@ -2039,8 +2039,10 @@ public class PrismCL implements PrismModelListener
 					String[] upperLower = pseDefSplit[1].split(":");
 					if (upperLower.length != 2)
 						throw new PrismException("Invalid range \"" + pseDefSplit[1] + "\" for parameter " + pseNames[pdNr]);
-					pseLowerBounds[pdNr] = upperLower[0].trim();
-					pseUpperBounds[pdNr] = upperLower[1].trim();
+					pseLowerBounds[pdNr] = Double.parseDouble(upperLower[0].trim());
+					pseUpperBounds[pdNr] = Double.parseDouble(upperLower[1].trim());
+					if (pseLowerBounds[pdNr] > pseUpperBounds[pdNr])
+						throw new PrismException("Invalid range \"" + pseDefSplit[1] + "\" for parameter " + pseNames[pdNr]);
 				}
 			}
 		}

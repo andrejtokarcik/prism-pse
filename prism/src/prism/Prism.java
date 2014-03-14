@@ -3347,7 +3347,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 	/**
 	 */
-	public void doParamSpaceExplore(UndefinedConstants times, String[] pseNames, String[] pseLowerBounds, String[] pseUpperBounds, File fileIn) throws PrismException
+	public void doParamSpaceExplore(UndefinedConstants times, String[] pseNames, double[] pseLowerBounds, double[] pseUpperBounds, File fileIn) throws PrismException
 	{
 		int i;
 		double timeDouble = 0, initTimeDouble = 0;
