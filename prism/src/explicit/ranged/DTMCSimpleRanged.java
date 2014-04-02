@@ -163,6 +163,13 @@ public class DTMCSimpleRanged extends DTMCExplicitRanged implements ModelSimple
 	// Accessors (for DTMCRanged)
 
 	@Override
+	public void vmMultMin(double vect[], double result[])
+	{
+		// TODO?
+		throw new RuntimeException("Not implemented");
+	}
+
+	@Override
 	public void vmMultMax(double vect[], double result[])
 	{
 		// TODO?

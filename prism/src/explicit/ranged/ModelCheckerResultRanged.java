@@ -1,8 +1,8 @@
 //==============================================================================
 //	
-//	Copyright (c) 2014-
+//	Copyright (c) 2002-
 //	Authors:
-//	* Andrej Tokarcik <andrejtokarcik@gmail.com> (Masaryk University)
+//	* Dave Parker <david.parker@comlab.ox.ac.uk> (University of Oxford)
 //	
 //------------------------------------------------------------------------------
 //	
@@ -26,8 +26,25 @@
 
 package explicit.ranged;
 
-public interface DTMCRanged extends ModelRanged
-{
-	public void vmMultMin(double vect[], double result[]);
-	public void vmMultMax(double vect[], double result[]);
+import explicit.ModelCheckerResult;
+
+public class ModelCheckerResultRanged {
+    private ModelCheckerResult min;
+    private ModelCheckerResult max;
+    
+    public ModelCheckerResultRanged(ModelCheckerResult min, ModelCheckerResult max)
+    {
+        this.min = min;
+        this.max = max;
+    }
+    
+    public ModelCheckerResult getMin()
+    {
+    	return min;
+    }
+    
+    public ModelCheckerResult getMax()
+    {
+    	return max;
+    }
 }

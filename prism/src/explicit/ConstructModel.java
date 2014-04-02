@@ -360,20 +360,17 @@ public class ConstructModel extends PrismComponent
 		ModulesFile modulesFileLower, modulesFileUpper;
 		Values extendedMFConstantsLower, extendedMFConstantsUpper;
 
-		extendedMFConstantsLower = modulesFile.getConstantValues();
-		extendedMFConstantsUpper = modulesFile.getConstantValues();
+		modulesFileLower = (ModulesFile) modulesFile.deepCopy();
+		modulesFileUpper = (ModulesFile) modulesFile.deepCopy();
 		for (int pnr = 0; pnr < paramNames.length; pnr++) {
-			extendedMFConstantsLower.addValue(paramNames[pnr], paramLower[pnr]);
-			extendedMFConstantsUpper.addValue(paramNames[pnr], paramUpper[pnr]);
+			modulesFileLower.getConstantValues().addValue(paramNames[pnr], paramLower[pnr]);
+			modulesFileUpper.getConstantValues().addValue(paramNames[pnr], paramUpper[pnr]);
 		}
 		
 		// Undefined MF constants have been already taken care of in prism.PrismCL,
 		// the defined ones may still be there, though. No value should be assigned
 		// to the parameters in the modules file.
 
-		modulesFileLower = (ModulesFile) modulesFile.deepCopy().replaceConstants(extendedMFConstantsLower).simplify();
-		modulesFileUpper = (ModulesFile) modulesFile.deepCopy().replaceConstants(extendedMFConstantsUpper).simplify();
-		
 		modelLower = ctmcLower = (CTMCSimple) constructModel(modulesFileLower, justReach, buildSparse, distinguishActions);
 		modelUpper = ctmcUpper = (CTMCSimple) constructModel(modulesFileUpper, justReach, buildSparse, distinguishActions);
 		

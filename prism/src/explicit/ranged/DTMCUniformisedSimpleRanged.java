@@ -47,6 +47,34 @@ public class DTMCUniformisedSimpleRanged extends DTMCExplicitRanged
 		this(ctmc, ctmc.getDefaultUniformisationRate());
 	}
 
+	public void vmMultMin(double vect[], double result[])
+	{
+		int i, j;
+		double prob;
+		Distribution distrPredMin, distrSuccMax;
+
+		// Initialise result
+		for (i = 0; i < numStates; i++) {
+			result[i] = vect[i];
+		}
+
+		for (i = 0; i < numStates; i++) {
+			distrPredMin = ((CTMCSimpleRanged) ctmc).getTransitionsPredMin(i);
+			for (Entry<Integer, Double> e : distrPredMin) {
+				j = (Integer) e.getKey();
+				prob = (Double) e.getValue();
+				result[i] += (prob / q) * vect[j];
+			}
+
+			distrSuccMax = ((CTMCSimpleRanged) ctmc).getTransitionsSuccMax(i);
+			for (Entry<Integer, Double> e : distrSuccMax) {
+				j = (Integer) e.getKey();
+				prob = (Double) e.getValue();
+				result[i] -= (prob / q) * vect[i];
+			}
+		}
+	}
+
 	public void vmMultMax(double vect[], double result[])
 	{
 		int i, j;

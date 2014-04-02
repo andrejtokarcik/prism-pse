@@ -65,10 +65,11 @@ import simulator.method.SimulationMethod;
 import sparse.PrismSparse;
 import strat.Strategy;
 import dv.DoubleVector;
+import explicit.ConstructModel;
+import explicit.ranged.ModelCheckerResultRanged;
 import explicit.CTMC;
 import explicit.ranged.CTMCRanged;
 import explicit.CTMCModelChecker;
-import explicit.ConstructModel;
 import explicit.DTMC;
 import explicit.DTMCModelChecker;
 import explicit.FastAdaptiveUniformisation;
@@ -3353,10 +3354,10 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		double timeDouble = 0, initTimeDouble = 0;
 		Object time;
 		long l = 0; // timer
-		explicit.StateValues probsExpl = null, initDistExpl = null;
+		ModelCheckerResultRanged mcRes;
+		explicit.StateValues probsExplMin = null, probsExplMax = null, initDistExplMin = null, initDistExplMax = null;
 		ConstructModel constructModel;
-		explicit.Model modelExplLower, modelExplUpper, modelExplRanged;
-		ModulesFile modulesFileLower, modulesFileUpper;
+		explicit.Model modelExplRanged;
 
 		// Some checks
 		if (pseNames == null)
@@ -3397,32 +3398,42 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 			CTMCModelChecker mc = new CTMCModelChecker(this);
 			if (i == 0) {
-				initDistExpl = mc.readDistributionFromFile(fileIn, modelExplRanged);
+				initDistExplMin = mc.readDistributionFromFile(fileIn, modelExplRanged);
+				initDistExplMax = mc.readDistributionFromFile(fileIn, modelExplRanged);
 				initTimeDouble = 0;
 			}
-			probsExpl = mc.doParamTransient((CTMCRanged) modelExplRanged, timeDouble - initTimeDouble, initDistExpl);
+			mcRes = mc.doTransientRanged((CTMCRanged) modelExplRanged, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax);
+			probsExplMin = explicit.StateValues.createFromDoubleArray(mcRes.getMin().soln, modelExplRanged);
+			probsExplMax = explicit.StateValues.createFromDoubleArray(mcRes.getMax().soln, modelExplRanged);
 
 			l = System.currentTimeMillis() - l;
 
 			// Results report
-			mainLog.print("\nPrinting transient probabilities w.r.t. the given parameter space:\n");
+			mainLog.println("\nPrinting transient probabilities w.r.t. the given parameter space:");
 			// TODO: printing to other log files (search for tmpLog used elsewhere)
 
+			mainLog.println("\n== Minimised probabilities ==\n");
 			// print out or export probabilities
-			probsExpl.print(mainLog, true, false, true, true);
+			probsExplMin.print(mainLog, true, false, true, true);
+			
+			mainLog.println("\n== Maximised probabilities ==\n");
+			probsExplMax.print(mainLog, true, false, true, true);
 
 			// print out computation time
 			mainLog.println("\nTime for parameter space exploration: " + l / 1000.0 + " seconds.");
 
 			// Prepare for next iteration
-			initDistExpl = probsExpl;
+			initDistExplMin = probsExplMin;
+			initDistExplMax = probsExplMax;
 			initTimeDouble = timeDouble;
 			times.iterateProperty();
 		}
 
 		// tidy up
-		if (probsExpl != null)
-			probsExpl.clear();
+		if (probsExplMin != null)
+			probsExplMin.clear();
+		if (probsExplMax != null)
+			probsExplMax.clear();
 	}
 
 

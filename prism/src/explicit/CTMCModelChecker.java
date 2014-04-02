@@ -31,6 +31,7 @@ import java.util.*;
 
 import explicit.ranged.CTMCRanged;
 import explicit.ranged.DTMCRanged;
+import explicit.ranged.ModelCheckerResultRanged;
 import explicit.rewards.MCRewards;
 import explicit.rewards.StateRewardsArray;
 import parser.ast.*;
@@ -209,27 +210,36 @@ public class CTMCModelChecker extends DTMCModelChecker
 		return probs;
 	}
 
-	public StateValues doParamTransient(CTMCRanged ctmcRanged, double t, StateValues initDist) throws PrismException
+	public ModelCheckerResultRanged doTransientRanged(CTMCRanged ctmcRanged, double t, StateValues initDistMin, StateValues initDistMax) throws PrismException
 	{
-		ModelCheckerResult res = null;
-		StateValues initDistNew = null, probs = null;
+		ModelCheckerResultRanged res = null;
+		StateValues initDistMinNew = null, initDistMaxNew = null; //probs = null;
 
 		// Build initial distribution (if not specified)
-		if (initDist == null) {
-			initDistNew = new StateValues(TypeDouble.getInstance(), new Double(0.0), ctmcRanged);
+		if (initDistMin == null) {
+			initDistMinNew = new StateValues(TypeDouble.getInstance(), new Double(0.0), ctmcRanged);
 			double initVal = 1.0 / ctmcRanged.getNumInitialStates();
 			for (int in : ctmcRanged.getInitialStates()) {
-				initDistNew.setDoubleValue(in, initVal);
+				initDistMinNew.setDoubleValue(in, initVal);
 			}
 		} else {
-			initDistNew = initDist;
+			initDistMinNew = initDistMin;
+		}
+		if (initDistMax == null) {
+			initDistMaxNew = new StateValues(TypeDouble.getInstance(), new Double(0.0), ctmcRanged);
+			double initVal = 1.0 / ctmcRanged.getNumInitialStates();
+			for (int in : ctmcRanged.getInitialStates()) {
+				initDistMaxNew.setDoubleValue(in, initVal);
+			}
+		} else {
+			initDistMaxNew = initDistMax;
 		}
 
 		// Compute transient probabilities
-		res = computeParamTransientProbs(ctmcRanged, t, initDistNew.getDoubleArray());
-		probs = StateValues.createFromDoubleArray(res.soln, ctmcRanged);
+		res = computeTransientProbsRanged(ctmcRanged, t, initDistMinNew.getDoubleArray(), initDistMaxNew.getDoubleArray());
+		//probs = StateValues.createFromDoubleArray(res.soln, ctmcRanged);
 
-		return probs;
+		return res;
 	}
 	
 	// Numerical computation functions
@@ -764,11 +774,13 @@ public class CTMCModelChecker extends DTMCModelChecker
 		return res;
 	}
 	
-	public ModelCheckerResult computeParamTransientProbs(CTMCRanged ctmcRanged, double t, double initDist[]) throws PrismException
+	public ModelCheckerResultRanged computeTransientProbsRanged(CTMCRanged ctmcRanged, double t, double initDistMin[], double initDistMax[]) throws PrismException
 	{
-		ModelCheckerResult res = null;
+		ModelCheckerResult min = null, max = null;
 		int i, n, iters;
-		double soln[], soln2[], tmpsoln[], sum[];
+		double solnMin[], soln2Min[], sumMin[];
+		double solnMax[], soln2Max[], sumMax[];
+		double tmpsoln[];
 		DTMCRanged dtmc;
 		long timer;
 		// Fox-Glynn stuff
@@ -807,34 +819,51 @@ public class CTMCModelChecker extends DTMCModelChecker
 
 		// Create solution vector(s)
 		// For soln, we just use init (since we are free to modify this vector)
-		soln = initDist;
-		soln2 = new double[n];
-		sum = new double[n];
+		solnMin = initDistMin;
+		soln2Min = new double[n];
+		sumMin = new double[n];
+		solnMax = initDistMax;
+		soln2Max = new double[n];
+		sumMax = new double[n];
 
 		// Initialise solution vectors
 		// (don't need to do soln2 since will be immediately overwritten)
-		for (i = 0; i < n; i++)
-			sum[i] = 0.0;
+		for (i = 0; i < n; i++) {
+			sumMin[i] = 0.0;
+			sumMax[i] = 0.0;
+		}
 
 		// If necessary, do 0th element of summation (doesn't require any matrix powers)
-		if (left == 0)
-			for (i = 0; i < n; i++)
-				sum[i] += weights[0] * soln[i];
+		if (left == 0) {
+			for (i = 0; i < n; i++) {
+				sumMin[i] += weights[0] * solnMin[i];
+				sumMax[i] += weights[0] * solnMax[i];
+			}
+		}
 
 		// Start iterations
 		iters = 1;
 		while (iters <= right) {
 			// Matrix-vector multiply
-			dtmc.vmMultMax(soln, soln2);
+			dtmc.vmMultMin(solnMin, soln2Min);
+			dtmc.vmMultMax(solnMax, soln2Max);
+			
 			// Swap vectors for next iter
-			tmpsoln = soln;
-			soln = soln2;
-			soln2 = tmpsoln;
+			tmpsoln = solnMin;
+			solnMin = soln2Min;
+			soln2Min = tmpsoln;
+			tmpsoln = solnMax;
+			solnMax = soln2Max;
+			soln2Max = tmpsoln;
+			
 			// Add to sum
 			if (iters >= left) {
-				for (i = 0; i < n; i++)
-					sum[i] += weights[iters - left] * soln[i];
+				for (i = 0; i < n; i++) {
+					sumMin[i] += weights[iters - left] * solnMin[i];
+					sumMax[i] += weights[iters - left] * solnMax[i];
+				}
 			}
+			
 			iters++;
 		}
 
@@ -844,13 +873,21 @@ public class CTMCModelChecker extends DTMCModelChecker
 		mainLog.println(" took " + iters + " iters and " + timer / 1000.0 + " seconds.");
 
 		// Return results
-		res = new ModelCheckerResult();
-		res.soln = sum;
-		res.lastSoln = soln2;
-		res.numIters = iters;
-		res.timeTaken = timer / 1000.0;
-		res.timePre = 0.0;
-		return res;
+		min = new ModelCheckerResult();
+		min.soln = sumMin;
+		min.lastSoln = soln2Min;
+		min.numIters = iters;
+		min.timeTaken = timer / 1000.0;
+		min.timePre = 0.0;
+		
+		max = new ModelCheckerResult();
+		max.soln = sumMax;
+		max.lastSoln = soln2Max;
+		max.numIters = iters;
+		max.timeTaken = timer / 1000.0;
+		max.timePre = 0.0;
+	
+		return new ModelCheckerResultRanged(min, max);
 	}
 
 	/**
