@@ -29,6 +29,8 @@ package explicit;
 import java.io.File;
 import java.util.*;
 
+import explicit.ranged.CTMCRanged;
+import explicit.ranged.DTMCRanged;
 import explicit.rewards.MCRewards;
 import explicit.rewards.StateRewardsArray;
 import parser.ast.*;
@@ -207,6 +209,29 @@ public class CTMCModelChecker extends DTMCModelChecker
 		return probs;
 	}
 
+	public StateValues doParamTransient(CTMCRanged ctmcRanged, double t, StateValues initDist) throws PrismException
+	{
+		ModelCheckerResult res = null;
+		StateValues initDistNew = null, probs = null;
+
+		// Build initial distribution (if not specified)
+		if (initDist == null) {
+			initDistNew = new StateValues(TypeDouble.getInstance(), new Double(0.0), ctmcRanged);
+			double initVal = 1.0 / ctmcRanged.getNumInitialStates();
+			for (int in : ctmcRanged.getInitialStates()) {
+				initDistNew.setDoubleValue(in, initVal);
+			}
+		} else {
+			initDistNew = initDist;
+		}
+
+		// Compute transient probabilities
+		res = computeParamTransientProbs(ctmcRanged, t, initDistNew.getDoubleArray());
+		probs = StateValues.createFromDoubleArray(res.soln, ctmcRanged);
+
+		return probs;
+	}
+	
 	// Numerical computation functions
 
 	/**
@@ -712,6 +737,95 @@ public class CTMCModelChecker extends DTMCModelChecker
 		while (iters <= right) {
 			// Matrix-vector multiply
 			dtmc.vmMult(soln, soln2);
+			// Swap vectors for next iter
+			tmpsoln = soln;
+			soln = soln2;
+			soln2 = tmpsoln;
+			// Add to sum
+			if (iters >= left) {
+				for (i = 0; i < n; i++)
+					sum[i] += weights[iters - left] * soln[i];
+			}
+			iters++;
+		}
+
+		// Finished bounded probabilistic reachability
+		timer = System.currentTimeMillis() - timer;
+		mainLog.print("Transient probability computation");
+		mainLog.println(" took " + iters + " iters and " + timer / 1000.0 + " seconds.");
+
+		// Return results
+		res = new ModelCheckerResult();
+		res.soln = sum;
+		res.lastSoln = soln2;
+		res.numIters = iters;
+		res.timeTaken = timer / 1000.0;
+		res.timePre = 0.0;
+		return res;
+	}
+	
+	public ModelCheckerResult computeParamTransientProbs(CTMCRanged ctmcRanged, double t, double initDist[]) throws PrismException
+	{
+		ModelCheckerResult res = null;
+		int i, n, iters;
+		double soln[], soln2[], tmpsoln[], sum[];
+		DTMCRanged dtmc;
+		long timer;
+		// Fox-Glynn stuff
+		FoxGlynn fg;
+		int left, right;
+		double q, qt, acc, weights[], totalWeight;
+
+		// Start bounded probabilistic reachability
+		timer = System.currentTimeMillis();
+		mainLog.println("\nStarting transient probability computation...");
+
+		// Store num states
+		n = ctmcRanged.getNumStates();
+
+		// Get uniformisation rate; do Fox-Glynn
+		q = ctmcRanged.getDefaultUniformisationRate();
+		qt = q * t;
+		mainLog.println("\nUniformisation: q.t = " + q + " x " + t + " = " + qt);
+		termCritParam = 1e-6;
+		acc = termCritParam / 8.0;
+		fg = new FoxGlynn(qt, 1e-300, 1e+300, acc);
+		left = fg.getLeftTruncationPoint();
+		right = fg.getRightTruncationPoint();
+		if (right < 0) {
+			throw new PrismException("Overflow in Fox-Glynn computation (time bound too big?)");
+		}
+		weights = fg.getWeights();
+		totalWeight = fg.getTotalWeight();
+		for (i = left; i <= right; i++) {
+			weights[i - left] /= totalWeight;
+		}
+		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
+
+		// Build (implicit) uniformised DTMC
+		dtmc = ctmcRanged.buildImplicitUniformisedDTMC(q);
+
+		// Create solution vector(s)
+		// For soln, we just use init (since we are free to modify this vector)
+		soln = initDist;
+		soln2 = new double[n];
+		sum = new double[n];
+
+		// Initialise solution vectors
+		// (don't need to do soln2 since will be immediately overwritten)
+		for (i = 0; i < n; i++)
+			sum[i] = 0.0;
+
+		// If necessary, do 0th element of summation (doesn't require any matrix powers)
+		if (left == 0)
+			for (i = 0; i < n; i++)
+				sum[i] += weights[0] * soln[i];
+
+		// Start iterations
+		iters = 1;
+		while (iters <= right) {
+			// Matrix-vector multiply
+			dtmc.vmMultMax(soln, soln2);
 			// Swap vectors for next iter
 			tmpsoln = soln;
 			soln = soln2;

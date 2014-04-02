@@ -29,9 +29,13 @@ package explicit;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map.Entry;
 
+import explicit.ranged.ModelRanged;
+import explicit.ranged.CTMCSimpleRanged;
 import parser.State;
 import parser.Values;
 import parser.VarList;
@@ -108,7 +112,7 @@ public class ConstructModel extends PrismComponent
 	{
 		return constructModel(modulesFile, justReach, buildSparse, true);
 	}
-
+	
 	/**
 	 * Construct an explicit-state model from a PRISM model language description and return.
 	 * If {@code justReach} is true, no model is built and null is returned;
@@ -329,6 +333,70 @@ public class ConstructModel extends PrismComponent
 		permut = null;
 
 		return model;
+	}
+
+	/**
+	 */
+	public ModelRanged constructModelRanged(ModulesFile modulesFile, String[] paramNames, double[] paramLower, double[] paramUpper) throws PrismException
+	{
+		return constructModelRanged(modulesFile, paramNames, paramLower, paramUpper, false, true);
+	}
+
+	/**
+	 */
+	public ModelRanged constructModelRanged(ModulesFile modulesFile, String[] paramNames, double[] paramLower, double[] paramUpper, boolean justReach, boolean buildSparse) throws PrismException
+	{
+		return constructModelRanged(modulesFile, paramNames, paramLower, paramUpper, justReach, buildSparse, true);
+	}
+
+	/**
+	 */
+	public ModelRanged constructModelRanged(ModulesFile modulesFile, String[] paramNames, double[] paramLower, double[] paramUpper, boolean justReach, boolean buildSparse, boolean distinguishActions) throws PrismException
+	{
+		ModelSimple modelLower, modelUpper;
+		CTMCSimple ctmcLower, ctmcUpper;
+		ModelSimple modelRanged;
+		CTMCSimpleRanged ctmcRanged;
+		ModulesFile modulesFileLower, modulesFileUpper;
+		Values extendedMFConstantsLower, extendedMFConstantsUpper;
+
+		extendedMFConstantsLower = modulesFile.getConstantValues();
+		extendedMFConstantsUpper = modulesFile.getConstantValues();
+		for (int pnr = 0; pnr < paramNames.length; pnr++) {
+			extendedMFConstantsLower.addValue(paramNames[pnr], paramLower[pnr]);
+			extendedMFConstantsUpper.addValue(paramNames[pnr], paramUpper[pnr]);
+		}
+		
+		// Undefined MF constants have been already taken care of in prism.PrismCL,
+		// the defined ones may still be there, though. No value should be assigned
+		// to the parameters in the modules file.
+
+		modulesFileLower = (ModulesFile) modulesFile.deepCopy().replaceConstants(extendedMFConstantsLower).simplify();
+		modulesFileUpper = (ModulesFile) modulesFile.deepCopy().replaceConstants(extendedMFConstantsUpper).simplify();
+		
+		modelLower = ctmcLower = (CTMCSimple) constructModel(modulesFileLower, justReach, buildSparse, distinguishActions);
+		modelUpper = ctmcUpper = (CTMCSimple) constructModel(modulesFileUpper, justReach, buildSparse, distinguishActions);
+		
+		modelRanged = ctmcRanged = new CTMCSimpleRanged(modelLower.getNumStates());
+		for (int in : modelLower.getInitialStates()) {
+			modelRanged.addInitialState(in);
+		}
+		
+		Iterator<Entry<Integer, Double>> transIter;
+		for (int i = 0; i < modelLower.getNumStates(); i++) {
+			transIter = ctmcLower.getTransitionsIterator(i);
+			while (transIter.hasNext()) {
+				Entry<Integer, Double> e = transIter.next();
+				ctmcRanged.setProbabilityMin(i, e.getKey(), e.getValue());
+			}
+			transIter = ctmcUpper.getTransitionsIterator(i);
+			while (transIter.hasNext()) {
+				Entry<Integer, Double> e = transIter.next();
+				ctmcRanged.setProbabilityMax(i, e.getKey(), e.getValue());
+			}
+		}
+		
+		return (ModelRanged) modelRanged;
 	}
 
 	/**
