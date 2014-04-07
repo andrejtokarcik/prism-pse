@@ -11,7 +11,7 @@ THIS_DIR = explicit
 PRISM_DIR_REL = ../..
 
 JAVA_FILES_ALL = $(wildcard *.java ranged/*.java)
-JAVA_FILES = $(subst package-info.java,,$(JAVA_FILES_ALL))
+JAVA_FILES = $(patsubst %package-info.java,,$(JAVA_FILES_ALL))
 CLASS_FILES = $(JAVA_FILES:%.java=$(PRISM_DIR_REL)/$(CLASSES_DIR)/$(THIS_DIR)/%.class)
 
 PRISM_CLASSPATH = "$(THIS_DIR)/$(PRISM_DIR_REL)/$(CLASSES_DIR)$(CLASSPATHSEP)$(THIS_DIR)/$(PRISM_DIR_REL)/lib/*"

@@ -5,6 +5,5 @@
 cudd/include
 prism/bin
 prism/classes
-prism/ext
 prism/lib
 prism/obj
