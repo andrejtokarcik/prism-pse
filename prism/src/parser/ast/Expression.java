@@ -536,6 +536,11 @@ public abstract class Expression extends ASTElement
 			throw new PrismLangException("Unknown object type " + o.getClass());
 		}
 	}
+	
+	public static Expression ConstantDouble(String name)
+	{
+		return new ExpressionConstant(name, TypeDouble.getInstance());
+	}
 
 	public static Expression Not(Expression expr)
 	{

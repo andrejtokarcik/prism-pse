@@ -304,7 +304,7 @@ public class PrismSettings implements Observer
 																			"Strategy to use when splitting a region during parametric model checking. Either split on longest side, or split on all sides." },
 			{ CHOICE_TYPE,		PRISM_PARAM_BISIM,						"Parametric model checking bisimulation method",					"4.1",			"Weak",																		"Weak,Strong,None",
 																			"Type of bisimulation used to reduce model size during paramteric model checking. For reward-based properties, weak bisimulation cannot be used." },
-			{ CHOICE_TYPE,		PRISM_PARAM_FUNCTION,					"Parametric model checking function representation",				"4.1",			"JAS-cached",																"JAS-cached,JAS,DAG",
+			{ CHOICE_TYPE,		PRISM_PARAM_FUNCTION,					"Parametric model checking function representation",				"4.1",			"JAS-cached",																"JAS-cached,JAS,DAG,expr",
 																			"Type of representation for functions used during parametric model checking." },
 			{ CHOICE_TYPE,		PRISM_PARAM_ELIM_ORDER,					"Parametric model checking state elimination order",			"4.1",			"Backward",																		"Arbitrary,Forward,Forward-reversed,Backward,Backward-reversed,Random",
 																			"Order in which states are eliminated during unbounded parametric model checking analysis." },
@@ -1271,6 +1271,8 @@ public class PrismSettings implements Observer
 					set(PRISM_PARAM_FUNCTION, "JAS");
 				else if (s.equals("dag"))
 					set(PRISM_PARAM_FUNCTION, "DAG");
+				else if (s.equals("expr"))
+					set(PRISM_PARAM_FUNCTION, "expr");
 				else
 					throw new PrismException("Unrecognised option for -" + sw + " switch (options are: jascached, jas, dag)");
 			} else {
@@ -1507,7 +1509,7 @@ public class PrismSettings implements Observer
 		mainLog.println("-paramdagmaxerror <b> .......... Maximal error probability allowed for DAG function representation [default: 1E-100]");
 		mainLog.println();
 		mainLog.println("PARAMETER SPACE EXPLORATION OPTIONS:");
-		mainLog.println("pse <vals> ..................... Perform parameter space exploration with parameter ranges <vals>");
+		mainLog.println("-pse <time> <vals> ............. Perform parameter space exploration with parameter ranges <vals>");
 		mainLog.println();
 		mainLog.println("FAST ADAPTIVE UNIFORMISATION (FAU) OPTIONS:");
 		mainLog.println("-faudelta <x> .................. Set probability threshold for irrelevant states in FAU [default: 1e-12]");

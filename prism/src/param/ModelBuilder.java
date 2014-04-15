@@ -68,6 +68,8 @@ public final class ModelBuilder extends PrismComponent
 	private String functionType;
 	/** maximal error probability of DAG function representation */
 	private double dagMaxError;
+	/** */
+	private boolean plainExpr = true;
 
 	/**
 	 * Constructor
@@ -96,6 +98,10 @@ public final class ModelBuilder extends PrismComponent
 	 */
 	Function expr2function(FunctionFactory factory, Expression expr) throws PrismException
 	{
+		if (plainExpr) {
+			return ((ExprFunctionFactory) factory).fromExpression(expr);
+		}
+
 		if (expr instanceof ExpressionLiteral) {
 			String exprString = ((ExpressionLiteral) expr).getString();
 			if (exprString == null || exprString.equals("")) {
@@ -195,6 +201,9 @@ public final class ModelBuilder extends PrismComponent
 			functionFactory = new CachedFunctionFactory(new JasFunctionFactory(paramNames, lower, upper));
 		} else if (functionType.equals("DAG")) {
 			functionFactory = new DagFunctionFactory(paramNames, lower, upper, dagMaxError, false);
+		} else if (functionType.equals("expr")) {
+			plainExpr = true;
+			functionFactory = new ExprFunctionFactory(paramNames, lower, upper);
 		}
 		long time;
 
