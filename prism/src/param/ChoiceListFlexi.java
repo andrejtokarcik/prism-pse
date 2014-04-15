@@ -266,6 +266,7 @@ public class ChoiceListFlexi //implements Choice
 		}
 	}
 	
+	@Override
 	public String toString()
 	{
 		int i, n;
@@ -280,5 +281,41 @@ public class ChoiceListFlexi //implements Choice
 			s += getProbability(i) + ":" + updates.get(i);
 		}
 		return s;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		ChoiceListFlexi other = (ChoiceListFlexi) obj;
+		if (moduleOrActionIndex != other.moduleOrActionIndex)
+			return false;
+		if (probability == null) {
+			if (other.probability != null)
+				return false;
+		}
+		//else if (!probability.equals(other.probability))
+		//	return false;
+		if (updates == null) {
+			if (other.updates != null)
+				return false;
+		} else if (!updates.equals(other.updates))
+			return false;
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + moduleOrActionIndex;
+		//result = prime * result
+		//		+ ((probability == null) ? 0 : probability.hashCode());
+		result = prime * result + ((updates == null) ? 0 : updates.hashCode());
+		return result;
 	}
 }
