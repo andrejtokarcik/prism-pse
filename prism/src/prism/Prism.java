@@ -3348,7 +3348,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 	/**
 	 */
-	public void doParamSpaceExplore(UndefinedConstants times, String[] pseNames, double[] pseLowerBounds, double[] pseUpperBounds, File fileIn) throws PrismException
+	public void doParamSpaceExplore(UndefinedConstants times, String[] pseNames, String[] pseLowerBounds, String[] pseUpperBounds, File fileIn) throws PrismException
 	{
 		int i;
 		double timeDouble = 0, initTimeDouble = 0;
@@ -3356,8 +3356,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		long l = 0; // timer
 		ModelCheckerResultRanged mcRes;
 		explicit.StateValues probsExplMin = null, probsExplMax = null, initDistExplMin = null, initDistExplMax = null;
-		ConstructModel constructModel;
-		explicit.Model modelExplRanged;
+		String oldParamFunction;
 
 		// Some checks
 		if (pseNames == null)
@@ -3368,7 +3367,23 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		if (!getExplicit())
 			throw new PrismException("Parameter space exploration supported for the explicit engine only");
 		*/
+		
+		// Simulate `-paramfunction expr` was given on command line
+		oldParamFunction = settings.getString(PrismSettings.PRISM_PARAM_FUNCTION);
+		settings.set(PrismSettings.PRISM_PARAM_FUNCTION, "expr");
+		
+		Values constlist = currentModulesFile.getConstantValues();
+		for (int pnr = 0; pnr < pseNames.length; pnr++) {
+			constlist.removeValue(pseNames[pnr]);
+		}
 
+		// Build model
+		param.ModelBuilder builder = new ModelBuilder(this);
+		builder.setModulesFile(currentModulesFile);
+		builder.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
+		builder.build();
+		explicit.Model modelExpl = builder.getModel();
+		
 		// Step through required time points
 		for (i = 0; i < times.getNumPropertyIterations(); i++) {
 			// Get time, check non-negative
@@ -3377,7 +3392,8 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			if (timeDouble < 0)
 				throw new PrismException("Cannot perform parameter space exploration for negative time value");
 
-			// Print initialization info
+			
+			// Print initialisation info
 			mainLog.printSeparator();
 			mainLog.println("\nPerforming parameter space exploration (time = " + time + ")...");
 			if (currentDefinedMFConstants != null && currentDefinedMFConstants.getNumValues() > 0)
@@ -3388,23 +3404,21 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 				mainLog.print(pseNames[pnr] + "=" + pseLowerBounds[pnr] + ":" + pseUpperBounds[pnr]);
 			}
 			mainLog.println();
-
-			// Build model
+			
 			l = System.currentTimeMillis();
 
-			constructModel = new ConstructModel(this, getSimulator());
-			constructModel.setFixDeadlocks(getFixDeadlocks());
-			modelExplRanged = constructModel.constructModelRanged(currentModulesFile, pseNames, pseLowerBounds, pseUpperBounds);
-
-			CTMCModelChecker mc = new CTMCModelChecker(this);
+			ParamModelChecker mc = new ParamModelChecker(this);
+			/*
+			// TODO
 			if (i == 0) {
-				initDistExplMin = mc.readDistributionFromFile(fileIn, modelExplRanged);
-				initDistExplMax = mc.readDistributionFromFile(fileIn, modelExplRanged);
+				initDistExplMin = mc.readDistributionFromFile(fileIn, modelExpl);
+				initDistExplMax = mc.readDistributionFromFile(fileIn, modelExpl);
 				initTimeDouble = 0;
 			}
-			mcRes = mc.doTransientRanged((CTMCRanged) modelExplRanged, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax);
-			probsExplMin = explicit.StateValues.createFromDoubleArray(mcRes.getMin().soln, modelExplRanged);
-			probsExplMax = explicit.StateValues.createFromDoubleArray(mcRes.getMax().soln, modelExplRanged);
+			*/
+			mcRes = mc.doTransientRanged(modelExpl, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax);
+			probsExplMin = explicit.StateValues.createFromDoubleArray(mcRes.getMin().soln, modelExpl);
+			probsExplMax = explicit.StateValues.createFromDoubleArray(mcRes.getMax().soln, modelExpl);
 
 			l = System.currentTimeMillis() - l;
 
@@ -3420,7 +3434,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			probsExplMax.print(mainLog, true, false, true, true);
 
 			// print out computation time
-			mainLog.println("\nTime for parameter space exploration: " + l / 1000.0 + " seconds.");
+			mainLog.println("\nTotal time for parameter space exploration: " + l / 1000.0 + " seconds.");
 
 			// Prepare for next iteration
 			initDistExplMin = probsExplMin;
@@ -3434,6 +3448,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			probsExplMin.clear();
 		if (probsExplMax != null)
 			probsExplMax.clear();
+		settings.set(PrismSettings.PRISM_PARAM_FUNCTION, oldParamFunction);
 	}
 
 
