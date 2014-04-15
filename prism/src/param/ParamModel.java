@@ -57,6 +57,10 @@ final class ParamModel extends ModelExplicit
 	private int[] choices;
 	/** targets of distribution branches */
 	private int[] cols;
+	/** hash codes of updates/reactions associated with distribution branches */
+	private int[] reactions;
+	/** rates of distribution branches */
+	private Function[] rates;
 	/** probabilities of distribution branches */
 	private Function[] nonZeros;
 	/** labels - per transition, <i>not</i> per action */
@@ -240,6 +244,8 @@ final class ParamModel extends ModelExplicit
 		rows = new int[numStates + 1];
 		choices = new int[numTotalChoices + 1];
 		labels = new String[numTotalSuccessors];
+		reactions = new int[numTotalSuccessors];
+		rates = new Function[numTotalSuccessors];
 		cols = new int[numTotalSuccessors];
 		nonZeros = new Function[numTotalSuccessors];
 		sumRates = new Function[numTotalChoices];
@@ -281,13 +287,17 @@ final class ParamModel extends ModelExplicit
 	 * sum of rates leaving a certain nondeterministic decision shall be
 	 * specified using {@code setSumLeaving}.
 	 * 
+	 * @param reactionHash
 	 * @param toState to which state the probabilistic choice leads
+	 * @param rate
 	 * @param probFn with which probability it leads to this state
 	 * @param action action with which the choice is labelled
 	 */
-	void addTransition(int toState, Function probFn, String action)
+	void addTransition(int reactionHash, int toState, Function rate, Function probFn, String action)
 	{
+		reactions[numTotalTransitions] = reactionHash;
 		cols[numTotalTransitions] = toState;
+		rates[numTotalTransitions] = rate;
 		nonZeros[numTotalTransitions] = probFn;
 		labels[numTotalTransitions] = action;
 		numTotalTransitions++;
@@ -350,6 +360,20 @@ final class ParamModel extends ModelExplicit
 	}
 
 	/**
+	 */
+	int getReaction(int succNr)
+	{
+		return reactions[succNr];
+	}
+
+	/**
+	 */
+	Function succRate(int succNr)
+	{
+		return rates[succNr];
+	}
+
+	/**
 	 * Returns the successor state of the given probabilistic branch.
 	 * 
 	 * @param succNr probabilistic branch to return successor state of
@@ -394,6 +418,20 @@ final class ParamModel extends ModelExplicit
 	}
 
 	/**
+	 */
+	double maxSumLeaving() throws PrismException
+	{
+		int i;
+		double d, max = Double.NEGATIVE_INFINITY;
+		for (i = 0; i < numTotalChoices; i++) {
+			d = ((ExprFunction) sumLeaving(i)).evaluateAtUpper();
+			if (d > max)
+				max = d;
+		}
+		return max;
+	}
+
+	/**
 	 * Instantiates the parametric model at a given point.
 	 * All transition probabilities, etc. will be evaluated and set as
 	 * probabilities of the concrete model at the given point. 
@@ -409,7 +447,11 @@ final class ParamModel extends ModelExplicit
 		for (int state = 0; state < numStates; state++) {
 			for (int choice = stateBegin(state); choice < stateEnd(state); choice++) {
 				for (int succ = choiceBegin(choice); succ < choiceEnd(choice); succ++) {
-					result.addTransition(succState(succ), functionFactory.fromBigRational(succProb(succ).evaluate(point)), labels[succ]);
+					result.addTransition(reactions[succ],
+							cols[succ],
+							functionFactory.fromBigRational(rates[succ].evaluate(point)),
+							functionFactory.fromBigRational(nonZeros[succ].evaluate(point)),
+							labels[succ]);
 				}
 				result.setSumLeaving(functionFactory.fromBigRational(this.sumLeaving(choice).evaluate(point)));
 				result.finishChoice();
@@ -445,5 +487,22 @@ final class ParamModel extends ModelExplicit
 	FunctionFactory getFunctionFactory()
 	{
 		return functionFactory;
+	}
+
+	/**
+	 */
+	public boolean hasPredecessorViaReaction(int state, int reaction) {
+		for (int pred = 0; pred < getNumStates(); pred++) {
+			for (int choice = stateBegin(pred); choice < stateEnd(pred); choice++) {
+				for (int succ = choiceBegin(choice); succ < choiceEnd(choice); succ++) {
+					if (getReaction(succ) != reaction)
+						continue;
+					if (succState(succ) != state)
+						continue;
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 }

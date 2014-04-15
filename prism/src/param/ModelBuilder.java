@@ -301,20 +301,24 @@ public final class ModelBuilder extends PrismComponent
 	private ParamModel constructModel(ModulesFile modulesFile) throws PrismException
 	{
 		ModelType modelType;
+		ParamModel model;
 
 		if (modulesFile.getInitialStates() != null) {
 			throw new PrismException("Cannot do explicit-state reachability if there are multiple initial states");
 		}
 
-		mainLog.print("\nComputing reachable states...");
-		mainLog.flush();
-		long timer = System.currentTimeMillis();
 		modelType = modulesFile.getModelType();
-		ParamModel model = new ParamModel();
-		model.setModelType(modelType);
 		if (modelType != ModelType.DTMC && modelType != ModelType.CTMC && modelType != ModelType.MDP) {
 			throw new PrismException("Unsupported model type: " + modelType);
 		}
+
+		mainLog.print("\nComputing reachable states...");
+		mainLog.flush();
+		long timer = System.currentTimeMillis();
+
+		model = new ParamModel();
+		model.setModelType(modelType);
+
 		SymbolicEngine engine = new SymbolicEngine(modulesFile);
 
 		if (modulesFile.getInitialStates() != null) {
@@ -366,8 +370,9 @@ public final class ModelBuilder extends PrismComponent
 					ChoiceListFlexi succ = tranlist.getChoice(choiceNr);
 					State stateNew = succ.computeTarget(succNr, state);
 					Expression probExpr = succ.getProbability(succNr);
-					Function probFn = expr2function(functionFactory, probExpr).divide(sumOut);
-					model.addTransition(permut[states.get(stateNew)], probFn, action);
+					Function rateFn = expr2function(functionFactory, probExpr);
+					Function probFn = rateFn.divide(sumOut);
+					model.addTransition(succ.hashCode(), permut[states.get(stateNew)], rateFn, probFn, action);
 				}
 				if (isNonDet) {
 					model.setSumLeaving(sumOut);
@@ -376,7 +381,7 @@ public final class ModelBuilder extends PrismComponent
 			}
 			if (numChoices == 0) {
 				model.addDeadlockState(stateNr);
-				model.addTransition(stateNr, functionFactory.getOne(), null);
+				model.addTransition(-1, stateNr, functionFactory.getOne(), functionFactory.getOne(), null);
 				if (isNonDet) {
 					model.setSumLeaving(sumOut);
 					model.finishChoice();
