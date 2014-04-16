@@ -1452,9 +1452,6 @@ final public class ParamModelChecker extends PrismComponent
 
 					// OUT
 					if (!model.hasPredecessorViaReaction(pred, predReaction)) {
-						if (pred == 3474) {
-							System.out.println(predReaction + ", " + predRate);
-						}
 						result[pred] -= predRate.evaluateAtLower() * vect[pred] / qmax;
 					}
 				}
