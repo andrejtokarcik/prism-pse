@@ -108,8 +108,8 @@ public class SymbolicEngine
 	
 	public Expression getProbabilityInState(Updates ups, int i, State state) throws PrismLangException
 	{
-		Expression p = ups.getProbability(i).deepCopy();
-		return (p == null) ? Expression.Double(1.0) : p;
+		Expression p = ups.getProbability(i);
+		return (p == null) ? Expression.Double(1.0) : p.deepCopy();
 	}
 	
 	static boolean hasMoreThanOneVariable(Expression exp)
