@@ -180,6 +180,41 @@ public class ExpressionSS extends Expression
 		expr.setPosition(this);
 		return expr;
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((expression == null) ? 0 : expression.hashCode());
+		result = prime * result + ((prob == null) ? 0 : prob.hashCode());
+		result = prime * result + ((relOp == null) ? 0 : relOp.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		ExpressionSS other = (ExpressionSS) obj;
+		if (expression == null) {
+			if (other.expression != null)
+				return false;
+		} else if (!expression.equals(other.expression))
+			return false;
+		if (prob == null) {
+			if (other.prob != null)
+				return false;
+		} else if (!prob.equals(other.prob))
+			return false;
+		if (relOp != other.relOp)
+			return false;
+		return true;
+	}
 }
 
 //------------------------------------------------------------------------------

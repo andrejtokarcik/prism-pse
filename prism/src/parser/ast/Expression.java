@@ -74,6 +74,11 @@ public abstract class Expression extends ASTElement
 	 */
 	public abstract Expression deepCopy();
 
+	/**
+	 */
+	public abstract int hashCode();
+	public abstract boolean equals(Object o);
+
 	// Utility methods:
 
 	/**

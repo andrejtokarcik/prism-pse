@@ -212,6 +212,50 @@ public class ExpressionReward extends Expression
 		expr.setPosition(this);
 		return expr;
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((expression == null) ? 0 : expression.hashCode());
+		result = prime * result + ((relOp == null) ? 0 : relOp.hashCode());
+		result = prime * result + ((reward == null) ? 0 : reward.hashCode());
+		result = prime
+				* result
+				+ ((rewardStructIndex == null) ? 0 : rewardStructIndex
+						.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		ExpressionReward other = (ExpressionReward) obj;
+		if (expression == null) {
+			if (other.expression != null)
+				return false;
+		} else if (!expression.equals(other.expression))
+			return false;
+		if (relOp != other.relOp)
+			return false;
+		if (reward == null) {
+			if (other.reward != null)
+				return false;
+		} else if (!reward.equals(other.reward))
+			return false;
+		if (rewardStructIndex == null) {
+			if (other.rewardStructIndex != null)
+				return false;
+		} else if (!rewardStructIndex.equals(other.rewardStructIndex))
+			return false;
+		return true;
+	}
 }
 
 //------------------------------------------------------------------------------

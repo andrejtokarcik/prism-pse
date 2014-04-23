@@ -139,6 +139,46 @@ public class ExpressionITE extends Expression
 		expr.setPosition(this);
 		return expr;
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((operand1 == null) ? 0 : operand1.hashCode());
+		result = prime * result
+				+ ((operand2 == null) ? 0 : operand2.hashCode());
+		result = prime * result
+				+ ((operand3 == null) ? 0 : operand3.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		ExpressionITE other = (ExpressionITE) obj;
+		if (operand1 == null) {
+			if (other.operand1 != null)
+				return false;
+		} else if (!operand1.equals(other.operand1))
+			return false;
+		if (operand2 == null) {
+			if (other.operand2 != null)
+				return false;
+		} else if (!operand2.equals(other.operand2))
+			return false;
+		if (operand3 == null) {
+			if (other.operand3 != null)
+				return false;
+		} else if (!operand3.equals(other.operand3))
+			return false;
+		return true;
+	}
 }
 
 // ------------------------------------------------------------------------------

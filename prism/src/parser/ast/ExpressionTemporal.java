@@ -344,6 +344,63 @@ public class ExpressionTemporal extends Expression
 		}
 		throw new PrismLangException("Cannot convert " + getOperatorSymbol() + " to until form");
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + (equals ? 1231 : 1237);
+		result = prime * result + ((lBound == null) ? 0 : lBound.hashCode());
+		result = prime * result + (lBoundStrict ? 1231 : 1237);
+		result = prime * result + op;
+		result = prime * result
+				+ ((operand1 == null) ? 0 : operand1.hashCode());
+		result = prime * result
+				+ ((operand2 == null) ? 0 : operand2.hashCode());
+		result = prime * result + ((uBound == null) ? 0 : uBound.hashCode());
+		result = prime * result + (uBoundStrict ? 1231 : 1237);
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		ExpressionTemporal other = (ExpressionTemporal) obj;
+		if (equals != other.equals)
+			return false;
+		if (lBound == null) {
+			if (other.lBound != null)
+				return false;
+		} else if (!lBound.equals(other.lBound))
+			return false;
+		if (lBoundStrict != other.lBoundStrict)
+			return false;
+		if (op != other.op)
+			return false;
+		if (operand1 == null) {
+			if (other.operand1 != null)
+				return false;
+		} else if (!operand1.equals(other.operand1))
+			return false;
+		if (operand2 == null) {
+			if (other.operand2 != null)
+				return false;
+		} else if (!operand2.equals(other.operand2))
+			return false;
+		if (uBound == null) {
+			if (other.uBound != null)
+				return false;
+		} else if (!uBound.equals(other.uBound))
+			return false;
+		if (uBoundStrict != other.uBoundStrict)
+			return false;
+		return true;
+	}
 }
 
 //------------------------------------------------------------------------------

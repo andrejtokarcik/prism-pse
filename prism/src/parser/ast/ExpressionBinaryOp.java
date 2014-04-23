@@ -238,6 +238,42 @@ public class ExpressionBinaryOp extends Expression
 		expr.setPosition(this);
 		return expr;
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + op;
+		result = prime * result
+				+ ((operand1 == null) ? 0 : operand1.hashCode());
+		result = prime * result
+				+ ((operand2 == null) ? 0 : operand2.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		ExpressionBinaryOp other = (ExpressionBinaryOp) obj;
+		if (op != other.op)
+			return false;
+		if (operand1 == null) {
+			if (other.operand1 != null)
+				return false;
+		} else if (!operand1.equals(other.operand1))
+			return false;
+		if (operand2 == null) {
+			if (other.operand2 != null)
+				return false;
+		} else if (!operand2.equals(other.operand2))
+			return false;
+		return true;
+	}
 }
 
 // ------------------------------------------------------------------------------
