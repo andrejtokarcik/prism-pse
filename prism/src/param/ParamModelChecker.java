@@ -1297,6 +1297,7 @@ final public class ParamModelChecker extends PrismComponent
 		n = ctmcRanged.getNumStates();
 
 		// Get uniformisation rate; do Fox-Glynn
+		// XXX the choice of `q` may also cause the rounding differences in results?
 		q = 1.02 * ctmcRanged.maxSumLeaving();
 		qt = q * t;
 		mainLog.println("\nUniformisation: q.t = " + q + " x " + t + " = " + qt);
@@ -1346,8 +1347,7 @@ final public class ParamModelChecker extends PrismComponent
 		iters = 1;
 		while (iters <= right) {
 			// Matrix-vector multiply
-			vmMultMin(ctmcRanged, solnMin, soln2Min, q);
-			vmMultMax(ctmcRanged, solnMax, soln2Max, q);
+			vmMult(ctmcRanged, solnMin, soln2Min, solnMax, soln2Max, q);
 
 			// Swap vectors for next iter
 			tmpsoln = solnMin;
@@ -1391,20 +1391,21 @@ final public class ParamModelChecker extends PrismComponent
 		return new ModelCheckerResultRanged(min, max);
 	}
 
-	public void vmMultMax(ParamModel model, double vect[], double result[], double qmax) throws PrismException
+	public void vmMult(ParamModel model, double vectMin[], double resultMin[], double vectMax[], double resultMax[], double qmax) throws PrismException
 	{
 		int pred, predChoice, predSucc, predReaction, state, choice, succ;
 		ExprFunction predRate, rate;
 		ExprFunction predRateParams;
 		double predPopulation, population;
 		boolean inout;
-		double midSumNumerator;
+		double midSumNumeratorMin, midSumNumeratorMax;
 
 		// XXX Does not work with synchs!
 
 		// Initialise the result
 		for (state = 0; state < model.getNumStates(); state++) {
-			result[state] = vect[state];
+			resultMin[state] = vectMin[state];
+			resultMax[state] = vectMax[state];
 		}
 
 		// Compute the disjoint sigma sums (p. 9)
@@ -1432,11 +1433,18 @@ final public class ParamModelChecker extends PrismComponent
 								predPopulation = ((ExprFunction) predRate.divide(predRateParams)).evaluateAtUpper();
 								population = ((ExprFunction) rate.divide(predRateParams)).evaluateAtUpper();
 
-								midSumNumerator = vect[pred] * predPopulation - vect[state] * population;
-								if (midSumNumerator > 0) {
-									result[state] += predRateParams.evaluateAtUpper() * midSumNumerator / qmax;
+								midSumNumeratorMin = vectMin[pred] * predPopulation - vectMin[state] * population;
+								if (midSumNumeratorMin > 0) {
+									resultMin[state] += predRateParams.evaluateAtLower() * midSumNumeratorMin / qmax;
 								} else {
-									result[state] += predRateParams.evaluateAtLower() * midSumNumerator / qmax;
+									resultMin[state] += predRateParams.evaluateAtUpper() * midSumNumeratorMin / qmax;
+								}
+
+								midSumNumeratorMax = vectMax[pred] * predPopulation - vectMax[state] * population;
+								if (midSumNumeratorMax > 0) {
+									resultMax[state] += predRateParams.evaluateAtUpper() * midSumNumeratorMax / qmax;
+								} else {
+									resultMax[state] += predRateParams.evaluateAtLower() * midSumNumeratorMax / qmax;
 								}
 
 								// TODO: Perhaps we can break the double for loop from here?
@@ -1447,80 +1455,14 @@ final public class ParamModelChecker extends PrismComponent
 
 					// IN
 					if (!inout) {
-						result[state] += predRate.evaluateAtUpper() * vect[pred] / qmax;
+						resultMin[state] += predRate.evaluateAtLower() * vectMin[pred] / qmax;
+						resultMax[state] += predRate.evaluateAtUpper() * vectMax[pred] / qmax;
 					}
 
 					// OUT
 					if (!model.hasPredecessorViaReaction(pred, predReaction)) {
-						result[pred] -= predRate.evaluateAtLower() * vect[pred] / qmax;
-					}
-				}
-			}
-		}
-	}
-
-	public void vmMultMin(ParamModel model, double vect[], double result[], double qmax) throws PrismException
-	{
-		int pred, predChoice, predSucc, predReaction, state, choice, succ;
-		ExprFunction predRate, rate;
-		ExprFunction predRateParams;
-		double predPopulation, population;
-		boolean inout;
-		double midSumNumerator;
-
-		// XXX Does not work with synchs!
-
-		// Initialise the result
-		for (state = 0; state < model.getNumStates(); state++) {
-			result[state] = vect[state];
-		}
-
-		// Compute the disjoint sigma sums (p. 9) - the inverse of vmMultMax
-		for (pred = 0; pred < model.getNumStates(); pred++) {
-			for (predChoice = model.stateBegin(pred); predChoice < model.stateEnd(pred); predChoice++) {
-				for (predSucc = model.choiceBegin(predChoice); predSucc < model.choiceEnd(predChoice); predSucc++) {
-					inout = false;
-					predReaction = model.getReaction(predSucc);
-					state = model.succState(predSucc);
-					predRate = (ExprFunction) model.succRate(predSucc);
-					predRateParams = ((ExprFunctionFactory) predRate.getFactory()).fromExpression(predRate.getParametersMultiplied());
-
-					// INOUT
-					for (choice = model.stateBegin(state); choice < model.stateEnd(state); choice++) {
-						for (succ = model.choiceBegin(choice); succ < model.choiceEnd(choice); succ++) {
-							if (model.getReaction(succ) == predReaction) {
-								inout = true;
-
-								rate = (ExprFunction) model.succRate(succ);
-
-								// The rate params assumed to be the same for both `pred` and `state`
-								//assert predRateParams.equals(((ExprFunctionFactory) rate.getFactory()).fromExpression(rate.getParametersMultiplied()));
-
-								// Could call evaluateAtLower() as well in the following
-								predPopulation = ((ExprFunction) predRate.divide(predRateParams)).evaluateAtUpper();
-								population = ((ExprFunction) rate.divide(predRateParams)).evaluateAtUpper();
-
-								midSumNumerator = vect[pred] * predPopulation - vect[state] * population;
-								if (midSumNumerator > 0) {
-									result[state] += predRateParams.evaluateAtLower() * midSumNumerator / qmax;
-								} else {
-									result[state] += predRateParams.evaluateAtUpper() * midSumNumerator / qmax;
-								}
-
-								// TODO: Perhaps we can break the double for loop from here?
-								// I.e., is `state` guaranteed not to have another succ with this reaction?
-							}
-						}
-					}
-
-					// IN
-					if (!inout) {
-						result[state] += predRate.evaluateAtLower() * vect[pred] / qmax;
-					}
-
-					// OUT
-					if (!model.hasPredecessorViaReaction(pred, predReaction)) {
-						result[pred] -= predRate.evaluateAtUpper() * vect[pred] / qmax;
+						resultMin[pred] -= predRate.evaluateAtUpper() * vectMin[pred] / qmax;
+						resultMax[pred] -= predRate.evaluateAtLower() * vectMax[pred] / qmax;
 					}
 				}
 			}
