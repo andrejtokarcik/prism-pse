@@ -39,7 +39,6 @@ import parser.ast.ModulesFile;
 import prism.ModelType;
 import prism.PrismComponent;
 import prism.PrismException;
-import prism.PrismLog;
 import prism.PrismSettings;
 import explicit.IndexedSet;
 import explicit.StateStorage;
@@ -69,7 +68,7 @@ public final class ModelBuilder extends PrismComponent
 	/** maximal error probability of DAG function representation */
 	private double dagMaxError;
 	/** */
-	private boolean plainExpr = true;
+	private boolean plainExpr = false;
 
 	/**
 	 * Constructor
@@ -98,6 +97,8 @@ public final class ModelBuilder extends PrismComponent
 	 */
 	Function expr2function(FunctionFactory factory, Expression expr) throws PrismException
 	{
+		// TODO fromExpression() as a method of general FunctionFactory?
+
 		if (plainExpr) {
 			return ((ExprFunctionFactory) factory).fromExpression(expr);
 		}
