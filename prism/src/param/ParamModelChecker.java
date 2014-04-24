@@ -56,6 +56,7 @@ package param;
 
 import java.util.BitSet;
 import java.util.List;
+import java.util.Map.Entry;
 
 import param.Lumper.BisimType;
 import param.StateEliminator.EliminationOrder;
@@ -1267,8 +1268,9 @@ final public class ParamModelChecker extends PrismComponent
 		} else {
 			initDistMaxNew = initDistMax;
 		}
-
+		
 		// Compute transient probabilities
+		ctmcRanged.computeInOutReactions();
 		res = computeTransientProbsRanged(ctmcRanged, t, initDistMinNew.getDoubleArray(), initDistMaxNew.getDoubleArray());
 		//probs = StateValues.createFromDoubleArray(res.soln, ctmcRanged);
 
@@ -1393,77 +1395,58 @@ final public class ParamModelChecker extends PrismComponent
 
 	public void vmMult(ParamModel model, double vectMin[], double resultMin[], double vectMax[], double resultMax[], double qmax) throws PrismException
 	{
-		int pred, predChoice, predSucc, predReaction, state, choice, succ;
+		int pred, state;
 		ExprFunction predRate, rate;
 		ExprFunction predRateParams;
 		double predPopulation, population;
-		boolean inout;
 		double midSumNumeratorMin, midSumNumeratorMax;
 
 		// XXX Does not work with synchs!
 
-		// Initialise the result
 		for (state = 0; state < model.getNumStates(); state++) {
+			// Initialise the result
 			resultMin[state] = vectMin[state];
 			resultMax[state] = vectMax[state];
-		}
+			
+			// Incoming reactions
+			for (int trans : model.getInReactions(state)) {
+				rate = (ExprFunction) model.succRate(trans);
+				pred = model.currState(trans);
+				resultMin[state] += rate.evaluateAtLower() * vectMin[pred] / qmax;
+				resultMax[state] += rate.evaluateAtUpper() * vectMax[pred] / qmax;
+			}
+			
+			// Outgoing reactions
+			for (int trans : model.getOutReactions(state)) {
+				rate = (ExprFunction) model.succRate(trans);
+				resultMin[state] -= rate.evaluateAtUpper() * vectMin[state] / qmax;
+				resultMax[state] -= rate.evaluateAtLower() * vectMax[state] / qmax;
+			}
+			
+			// Both incoming and outgoing
+			for (Entry<Integer, Integer> transs : model.getInoutReactions(state)) {
+				pred = model.currState(transs.getKey());
+				predRate = (ExprFunction) model.succRate(transs.getKey());
+				predPopulation = predRate.getPopulation();
+				predRateParams = predRate.getParametersMultiplied();
+				
+				rate = (ExprFunction) model.succRate(transs.getValue());
+				population = rate.getPopulation();
+				// The rate params assumed to be the same for both `pred` and `state`
+				assert predRateParams.equals(rate.getParametersMultiplied());
+				
+				midSumNumeratorMin = vectMin[pred] * predPopulation - vectMin[state] * population;
+				if (midSumNumeratorMin > 0) {
+					resultMin[state] += predRateParams.evaluateAtLower() * midSumNumeratorMin / qmax;
+				} else {
+					resultMin[state] += predRateParams.evaluateAtUpper() * midSumNumeratorMin / qmax;
+				}
 
-		// Compute the disjoint sigma sums (p. 9)
-		for (pred = 0; pred < model.getNumStates(); pred++) {
-			for (predChoice = model.stateBegin(pred); predChoice < model.stateEnd(pred); predChoice++) {
-				for (predSucc = model.choiceBegin(predChoice); predSucc < model.choiceEnd(predChoice); predSucc++) {
-					inout = false;
-					predReaction = model.getReaction(predSucc);
-					state = model.succState(predSucc);
-					predRate = (ExprFunction) model.succRate(predSucc);
-					predRateParams = ((ExprFunctionFactory) predRate.getFactory()).fromExpression(predRate.getParametersMultiplied());
-
-					// INOUT
-					for (choice = model.stateBegin(state); choice < model.stateEnd(state); choice++) {
-						for (succ = model.choiceBegin(choice); succ < model.choiceEnd(choice); succ++) {
-							if (model.getReaction(succ) == predReaction) {
-								inout = true;
-
-								rate = (ExprFunction) model.succRate(succ);
-
-								// The rate params assumed to be the same for both `pred` and `state`
-								//assert predRateParams.equals(((ExprFunctionFactory) rate.getFactory()).fromExpression(rate.getParametersMultiplied()));
-
-								// Could call evaluateAtLower() as well in the following
-								predPopulation = ((ExprFunction) predRate.divide(predRateParams)).evaluateAtUpper();
-								population = ((ExprFunction) rate.divide(predRateParams)).evaluateAtUpper();
-
-								midSumNumeratorMin = vectMin[pred] * predPopulation - vectMin[state] * population;
-								if (midSumNumeratorMin > 0) {
-									resultMin[state] += predRateParams.evaluateAtLower() * midSumNumeratorMin / qmax;
-								} else {
-									resultMin[state] += predRateParams.evaluateAtUpper() * midSumNumeratorMin / qmax;
-								}
-
-								midSumNumeratorMax = vectMax[pred] * predPopulation - vectMax[state] * population;
-								if (midSumNumeratorMax > 0) {
-									resultMax[state] += predRateParams.evaluateAtUpper() * midSumNumeratorMax / qmax;
-								} else {
-									resultMax[state] += predRateParams.evaluateAtLower() * midSumNumeratorMax / qmax;
-								}
-
-								// TODO: Perhaps we can break the double for loop from here?
-								// I.e., is `state` guaranteed not to have another succ with this reaction?
-							}
-						}
-					}
-
-					// IN
-					if (!inout) {
-						resultMin[state] += predRate.evaluateAtLower() * vectMin[pred] / qmax;
-						resultMax[state] += predRate.evaluateAtUpper() * vectMax[pred] / qmax;
-					}
-
-					// OUT
-					if (!model.hasPredecessorViaReaction(pred, predReaction)) {
-						resultMin[pred] -= predRate.evaluateAtUpper() * vectMin[pred] / qmax;
-						resultMax[pred] -= predRate.evaluateAtLower() * vectMax[pred] / qmax;
-					}
+				midSumNumeratorMax = vectMax[pred] * predPopulation - vectMax[state] * population;
+				if (midSumNumeratorMax > 0) {
+					resultMax[state] += predRateParams.evaluateAtUpper() * midSumNumeratorMax / qmax;
+				} else {
+					resultMax[state] += predRateParams.evaluateAtLower() * midSumNumeratorMax / qmax;
 				}
 			}
 		}

@@ -27,10 +27,14 @@
 package param;
 
 import java.io.File;
+import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -76,7 +80,12 @@ final class ParamModel extends ModelExplicit
 	private FunctionFactory functionFactory;
 	/** */
 	private Set<Integer> predecessorsViaReaction = new HashSet<Integer>();
-
+	/** */
+	// TODO convert into arrays like rows/choices/cols/... above?
+	private Map<Integer, Set<Integer>> inReactions;
+	private Map<Integer, Set<Entry<Integer, Integer>>> inoutReactions;
+	private Map<Integer, Set<Integer>> outReactions;
+	
 	/**
 	 * Constructs a new parametric model.
 	 */
@@ -527,5 +536,83 @@ final class ParamModel extends ModelExplicit
 			}
 		}
 		return false;
+	}
+	
+	/**
+	 * Computes the disjoint sets of in-flowing and/or out-flowing reactions.
+	 */
+	public void computeInOutReactions()
+	{
+		int pred, predChoice, predSucc, predReaction, state, choice, succ;
+		boolean inout;
+		
+		assert inReactions == null;
+		assert inoutReactions == null;
+		assert outReactions == null;
+
+		// Initialise the reaction sets
+		inReactions = new HashMap<Integer, Set<Integer>>(numStates);
+		inoutReactions = new HashMap<Integer, Set<Entry<Integer, Integer>>>(numStates);
+		outReactions = new HashMap<Integer, Set<Integer>>(numStates);
+		for (state = 0; state < numStates; state++) {
+			inReactions.put(state, new HashSet<Integer>());
+			inoutReactions.put(state, new HashSet<Entry<Integer, Integer>>());
+			outReactions.put(state, new HashSet<Integer>());
+		}
+		
+		// Populate the sets with transition indices
+		for (pred = 0; pred < numStates; pred++) {
+			for (predChoice = stateBegin(pred); predChoice < stateEnd(pred); predChoice++) {
+				for (predSucc = choiceBegin(predChoice); predSucc < choiceEnd(predChoice); predSucc++) {
+					inout = false;
+					predReaction = getReaction(predSucc);
+					state = succState(predSucc);
+
+					for (choice = stateBegin(state); choice < stateEnd(state); choice++) {
+						for (succ = choiceBegin(choice); succ < choiceEnd(choice); succ++) {
+							if (getReaction(succ) == predReaction) {
+								inout = true;
+								inoutReactions.get(state).add(new SimpleImmutableEntry<Integer, Integer>(predSucc, succ));
+								
+								// TODO: Perhaps we can break the two closest for loops from here?
+								// I.e., is `state` guaranteed not to have another succ with this reaction?
+							}
+						}
+					}
+
+					if (!inout) {
+						inReactions.get(state).add(predSucc);
+					}
+
+					if (!hasPredecessorViaReaction(pred, predReaction)) {
+						outReactions.get(pred).add(predSucc);
+					}
+				}
+			}
+		}		
+	}
+	
+	public Set<Integer> getInReactions(int state)
+	{
+		if (inReactions == null) {
+			computeInOutReactions();
+		}
+		return inReactions.get(state);
+	}
+	
+	public Set<Entry<Integer, Integer>> getInoutReactions(int state)
+	{
+		if (inoutReactions == null) {
+			computeInOutReactions();
+		}
+		return inoutReactions.get(state);
+	}
+	
+	public Set<Integer> getOutReactions(int state)
+	{
+		if (outReactions == null) {
+			computeInOutReactions();
+		}
+		return outReactions.get(state);
 	}
 }
