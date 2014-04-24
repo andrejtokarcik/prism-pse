@@ -373,7 +373,8 @@ public final class ModelBuilder extends PrismComponent
 					Expression probExpr = succ.getProbability(succNr);
 					Function rateFn = expr2function(functionFactory, probExpr);
 					Function probFn = rateFn.divide(sumOut);
-					model.addTransition(succ.hashCode(), permut[states.get(stateNew)], rateFn, probFn, action);
+					// XXX the first arg should perhaps depend on succNr (e.g., succ.hashCode() ^ succNr)
+					model.addTransition(succ.hashCode(), permut[states.get(state)], permut[states.get(stateNew)], rateFn, probFn, action);
 				}
 				if (isNonDet) {
 					model.setSumLeaving(sumOut);
@@ -382,7 +383,7 @@ public final class ModelBuilder extends PrismComponent
 			}
 			if (numChoices == 0) {
 				model.addDeadlockState(stateNr);
-				model.addTransition(-1, stateNr, functionFactory.getOne(), functionFactory.getOne(), null);
+				model.addTransition(-1, stateNr, stateNr, functionFactory.getOne(), functionFactory.getOne(), null);
 				if (isNonDet) {
 					model.setSumLeaving(sumOut);
 					model.finishChoice();

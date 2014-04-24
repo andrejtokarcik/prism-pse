@@ -3434,7 +3434,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			probsExplMax.print(mainLog, true, false, true, true);
 
 			// print out computation time
-			mainLog.println("\nTotal time for parameter space exploration: " + l / 1000.0 + " seconds.");
+			mainLog.println("\nTime for parameter space exploration: " + l / 1000.0 + " seconds.");
 
 			// Prepare for next iteration
 			initDistExplMin = probsExplMin;

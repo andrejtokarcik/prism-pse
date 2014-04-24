@@ -55,7 +55,8 @@ final class ParamModel extends ModelExplicit
 	private int[] rows;
 	/** begin and end of a distribution in a nondeterministic choice */
 	private int[] choices;
-	/** targets of distribution branches */
+	/** origins and targets of distribution branches */
+	private int[] colsFrom;
 	private int[] cols;
 	/** hash codes of updates/reactions associated with distribution branches */
 	private int[] reactions;
@@ -247,6 +248,7 @@ final class ParamModel extends ModelExplicit
 		reactions = new int[numTotalSuccessors];
 		rates = new Function[numTotalSuccessors];
 		cols = new int[numTotalSuccessors];
+		colsFrom = new int[numTotalSuccessors];
 		nonZeros = new Function[numTotalSuccessors];
 		sumRates = new Function[numTotalChoices];
 	}
@@ -293,9 +295,10 @@ final class ParamModel extends ModelExplicit
 	 * @param probFn with which probability it leads to this state
 	 * @param action action with which the choice is labelled
 	 */
-	void addTransition(int reactionHash, int toState, Function rate, Function probFn, String action)
+	void addTransition(int reactionHash, int fromState, int toState, Function rate, Function probFn, String action)
 	{
 		reactions[numTotalTransitions] = reactionHash;
+		colsFrom[numTotalTransitions] = fromState;
 		cols[numTotalTransitions] = toState;
 		rates[numTotalTransitions] = rate;
 		nonZeros[numTotalTransitions] = probFn;
@@ -383,6 +386,13 @@ final class ParamModel extends ModelExplicit
 	{
 		return cols[succNr];
 	}
+	
+	/**
+	 */
+	int currState(int succNr)
+	{
+		return colsFrom[succNr];
+	}
 
 	/**
 	 * Returns the probability of the given probabilistic branch
@@ -448,6 +458,7 @@ final class ParamModel extends ModelExplicit
 			for (int choice = stateBegin(state); choice < stateEnd(state); choice++) {
 				for (int succ = choiceBegin(choice); succ < choiceEnd(choice); succ++) {
 					result.addTransition(reactions[succ],
+							colsFrom[succ],
 							cols[succ],
 							functionFactory.fromBigRational(rates[succ].evaluate(point)),
 							functionFactory.fromBigRational(nonZeros[succ].evaluate(point)),
