@@ -26,8 +26,10 @@
 
 package param;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import parser.State;
 import parser.ast.Expression;
@@ -69,6 +71,9 @@ public final class ModelBuilder extends PrismComponent
 	private double dagMaxError;
 	/** */
 	private boolean plainExpr = false;
+	/** */
+	private Map<Expression, Function> expr2functionCache = new HashMap<Expression, Function>();
+	protected Map<State, TransitionList> transitionsCache = new HashMap<State, TransitionList>();
 
 	/**
 	 * Constructor
@@ -263,6 +268,8 @@ public final class ModelBuilder extends PrismComponent
 		while (!explore.isEmpty()) {
 			state = explore.removeFirst();
 			TransitionList tranlist = engine.calculateTransitions(state);
+			transitionsCache.put(state, tranlist);
+			
 			int numChoices = tranlist.getNumChoices();
 			if (isNonDet) {
 				numTotalChoices += numChoices;
@@ -277,7 +284,6 @@ public final class ModelBuilder extends PrismComponent
 					if (states.add(stateNew)) {
 						numStates++;
 						explore.add(stateNew);
-						states.add(stateNew);
 					}
 				}
 			}
@@ -335,7 +341,7 @@ public final class ModelBuilder extends PrismComponent
 		model.addInitialState(permut[0]);
 		int stateNr = 0;
 		for (State state : statesList) {
-			TransitionList tranlist = engine.calculateTransitions(state);
+			TransitionList tranlist = transitionsCache.get(state);
 			int numChoices = tranlist.getNumChoices();
 			Function sumOut;
 			if (isNonDet) {
@@ -348,7 +354,9 @@ public final class ModelBuilder extends PrismComponent
 					for (int succNr = 0; succNr < numSuccessors; succNr++) {
 						ChoiceListFlexi succ = tranlist.getChoice(choiceNr);
 						Expression probExpr = succ.getProbability(succNr);
-						sumOut = sumOut.add(expr2function(functionFactory, probExpr));
+						Function f = expr2function(functionFactory, probExpr);
+						expr2functionCache.put(probExpr, f);
+						sumOut = sumOut.add(f);
 					}
 				}
 			}
@@ -371,7 +379,7 @@ public final class ModelBuilder extends PrismComponent
 					ChoiceListFlexi succ = tranlist.getChoice(choiceNr);
 					State stateNew = succ.computeTarget(succNr, state);
 					Expression probExpr = succ.getProbability(succNr);
-					Function rateFn = expr2function(functionFactory, probExpr);
+					Function rateFn = expr2functionCache.get(probExpr);
 					Function probFn = rateFn.divide(sumOut);
 					// XXX the first arg should perhaps depend on succNr (e.g., succ.hashCode() ^ succNr)
 					model.addTransition(succ.hashCode(), permut[states.get(state)], permut[states.get(stateNew)], rateFn, probFn, action);
@@ -399,7 +407,7 @@ public final class ModelBuilder extends PrismComponent
 		model.setFunctionFactory(functionFactory);
 
 		mainLog.println();
-		
+
 		mainLog.print("Reachable states exploration and model construction");
 		mainLog.println(" done in " + ((System.currentTimeMillis() - timer) / 1000.0) + " secs.");
 

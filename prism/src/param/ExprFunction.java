@@ -41,22 +41,23 @@ final class ExprFunction extends Function {
 	final static int MINF = 2;
 	final static int NAN = 3;
 	/** */
-	private Expression parametersMultiplied;
+	private Expression parametersMultipliedExpr;
+	/** */
+	private ExprFunction parametersMultiplied = null;
+	Double population = null;
+	Double lower = null;
+	Double upper = null;
 	
 	// constructors
 	
 	/**
-	 * Creates a new JAS function.
-	 * 
-	 * @param functionContext function context of this function
-	 * @param jas JAS object this function object is wrapping
-	 * @param type type of function represented
+	 * Creates a new Expression-based function.
 	 */
-	ExprFunction(ExprFunctionFactory functionContext, Expression expr, int type, Expression parametersMultiplied) {
+	ExprFunction(ExprFunctionFactory functionContext, Expression expr, int type, Expression parametersMultipliedExpr) {
 		super(functionContext);
 		this.expr = expr;
 		this.type = type;
-		this.parametersMultiplied = parametersMultiplied;
+		this.parametersMultipliedExpr = parametersMultipliedExpr;
 	}
 
 	@Override
@@ -101,12 +102,28 @@ final class ExprFunction extends Function {
 	{
 		return expr;
 	}
-	
-	Expression getParametersMultiplied()
+
+	/**
+	 */
+	ExprFunction getParametersMultiplied()
 	{
+		if (parametersMultiplied == null) {
+			parametersMultiplied = ((ExprFunctionFactory) factory).fromExpression(parametersMultipliedExpr);
+		}
 		return parametersMultiplied;
 	}
-	
+
+	/**
+	 */
+	double getPopulation() throws PrismException
+	{
+		if (population == null) {
+			// Could call evaluateAtLower() as well
+			population = ((ExprFunctionFactory) factory).fromExpression(Expression.Divide(expr, parametersMultipliedExpr)).evaluateAtUpper();
+		}
+		return population;
+	}
+
 	@Override
 	public Function add(Function other)
 	{
@@ -210,12 +227,18 @@ final class ExprFunction extends Function {
 		return expr.evaluateDouble(constantValues);
 	}
 	
-	public double evaluateAtUpper() throws PrismException {
-		return evaluateDouble(new Point(factory.getUpperBounds()));
+	public double evaluateAtLower() throws PrismException {
+		if (lower == null) {
+			lower = evaluateDouble(new Point(factory.getLowerBounds()));
+		}
+		return lower;
 	}
 	
-	public double evaluateAtLower() throws PrismException {
-		return evaluateDouble(new Point(factory.getLowerBounds()));
+	public double evaluateAtUpper() throws PrismException {
+		if (upper == null) {
+			upper = evaluateDouble(new Point(factory.getUpperBounds()));
+		}
+		return upper;
 	}
 	
 	@Override
