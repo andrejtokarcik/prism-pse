@@ -28,11 +28,13 @@ package param;
 
 import java.io.File;
 import java.util.AbstractMap.SimpleImmutableEntry;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -82,9 +84,9 @@ final class ParamModel extends ModelExplicit
 	private Set<Integer> predecessorsViaReaction = new HashSet<Integer>();
 	/** */
 	// TODO convert into arrays like rows/choices/cols/... above?
-	private Map<Integer, Set<Integer>> inReactions;
-	private Map<Integer, Set<Entry<Integer, Integer>>> inoutReactions;
-	private Map<Integer, Set<Integer>> outReactions;
+	private Map<Integer, List<Integer>> inReactions;
+	private Map<Integer, List<Entry<Integer, Integer>>> inoutReactions;
+	private Map<Integer, List<Integer>> outReactions;
 	
 	/**
 	 * Constructs a new parametric model.
@@ -551,13 +553,13 @@ final class ParamModel extends ModelExplicit
 		assert outReactions == null;
 
 		// Initialise the reaction sets
-		inReactions = new HashMap<Integer, Set<Integer>>(numStates);
-		inoutReactions = new HashMap<Integer, Set<Entry<Integer, Integer>>>(numStates);
-		outReactions = new HashMap<Integer, Set<Integer>>(numStates);
+		inReactions = new HashMap<Integer, List<Integer>>(numStates);
+		inoutReactions = new HashMap<Integer, List<Entry<Integer, Integer>>>(numStates);
+		outReactions = new HashMap<Integer, List<Integer>>(numStates);
 		for (state = 0; state < numStates; state++) {
-			inReactions.put(state, new HashSet<Integer>());
-			inoutReactions.put(state, new HashSet<Entry<Integer, Integer>>());
-			outReactions.put(state, new HashSet<Integer>());
+			inReactions.put(state, new ArrayList<Integer>());
+			inoutReactions.put(state, new ArrayList<Entry<Integer, Integer>>());
+			outReactions.put(state, new ArrayList<Integer>());
 		}
 		
 		// Populate the sets with transition indices
@@ -592,7 +594,7 @@ final class ParamModel extends ModelExplicit
 		}		
 	}
 	
-	public Set<Integer> getInReactions(int state)
+	public List<Integer> getInReactions(int state)
 	{
 		if (inReactions == null) {
 			computeInOutReactions();
@@ -600,7 +602,7 @@ final class ParamModel extends ModelExplicit
 		return inReactions.get(state);
 	}
 	
-	public Set<Entry<Integer, Integer>> getInoutReactions(int state)
+	public List<Entry<Integer, Integer>> getInoutReactions(int state)
 	{
 		if (inoutReactions == null) {
 			computeInOutReactions();
@@ -608,7 +610,7 @@ final class ParamModel extends ModelExplicit
 		return inoutReactions.get(state);
 	}
 	
-	public Set<Integer> getOutReactions(int state)
+	public List<Integer> getOutReactions(int state)
 	{
 		if (outReactions == null) {
 			computeInOutReactions();
