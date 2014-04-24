@@ -28,8 +28,10 @@ package param;
 
 import java.io.File;
 import java.util.BitSet;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Set;
 import java.util.TreeSet;
 
 import parser.Values;
@@ -72,6 +74,8 @@ final class ParamModel extends ModelExplicit
 	private ModelType modelType;
 	/** function factory which manages functions used on transitions, etc. */
 	private FunctionFactory functionFactory;
+	/** */
+	private Set<Integer> predecessorsViaReaction = new HashSet<Integer>();
 
 	/**
 	 * Constructs a new parametric model.
@@ -502,7 +506,14 @@ final class ParamModel extends ModelExplicit
 
 	/**
 	 */
-	public boolean hasPredecessorViaReaction(int state, int reaction) {
+	public boolean hasPredecessorViaReaction(int state, int reaction)
+	{
+		//if (!refreshCache) {
+		if (predecessorsViaReaction.contains(state ^ reaction)) {
+			return true;
+		}
+		//}
+		
 		for (int pred = 0; pred < getNumStates(); pred++) {
 			for (int choice = stateBegin(pred); choice < stateEnd(pred); choice++) {
 				for (int succ = choiceBegin(choice); succ < choiceEnd(choice); succ++) {
@@ -510,6 +521,7 @@ final class ParamModel extends ModelExplicit
 						continue;
 					if (succState(succ) != state)
 						continue;
+					predecessorsViaReaction.add(state ^ reaction);
 					return true;
 				}
 			}
