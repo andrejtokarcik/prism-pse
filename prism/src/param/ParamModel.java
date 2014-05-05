@@ -543,7 +543,7 @@ final class ParamModel extends ModelExplicit
 	/**
 	 * Computes the disjoint sets of in-flowing and/or out-flowing reactions.
 	 */
-	public void computeInOutReactions()
+	public void computeInOutReactions() throws PrismException
 	{
 		int pred, predChoice, predSucc, predReaction, state, choice, succ;
 		boolean inout;
@@ -574,9 +574,13 @@ final class ParamModel extends ModelExplicit
 						for (succ = choiceBegin(choice); succ < choiceEnd(choice); succ++) {
 							if (getReaction(succ) == predReaction) {
 								inout = true;
+								((ExprFunction) succRate(predSucc)).computePopulation(false);
+								((ExprFunction) succRate(predSucc)).computeParametersMultiplied(false);
+								((ExprFunction) succRate(succ)).computePopulation(false);
+								((ExprFunction) succRate(succ)).computeParametersMultiplied(false);
 								inoutReactions.get(state).add(new SimpleImmutableEntry<Integer, Integer>(predSucc, succ));
-								
-								// TODO: Perhaps we can break the two closest for loops from here?
+
+								// TODO: Perhaps we can break the two innermost for-loops from here?
 								// I.e., is `state` guaranteed not to have another succ with this reaction?
 							}
 						}
@@ -596,25 +600,91 @@ final class ParamModel extends ModelExplicit
 	
 	public List<Integer> getInReactions(int state)
 	{
+		/*
 		if (inReactions == null) {
 			computeInOutReactions();
 		}
+		*/
+		assert inReactions != null;
 		return inReactions.get(state);
 	}
 	
 	public List<Entry<Integer, Integer>> getInoutReactions(int state)
 	{
+		/*
 		if (inoutReactions == null) {
 			computeInOutReactions();
 		}
+		*/
+		assert inoutReactions != null;
 		return inoutReactions.get(state);
 	}
 	
 	public List<Integer> getOutReactions(int state)
 	{
+		/*
 		if (outReactions == null) {
 			computeInOutReactions();
 		}
+		*/
+		assert outReactions != null;
 		return outReactions.get(state);
+	}
+
+	public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], double qmax) throws PrismException
+	{
+		int pred, state;
+		ExprFunction predRate, rate;
+		ExprFunction predRateParams;
+		double predPopulation, population;
+		double midSumNumeratorMin, midSumNumeratorMax;
+
+		for (state = 0; state < numStates; state++) {
+			// Initialise the result
+			resultMin[state] = vectMin[state];
+			resultMax[state] = vectMax[state];
+
+			// Incoming reactions
+			for (int trans : getInReactions(state)) {
+				rate = (ExprFunction) succRate(trans);
+				pred = currState(trans);
+				resultMin[state] += rate.evaluateAtLower() * vectMin[pred] / qmax;
+				resultMax[state] += rate.evaluateAtUpper() * vectMax[pred] / qmax;
+			}
+
+			// Outgoing reactions
+			for (int trans : getOutReactions(state)) {
+				rate = (ExprFunction) succRate(trans);
+				resultMin[state] -= rate.evaluateAtUpper() * vectMin[state] / qmax;
+				resultMax[state] -= rate.evaluateAtLower() * vectMax[state] / qmax;
+			}
+
+			// Both incoming and outgoing
+			for (Entry<Integer, Integer> transs : getInoutReactions(state)) {
+				pred = currState(transs.getKey());
+				predRate = (ExprFunction) succRate(transs.getKey());
+				predPopulation = predRate.getPopulation();
+				predRateParams = predRate.getParametersMultiplied();
+
+				rate = (ExprFunction) succRate(transs.getValue());
+				population = rate.getPopulation();
+				// The rate params assumed to be the same for both `pred` and `state`
+				assert predRateParams.equals(rate.getParametersMultiplied());
+
+				midSumNumeratorMin = vectMin[pred] * predPopulation - vectMin[state] * population;
+				if (midSumNumeratorMin > 0) {
+					resultMin[state] += predRateParams.evaluateAtLower() * midSumNumeratorMin / qmax;
+				} else {
+					resultMin[state] += predRateParams.evaluateAtUpper() * midSumNumeratorMin / qmax;
+				}
+
+				midSumNumeratorMax = vectMax[pred] * predPopulation - vectMax[state] * population;
+				if (midSumNumeratorMax > 0) {
+					resultMax[state] += predRateParams.evaluateAtUpper() * midSumNumeratorMax / qmax;
+				} else {
+					resultMax[state] += predRateParams.evaluateAtLower() * midSumNumeratorMax / qmax;
+				}
+			}
+		}
 	}
 }

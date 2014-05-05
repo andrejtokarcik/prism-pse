@@ -1270,7 +1270,6 @@ final public class ParamModelChecker extends PrismComponent
 		}
 		
 		// Compute transient probabilities
-		ctmcRanged.computeInOutReactions();
 		res = computeTransientProbsRanged(ctmcRanged, t, initDistMinNew.getDoubleArray(), initDistMaxNew.getDoubleArray());
 		//probs = StateValues.createFromDoubleArray(res.soln, ctmcRanged);
 
@@ -1294,6 +1293,7 @@ final public class ParamModelChecker extends PrismComponent
 		// Start bounded probabilistic reachability
 		timer = System.currentTimeMillis();
 		mainLog.println("\nStarting transient probability computation...");
+		ctmcRanged.computeInOutReactions();
 
 		// Store num states
 		n = ctmcRanged.getNumStates();
@@ -1349,7 +1349,7 @@ final public class ParamModelChecker extends PrismComponent
 		iters = 1;
 		while (iters <= right) {
 			// Matrix-vector multiply
-			vmMult(ctmcRanged, solnMin, soln2Min, solnMax, soln2Max, q);
+			ctmcRanged.vmMult(solnMin, soln2Min, solnMax, soln2Max, q);
 
 			// Swap vectors for next iter
 			tmpsoln = solnMin;
@@ -1391,64 +1391,5 @@ final public class ParamModelChecker extends PrismComponent
 		max.timePre = 0.0;
 
 		return new ModelCheckerResultRanged(min, max);
-	}
-
-	public void vmMult(ParamModel model, double vectMin[], double resultMin[], double vectMax[], double resultMax[], double qmax) throws PrismException
-	{
-		int pred, state;
-		ExprFunction predRate, rate;
-		ExprFunction predRateParams;
-		double predPopulation, population;
-		double midSumNumeratorMin, midSumNumeratorMax;
-
-		// XXX Does not work with synchs!
-
-		for (state = 0; state < model.getNumStates(); state++) {
-			// Initialise the result
-			resultMin[state] = vectMin[state];
-			resultMax[state] = vectMax[state];
-			
-			// Incoming reactions
-			for (int trans : model.getInReactions(state)) {
-				rate = (ExprFunction) model.succRate(trans);
-				pred = model.currState(trans);
-				resultMin[state] += rate.evaluateAtLower() * vectMin[pred] / qmax;
-				resultMax[state] += rate.evaluateAtUpper() * vectMax[pred] / qmax;
-			}
-			
-			// Outgoing reactions
-			for (int trans : model.getOutReactions(state)) {
-				rate = (ExprFunction) model.succRate(trans);
-				resultMin[state] -= rate.evaluateAtUpper() * vectMin[state] / qmax;
-				resultMax[state] -= rate.evaluateAtLower() * vectMax[state] / qmax;
-			}
-			
-			// Both incoming and outgoing
-			for (Entry<Integer, Integer> transs : model.getInoutReactions(state)) {
-				pred = model.currState(transs.getKey());
-				predRate = (ExprFunction) model.succRate(transs.getKey());
-				predPopulation = predRate.getPopulation();
-				predRateParams = predRate.getParametersMultiplied();
-				
-				rate = (ExprFunction) model.succRate(transs.getValue());
-				population = rate.getPopulation();
-				// The rate params assumed to be the same for both `pred` and `state`
-				assert predRateParams.equals(rate.getParametersMultiplied());
-				
-				midSumNumeratorMin = vectMin[pred] * predPopulation - vectMin[state] * population;
-				if (midSumNumeratorMin > 0) {
-					resultMin[state] += predRateParams.evaluateAtLower() * midSumNumeratorMin / qmax;
-				} else {
-					resultMin[state] += predRateParams.evaluateAtUpper() * midSumNumeratorMin / qmax;
-				}
-
-				midSumNumeratorMax = vectMax[pred] * predPopulation - vectMax[state] * population;
-				if (midSumNumeratorMax > 0) {
-					resultMax[state] += predRateParams.evaluateAtUpper() * midSumNumeratorMax / qmax;
-				} else {
-					resultMax[state] += predRateParams.evaluateAtLower() * midSumNumeratorMax / qmax;
-				}
-			}
-		}
 	}
 }

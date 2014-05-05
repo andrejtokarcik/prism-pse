@@ -44,16 +44,17 @@ final class ExprFunction extends Function {
 	private Expression parametersMultipliedExpr;
 	/** */
 	private ExprFunction parametersMultiplied = null;
-	Double population = null;
-	Double lower = null;
-	Double upper = null;
+	private Double population = null;
+	private Double lower = null;
+	private Double upper = null;
 	
 	// constructors
 	
 	/**
 	 * Creates a new Expression-based function.
 	 */
-	ExprFunction(ExprFunctionFactory functionContext, Expression expr, int type, Expression parametersMultipliedExpr) {
+	ExprFunction(ExprFunctionFactory functionContext, Expression expr, int type, Expression parametersMultipliedExpr)
+	{
 		super(functionContext);
 		this.expr = expr;
 		this.type = type;
@@ -105,22 +106,43 @@ final class ExprFunction extends Function {
 
 	/**
 	 */
+	public void computeParametersMultiplied(boolean force) throws PrismException
+	{
+		if (parametersMultiplied == null || force) {
+			parametersMultiplied = ((ExprFunctionFactory) factory).fromExpression(parametersMultipliedExpr);
+		}
+	}
+	
 	ExprFunction getParametersMultiplied()
 	{
+		/*
 		if (parametersMultiplied == null) {
 			parametersMultiplied = ((ExprFunctionFactory) factory).fromExpression(parametersMultipliedExpr);
 		}
+		*/
+		assert parametersMultiplied != null;
 		return parametersMultiplied;
 	}
 
 	/**
 	 */
-	double getPopulation() throws PrismException
+	public void computePopulation(boolean force) throws PrismException
 	{
+		if (population == null || force) {
+			// Could call evaluateAtLower() as well
+			population = ((ExprFunctionFactory) factory).fromExpression(Expression.Divide(expr, parametersMultipliedExpr)).evaluateAtUpper();
+		}
+	}
+	
+	double getPopulation()
+	{
+		/*
 		if (population == null) {
 			// Could call evaluateAtLower() as well
 			population = ((ExprFunctionFactory) factory).fromExpression(Expression.Divide(expr, parametersMultipliedExpr)).evaluateAtUpper();
 		}
+		*/
+		assert population != null;
 		return population;
 	}
 
