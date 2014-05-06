@@ -88,8 +88,9 @@ final class ParamModel extends ModelExplicit
 	// TODO convert into arrays like rows/choices/cols/... above?
 	private Map<Integer, List<Integer>> inReactions;
 	private Map<Integer, List<Entry<Integer, Integer>>> inoutReactions;
+	private Map<Integer, List<Entry<Integer, Integer>>> inoutReactionsNonParam;
 	private Map<Integer, List<Integer>> outReactions;
-	
+
 	/**
 	 * Constructs a new parametric model.
 	 */
@@ -557,13 +558,15 @@ final class ParamModel extends ModelExplicit
 		// Initialise the reaction sets
 		inReactions = new HashMap<Integer, List<Integer>>(numStates);
 		inoutReactions = new HashMap<Integer, List<Entry<Integer, Integer>>>(numStates);
+		inoutReactionsNonParam = new HashMap<Integer, List<Entry<Integer, Integer>>>(numStates);
 		outReactions = new HashMap<Integer, List<Integer>>(numStates);
 		for (state = 0; state < numStates; state++) {
 			inReactions.put(state, new ArrayList<Integer>());
 			inoutReactions.put(state, new ArrayList<Entry<Integer, Integer>>());
+			inoutReactionsNonParam.put(state, new ArrayList<Entry<Integer, Integer>>());
 			outReactions.put(state, new ArrayList<Integer>());
 		}
-		
+
 		// Populate the sets with transition indices
 		for (pred = 0; pred < numStates; pred++) {
 			for (predChoice = stateBegin(pred); predChoice < stateEnd(pred); predChoice++) {
@@ -571,16 +574,25 @@ final class ParamModel extends ModelExplicit
 					inout = false;
 					predReaction = getReaction(predSucc);
 					state = succState(predSucc);
+					ExprFunction predRate = (ExprFunction) succRate(predSucc);
 
 					for (choice = stateBegin(state); choice < stateEnd(state); choice++) {
 						for (succ = choiceBegin(choice); succ < choiceEnd(choice); succ++) {
+							ExprFunction rate = (ExprFunction) succRate(succ);
+							assert predRate.isParametrised() == rate.isParametrised();
+
 							if (getReaction(succ) == predReaction) {
 								inout = true;
-								((ExprFunction) succRate(predSucc)).computePopulation(false);
-								((ExprFunction) succRate(predSucc)).computeParametersMultiplied(false);
-								((ExprFunction) succRate(succ)).computePopulation(false);
-								((ExprFunction) succRate(succ)).computeParametersMultiplied(false);
-								inoutReactions.get(state).add(new SimpleImmutableEntry<Integer, Integer>(predSucc, succ));
+
+								if (predRate.isParametrised()) {
+									predRate.computePopulation(false);
+									rate.computePopulation(false);
+									predRate.computeParametersMultiplied(false);
+									rate.computeParametersMultiplied(false);
+									inoutReactions.get(state).add(new SimpleImmutableEntry<Integer, Integer>(predSucc, succ));
+								} else {
+									inoutReactionsNonParam.get(state).add(new SimpleImmutableEntry<Integer, Integer>(predSucc, succ));
+								}
 
 								// TODO: Perhaps we can break the two innermost for-loops from here?
 								// I.e., is `state` guaranteed not to have another succ with this reaction?
@@ -599,39 +611,6 @@ final class ParamModel extends ModelExplicit
 			}
 		}		
 	}
-	
-	public List<Integer> getInReactions(int state)
-	{
-		/*
-		if (inReactions == null) {
-			computeInOutReactions();
-		}
-		*/
-		assert inReactions != null;
-		return inReactions.get(state);
-	}
-	
-	public List<Entry<Integer, Integer>> getInoutReactions(int state)
-	{
-		/*
-		if (inoutReactions == null) {
-			computeInOutReactions();
-		}
-		*/
-		assert inoutReactions != null;
-		return inoutReactions.get(state);
-	}
-	
-	public List<Integer> getOutReactions(int state)
-	{
-		/*
-		if (outReactions == null) {
-			computeInOutReactions();
-		}
-		*/
-		assert outReactions != null;
-		return outReactions.get(state);
-	}
 
 	public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], double qmax) throws PrismException
 	{
@@ -647,27 +626,27 @@ final class ParamModel extends ModelExplicit
 			resultMax[state] = vectMax[state];
 
 			// Incoming reactions
-			for (int trans : getInReactions(state)) {
+			for (int trans : inReactions.get(state)) {
 				rate = (ExprFunction) succRate(trans);
 				pred = currState(trans);
-				resultMin[state] += rate.evaluateAtLower() * vectMin[pred] / qmax;
-				resultMax[state] += rate.evaluateAtUpper() * vectMax[pred] / qmax;
+				resultMin[state] += rate.evaluateDoubleAtLower() * vectMin[pred] / qmax;
+				resultMax[state] += rate.evaluateDoubleAtUpper() * vectMax[pred] / qmax;
 			}
 
 			// Outgoing reactions
-			for (int trans : getOutReactions(state)) {
+			for (int trans : outReactions.get(state)) {
 				rate = (ExprFunction) succRate(trans);
-				resultMin[state] -= rate.evaluateAtUpper() * vectMin[state] / qmax;
-				resultMax[state] -= rate.evaluateAtLower() * vectMax[state] / qmax;
+				resultMin[state] -= rate.evaluateDoubleAtUpper() * vectMin[state] / qmax;
+				resultMax[state] -= rate.evaluateDoubleAtLower() * vectMax[state] / qmax;
 			}
 
-			// Both incoming and outgoing
-			for (Entry<Integer, Integer> transs : getInoutReactions(state)) {
+			// Both incoming and outgoing (only parametrised)
+			for (Entry<Integer, Integer> transs : inoutReactions.get(state)) {
 				pred = currState(transs.getKey());
 				predRate = (ExprFunction) succRate(transs.getKey());
 				predPopulation = predRate.getPopulation();
 				predRateParams = predRate.getParametersMultiplied();
-
+				
 				rate = (ExprFunction) succRate(transs.getValue());
 				population = rate.getPopulation();
 				// The rate params assumed to be the same for both `pred` and `state`
@@ -675,17 +654,33 @@ final class ParamModel extends ModelExplicit
 
 				midSumNumeratorMin = vectMin[pred] * predPopulation - vectMin[state] * population;
 				if (midSumNumeratorMin > 0) {
-					resultMin[state] += predRateParams.evaluateAtLower() * midSumNumeratorMin / qmax;
+					resultMin[state] += predRateParams.evaluateDoubleAtLower() * midSumNumeratorMin / qmax;
 				} else {
-					resultMin[state] += predRateParams.evaluateAtUpper() * midSumNumeratorMin / qmax;
+					resultMin[state] += predRateParams.evaluateDoubleAtUpper() * midSumNumeratorMin / qmax;
 				}
 
 				midSumNumeratorMax = vectMax[pred] * predPopulation - vectMax[state] * population;
 				if (midSumNumeratorMax > 0) {
-					resultMax[state] += predRateParams.evaluateAtUpper() * midSumNumeratorMax / qmax;
+					resultMax[state] += predRateParams.evaluateDoubleAtUpper() * midSumNumeratorMax / qmax;
 				} else {
-					resultMax[state] += predRateParams.evaluateAtLower() * midSumNumeratorMax / qmax;
+					resultMax[state] += predRateParams.evaluateDoubleAtLower() * midSumNumeratorMax / qmax;
 				}
+			}
+			
+			// Both incoming and outgoing (non-parametrised)
+			for (Entry<Integer, Integer> transs : inoutReactionsNonParam.get(state)) {
+				pred = currState(transs.getKey());
+				predRate = (ExprFunction) succRate(transs.getKey());
+				rate = (ExprFunction) succRate(transs.getValue());
+
+				// Could call evaluateDoubleAtLower() as well
+				predPopulation = predRate.evaluateDoubleAtUpper();
+				population = rate.evaluateDoubleAtUpper();
+
+				midSumNumeratorMin = vectMin[pred] * predPopulation - vectMin[state] * population;
+				resultMin[state] += midSumNumeratorMin / qmax;
+				midSumNumeratorMax = vectMax[pred] * predPopulation - vectMax[state] * population;
+				resultMax[state] += midSumNumeratorMax / qmax;
 			}
 		}
 	}

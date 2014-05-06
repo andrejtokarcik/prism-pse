@@ -59,17 +59,17 @@ final class ExprFunctionFactory extends FunctionFactory {
 		super(paramNames, lowerBounds, upperBounds);
 
 		Expression defaultParametersMultiplied = Expression.Double(1);
-		one = new ExprFunction(this, Expression.Double(1), ExprFunction.NORMAL, defaultParametersMultiplied);
-		zero = new ExprFunction(this, Expression.Double(0), ExprFunction.NORMAL, defaultParametersMultiplied);
-		nan = new ExprFunction(this, Expression.Double(0), ExprFunction.NAN, defaultParametersMultiplied);
-		inf = new ExprFunction(this, Expression.Double(0), ExprFunction.INF, defaultParametersMultiplied);
-		minf = new ExprFunction(this, Expression.Double(0), ExprFunction.MINF, defaultParametersMultiplied);
+		one = new ExprFunction(this, Expression.Double(1), ExprFunction.NORMAL, false, defaultParametersMultiplied);
+		zero = new ExprFunction(this, Expression.Double(0), ExprFunction.NORMAL, false, defaultParametersMultiplied);
+		nan = new ExprFunction(this, Expression.Double(0), ExprFunction.NAN, false, defaultParametersMultiplied);
+		inf = new ExprFunction(this, Expression.Double(0), ExprFunction.INF, false, defaultParametersMultiplied);
+		minf = new ExprFunction(this, Expression.Double(0), ExprFunction.MINF, false, defaultParametersMultiplied);
 		parameters = new ExprFunction[paramNames.length];
 		for (int i = 0; i < paramNames.length; i++) {
 			Expression paramExpr = Expression.ConstantDouble(paramNames[i]);
-			parameters[i] = new ExprFunction(this, paramExpr, ExprFunction.NORMAL, defaultParametersMultiplied);
+			parameters[i] = new ExprFunction(this, paramExpr, ExprFunction.NORMAL, true, paramExpr);
 		}
-	}	
+	}
 
 	@Override
 	public Function getOne()
@@ -123,11 +123,13 @@ final class ExprFunctionFactory extends FunctionFactory {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		Expression parametersMultiplied = ((ExprFunction) getOne()).getExpression();
+		boolean parametrised = false;
+		Expression parametersMultiplied = Expression.Double(1);
 		for (ExpressionConstant parameterExpr : containedParameters) {
+			parametrised = true;
 			parametersMultiplied = Expression.Times(parametersMultiplied, parameterExpr);
 		}
-		return new ExprFunction(this, expr, ExprFunction.NORMAL, parametersMultiplied);
+		return new ExprFunction(this, expr, ExprFunction.NORMAL, parametrised, parametersMultiplied);
 	}
 
 	/**
@@ -149,6 +151,6 @@ final class ExprFunctionFactory extends FunctionFactory {
 	 */
 	public ExprFunction fromDouble(double d)
 	{
-		return fromExpression(Expression.Double(d));
+		return new ExprFunction(this, Expression.Double(d), ExprFunction.NORMAL, false, Expression.Double(1));
 	}
 }

@@ -42,6 +42,7 @@ final class ExprFunction extends Function {
 	final static int MINF = 2;
 	final static int NAN = 3;
 	/** */
+	private boolean parametrised;
 	private Expression parametersMultipliedExpr;
 	/** */
 	private ExprFunction parametersMultiplied = null;
@@ -54,11 +55,12 @@ final class ExprFunction extends Function {
 	/**
 	 * Creates a new Expression-based function.
 	 */
-	ExprFunction(ExprFunctionFactory functionContext, Expression expr, int type, Expression parametersMultipliedExpr)
+	ExprFunction(ExprFunctionFactory functionContext, Expression expr, int type, boolean parametrised, Expression parametersMultipliedExpr)
 	{
 		super(functionContext);
 		this.expr = expr;
 		this.type = type;
+		this.parametrised = parametrised;
 		this.parametersMultipliedExpr = parametersMultipliedExpr;
 	}
 
@@ -105,6 +107,13 @@ final class ExprFunction extends Function {
 		return expr;
 	}
 
+	/**
+	 */
+	boolean isParametrised()
+	{
+		return parametrised;
+	}
+	
 	/**
 	 */
 	public void computeParametersMultiplied(boolean force) throws PrismException
