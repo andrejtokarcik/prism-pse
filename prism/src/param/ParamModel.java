@@ -330,7 +330,7 @@ final class ParamModel extends ModelExplicit
 	 * 
 	 * @param leaving total sum of leaving rate of the current nondeterministic choice
 	 */
-	void setSumLeaving(Function leaving) throws PrismException
+	void setSumLeaving(Function leaving)
 	{
 		sumRates[numTotalChoices] = leaving;
 		if (leaving instanceof ExprFunction) {
@@ -466,7 +466,7 @@ final class ParamModel extends ModelExplicit
 	 * @param point point to instantiate model at
 	 * @return nonparametric model instantiated at {@code point}
 	 */
-	ParamModel instantiate(Point point) throws PrismException
+	ParamModel instantiate(Point point)
 	{
 		ParamModel result = new ParamModel();
 		result.reserveMem(numStates, numTotalChoices, numTotalTransitions);

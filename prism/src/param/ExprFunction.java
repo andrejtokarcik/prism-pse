@@ -28,6 +28,7 @@ package param;
 
 import parser.ast.Expression;
 import prism.PrismException;
+import prism.PrismLangException;
 
 /**
  */
@@ -129,8 +130,8 @@ final class ExprFunction extends Function {
 	public void computePopulation(boolean force) throws PrismException
 	{
 		if (population == null || force) {
-			// Could call evaluateAtLower() as well
-			population = ((ExprFunctionFactory) factory).fromExpression(Expression.Divide(expr, parametersMultipliedExpr)).evaluateAtUpper();
+			// Could call evaluateDoubleAtLower() as well
+			population = ((ExprFunctionFactory) factory).fromExpression(Expression.Divide(expr, parametersMultipliedExpr)).evaluateDoubleAtUpper();
 		}
 	}
 	
@@ -138,8 +139,8 @@ final class ExprFunction extends Function {
 	{
 		/*
 		if (population == null) {
-			// Could call evaluateAtLower() as well
-			population = ((ExprFunctionFactory) factory).fromExpression(Expression.Divide(expr, parametersMultipliedExpr)).evaluateAtUpper();
+			// Could call evaluateDoubleAtLower() as well
+			population = ((ExprFunctionFactory) factory).fromExpression(Expression.Divide(expr, parametersMultipliedExpr)).evaluateDoubleAtUpper();
 		}
 		*/
 		assert population != null;
@@ -234,35 +235,41 @@ final class ExprFunction extends Function {
 	public BigRational evaluate(Point point, boolean cancel) {
 		throw new UnsupportedOperationException();
 	}
-	
+
 	@Override
 	public BigRational evaluate(Point point) {
 		return evaluate(point, true);
 	}
-	
-	public double evaluateDouble(Point point) throws PrismException {
+
+	public Double evaluateDouble(Point point) {
 		parser.Values constantValues = new parser.Values();
 		double[] doubleValues = point.doubleValues();
 		for (int i = 0; i < factory.getNumVariables(); i++) {
 			constantValues.addValue(factory.getParameterName(i), doubleValues[i]);
 		}
-		return expr.evaluateDouble(constantValues);
+		try {
+			return expr.evaluateDouble(constantValues);
+		} catch (PrismLangException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
 	}
-	
-	public double evaluateAtLower() throws PrismException {
+
+	public double evaluateDoubleAtLower() {
 		if (lower == null) {
 			lower = evaluateDouble(new Point(factory.getLowerBounds()));
 		}
 		return lower;
 	}
-	
-	public double evaluateAtUpper() throws PrismException {
+
+	public double evaluateDoubleAtUpper() {
 		if (upper == null) {
 			upper = evaluateDouble(new Point(factory.getUpperBounds()));
 		}
 		return upper;
 	}
-	
+
 	@Override
 	public boolean check(Point point, boolean strict)
 	{
