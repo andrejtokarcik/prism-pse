@@ -68,7 +68,6 @@ import dv.DoubleVector;
 import explicit.ConstructModel;
 import explicit.ranged.ModelCheckerResultRanged;
 import explicit.CTMC;
-import explicit.ranged.CTMCRanged;
 import explicit.CTMCModelChecker;
 import explicit.DTMC;
 import explicit.DTMCModelChecker;
@@ -3356,7 +3355,6 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		long l = 0; // timer
 		ModelCheckerResultRanged mcRes;
 		explicit.StateValues probsExplMin = null, probsExplMax = null, initDistExplMin = null, initDistExplMax = null;
-		String oldParamFunction;
 
 		// Some checks
 		if (pseNames == null)
@@ -3367,23 +3365,21 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		if (!getExplicit())
 			throw new PrismException("Parameter space exploration supported for the explicit engine only");
 		*/
-		
-		// Simulate `-paramfunction expr` was given on command line
-		oldParamFunction = settings.getString(PrismSettings.PRISM_PARAM_FUNCTION);
-		settings.set(PrismSettings.PRISM_PARAM_FUNCTION, "expr");
-		
+
 		Values constlist = currentModulesFile.getConstantValues();
 		for (int pnr = 0; pnr < pseNames.length; pnr++) {
 			constlist.removeValue(pseNames[pnr]);
 		}
 
 		// Build model
-		param.ModelBuilder builder = new ModelBuilder(this);
+		pse.ModelBuilder builder = new pse.ModelBuilder(this);
 		builder.setModulesFile(currentModulesFile);
 		builder.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
 		builder.build();
 		explicit.Model modelExpl = builder.getModel();
-		
+		// Allow the builder to be garbage-collected
+		builder = null;
+
 		// Step through required time points
 		for (i = 0; i < times.getNumPropertyIterations(); i++) {
 			// Get time, check non-negative
@@ -3407,7 +3403,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			
 			l = System.currentTimeMillis();
 
-			ParamModelChecker mc = new ParamModelChecker(this);
+			pse.ParamModelChecker mc = new pse.ParamModelChecker(this);
 			/*
 			// TODO
 			if (i == 0) {
@@ -3448,7 +3444,6 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			probsExplMin.clear();
 		if (probsExplMax != null)
 			probsExplMax.clear();
-		settings.set(PrismSettings.PRISM_PARAM_FUNCTION, oldParamFunction);
 	}
 
 

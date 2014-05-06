@@ -1,0 +1,335 @@
+//==============================================================================
+//	
+//	Copyright (c) 2013-
+//	Authors:
+//	* Ernst Moritz Hahn <emhahn@cs.ox.ac.uk> (University of Oxford)
+//	
+//------------------------------------------------------------------------------
+//	
+//	This file is part of PRISM.
+//	
+//	PRISM is free software; you can redistribute it and/or modify
+//	it under the terms of the GNU General Public License as published by
+//	the Free Software Foundation; either version 2 of the License, or
+//	(at your option) any later version.
+//	
+//	PRISM is distributed in the hope that it will be useful,
+//	but WITHOUT ANY WARRANTY; without even the implied warranty of
+//	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//	GNU General Public License for more details.
+//	
+//	You should have received a copy of the GNU General Public License
+//	along with PRISM; if not, write to the Free Software Foundation,
+//	Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+//	
+//==============================================================================
+
+package pse;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+import param.ChoiceListFlexi;
+import param.SymbolicEngine;
+import param.TransitionList;
+import parser.State;
+import parser.Values;
+import parser.ast.Expression;
+import parser.ast.ExpressionConstant;
+import parser.ast.ModulesFile;
+import parser.visitor.ASTTraverse;
+import prism.ModelType;
+import prism.PrismComponent;
+import prism.PrismException;
+import prism.PrismLangException;
+import explicit.IndexedSet;
+import explicit.StateStorage;
+
+/**
+ * Class to construct a parametric Markov model.
+ * 
+ * @author Ernst Moritz Hahn <emhahn@cs.ox.ac.uk> (University of Oxford)
+ * @see ParamModel
+ */
+public final class ModelBuilder extends PrismComponent
+{
+	/** {@code ModulesFile} to be transformed to a {@code ParamModel} */
+	private ModulesFile modulesFile;
+	/** parametric model constructed from {@code modulesFile} */
+	private ParamModel model;
+	/** function factory used in the constructed parametric model */
+	//private FunctionFactory functionFactory;
+	/** names of parameters */
+	//private String[] paramNames;
+	/** lower bounds of parameters */
+	//private double[] lower;
+	private Values paramsLower;
+	/** upper bounds of parameters */
+	//private double[] upper;
+	private Values paramsUpper;
+	/** */
+	//private Map<Expression, Function> expr2functionCache = new HashMap<Expression, Function>();
+	private Map<State, TransitionList> transitionsCache = new HashMap<State, TransitionList>();
+	private Map<Expression, Double> ratePopulationsCache = new HashMap<Expression, Double>();
+	private Map<Expression, Expression> rateParamsCache = new HashMap<Expression, Expression>();
+
+
+	/**
+	 * Constructor
+	 */
+	public ModelBuilder(PrismComponent parent) throws PrismException
+	{
+		super(parent);
+	}
+	
+	// setters and getters
+
+	/**
+	 * Set modules file to be transformed to parametric Markov model.
+	 * 
+	 * @param modulesFile modules file to be transformed to parametric Markov model
+	 */
+	public void setModulesFile(ModulesFile modulesFile)
+	{
+		this.modulesFile = modulesFile;
+	}
+
+	/**
+	 * Set parameter informations.
+	 * Obviously, all of {@code paramNames}, {@code lower}, {@code} upper
+	 * must have the same length, and {@code lower} bounds of parameters must
+	 * not be higher than {@code upper} bounds.
+	 * 
+	 * @param paramNames names of parameters
+	 * @param lower lower bounds of parameters
+	 * @param upper upper bounds of parameters
+	 */
+	public void setParameters(String[] paramNames, String[] lower, String[] upper)
+	{
+		paramsLower = new Values();
+		paramsUpper = new Values();
+		for (int i = 0; i < paramNames.length; i++) {
+			paramsLower.addValue(paramNames[i], Double.parseDouble(lower[i]));
+			paramsUpper.addValue(paramNames[i], Double.parseDouble(upper[i]));
+			/*
+			// TODO Either here or in PrismCL?
+			if (this.lower[param] > this.upper[param])
+				throw new PrismException();
+			*/
+		}
+	}
+
+	/**
+	 * Construct parametric Markov model.
+	 * For this to work, module file, PRISM log, etc. must have been set
+	 * beforehand.
+	 * 
+	 * @throws PrismException in case the model cannot be constructed
+	 */
+	public void build() throws PrismException
+	{
+		long time;
+
+		mainLog.print("\nBuilding model...\n");
+
+		// build model
+		time = System.currentTimeMillis();
+		modulesFile = (ModulesFile) modulesFile.deepCopy().replaceConstants(modulesFile.getConstantValues()).simplify();
+		ParamModel modelExpl = constructModel(modulesFile);
+		time = System.currentTimeMillis() - time;
+
+		mainLog.println("\nTime for model construction: " + time / 1000.0 + " seconds.");
+		model = modelExpl;
+	}
+
+	/**
+	 * Returns the constructed parametric Markov model.
+	 * 
+	 * @return constructed parametric Markov model
+	 */
+	public explicit.Model getModel()
+	{
+		return model;
+	}
+
+	/**
+	 * Reserves memory needed for parametric model and reserves necessary space.
+	 * Afterwards, transition probabilities etc. can be added. 
+	 * 
+	 * @param modulesFile modules file of which to explore states
+	 * @param model model in which to reserve memory
+	 * @param modelType type of the model to construct
+	 * @param engine the engine used to compute state successors, etc.
+	 * @param states list of states to be filled by this method
+	 * @throws PrismException thrown if problems in underlying methods occur
+	 */
+	private void reserveMemoryAndExploreStates(ModulesFile modulesFile, ParamModel model, ModelType modelType, SymbolicEngine engine, StateStorage<State> states)
+			throws PrismException
+	{
+		boolean isNonDet = modelType == ModelType.MDP;
+		int numStates = 0;
+		int numTotalChoices = 0;
+		int numTotalSuccessors = 0;
+
+		LinkedList<State> explore = new LinkedList<State>();
+
+		State state = modulesFile.getDefaultInitialState();
+		states.add(state);
+		explore.add(state);
+		numStates++;
+
+		while (!explore.isEmpty()) {
+			state = explore.removeFirst();
+			TransitionList tranlist = engine.calculateTransitions(state);
+			transitionsCache.put(state, tranlist);
+			
+			int numChoices = tranlist.getNumChoices();
+			if (isNonDet) {
+				numTotalChoices += numChoices;
+			} else {
+				numTotalChoices += 1;
+			}
+			for (int choiceNr = 0; choiceNr < numChoices; choiceNr++) {
+				int numSuccessors = tranlist.getChoice(choiceNr).size();
+				numTotalSuccessors += numSuccessors;
+				for (int succNr = 0; succNr < numSuccessors; succNr++) {
+					State stateNew = tranlist.getChoice(choiceNr).computeTarget(succNr, state);
+					if (states.add(stateNew)) {
+						numStates++;
+						explore.add(stateNew);
+					}
+				}
+			}
+			if (numChoices == 0) {
+				if (isNonDet) {
+					numTotalChoices++;
+				}
+				numTotalSuccessors++;
+			}
+		}
+
+		model.reserveMem(numStates, numTotalChoices, numTotalSuccessors);
+	}
+
+	/**
+	 */
+	private Expression getRateParams(Expression rate) throws PrismException
+	{
+		if (rateParamsCache.containsKey(rate)) {
+			return rateParamsCache.get(rate);
+		}
+
+		final List<ExpressionConstant> containedParameters = new ArrayList<ExpressionConstant>();
+		rate.accept(new ASTTraverse()
+		{
+			public Object visit(ExpressionConstant e) throws PrismLangException
+			{
+				containedParameters.add(e);
+				return null;
+			}
+		});
+
+		Expression parametersMultiplied = Expression.Double(1);
+		for (ExpressionConstant parameterExpr : containedParameters) {
+			parametersMultiplied = Expression.Times(parametersMultiplied, parameterExpr);
+		}
+		rateParamsCache.put(rate, parametersMultiplied);
+		return parametersMultiplied;
+	}
+	
+	private double getRatePopulation(Expression rate) throws PrismException
+	{
+		if (ratePopulationsCache.containsKey(rate)) {
+			return ratePopulationsCache.get(rate);
+		}
+		Expression rateParams = getRateParams(rate);
+		// Could call with paramsUpper as well
+		double ratePopulation = Expression.Divide(rate, rateParams).evaluateDouble(paramsLower);
+		ratePopulationsCache.put(rate, ratePopulation);
+		return ratePopulation;
+	}
+
+	/**
+	 * Construct model once function factory etc. has been allocated.
+	 * 
+	 * @param modulesFile modules file of which to construct parametric model
+	 * @return parametric model constructed
+	 * @throws PrismException thrown if model cannot be constructed
+	 */
+	private ParamModel constructModel(ModulesFile modulesFile) throws PrismException
+	{
+		ModelType modelType;
+		ParamModel model;
+
+		if (modulesFile.getInitialStates() != null) {
+			throw new PrismException("Cannot do explicit-state reachability if there are multiple initial states");
+		}
+
+		modelType = modulesFile.getModelType();
+		if (modelType != ModelType.CTMC) {
+			throw new PrismException("Unsupported model type: " + modelType);
+		}
+
+		mainLog.print("\nComputing reachable states...");
+		mainLog.flush();
+		long timer = System.currentTimeMillis();
+
+		model = new ParamModel();
+		model.setModelType(modelType);
+
+		SymbolicEngine engine = new SymbolicEngine(modulesFile);
+
+		if (modulesFile.getInitialStates() != null) {
+			throw new PrismException("Explicit model construction does not support multiple initial states");
+		}
+
+		StateStorage<State> states = new IndexedSet<State>(true);
+		reserveMemoryAndExploreStates(modulesFile, model, modelType, engine, states);
+		int[] permut = states.buildSortingPermutation();
+		List<State> statesList = states.toPermutedArrayList(permut);
+		model.setStatesList(statesList);
+		model.addInitialState(permut[0]);
+		int stateNr = 0;
+		for (State state : statesList) {
+			TransitionList tranlist = transitionsCache.get(state);
+			int numChoices = tranlist.getNumChoices();
+			Expression sumOut = Expression.Double(0);
+			for (int choiceNr = 0; choiceNr < numChoices; choiceNr++) {
+				ChoiceListFlexi choice = tranlist.getChoice(choiceNr);
+				int a = tranlist.getTransitionModuleOrActionIndex(tranlist.getTotalIndexOfTransition(choiceNr, 0));
+				String action = a < 0 ? null : modulesFile.getSynch(a - 1);
+				int numSuccessors = choice.size();
+				ChoiceListFlexi succ = tranlist.getChoice(choiceNr);
+				for (int succNr = 0; succNr < numSuccessors; succNr++) {
+					State stateNew = succ.computeTarget(succNr, state);
+					Expression rateExpr = succ.getProbability(succNr);
+					Expression rateParams = getRateParams(rateExpr);
+					double rateParamsLower = rateParams.evaluateDouble(paramsLower);
+					double rateParamsUpper = rateParams.evaluateDouble(paramsUpper);
+					double ratePopulation = getRatePopulation(rateExpr);
+					// XXX the first arg should perhaps depend on succNr (e.g., succ.hashCode() ^ succNr)
+					model.addTransition(succ.hashCode(), permut[states.get(state)], permut[states.get(stateNew)], rateParamsLower, rateParamsUpper, ratePopulation, action);
+					sumOut = Expression.Plus(sumOut, rateExpr);
+				}
+			}
+			if (numChoices == 0) {
+				model.addDeadlockState(stateNr);
+				model.addTransition(-1, stateNr, stateNr, 1, 1, 1, null);
+			}
+			model.setSumLeaving(sumOut.evaluateDouble(paramsUpper));
+			model.finishChoice();
+			model.finishState();
+			stateNr++;
+		}
+
+		mainLog.println();
+
+		mainLog.print("Reachable states exploration and model construction");
+		mainLog.println(" done in " + ((System.currentTimeMillis() - timer) / 1000.0) + " secs.");
+
+		return model;
+	}
+}
