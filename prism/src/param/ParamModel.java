@@ -76,6 +76,8 @@ final class ParamModel extends ModelExplicit
 	private String[] labels;
 	/** total sum of leaving rates for a given nondeterministic choice */
 	private Function[] sumRates;
+	/** */
+	private double maxSumRate = Double.NEGATIVE_INFINITY;
 	/** model type */
 	private ModelType modelType;
 	/** function factory which manages functions used on transitions, etc. */
@@ -328,10 +330,17 @@ final class ParamModel extends ModelExplicit
 	 * 
 	 * @param leaving total sum of leaving rate of the current nondeterministic choice
 	 */
-	void setSumLeaving(Function leaving)
+	void setSumLeaving(Function leaving) throws PrismException
 	{
 		sumRates[numTotalChoices] = leaving;
+		if (leaving instanceof ExprFunction) {
+			double d = ((ExprFunction) leaving).evaluateDoubleAtUpper();
+			if (d > maxSumRate)
+				maxSumRate = d;
+		}
 	}
+
+
 
 	/**
 	 * Returns the number of the first nondeterministic choice of {@code state}.
@@ -441,19 +450,12 @@ final class ParamModel extends ModelExplicit
 	{
 		return sumRates[choice];
 	}
-
+	
 	/**
 	 */
-	double maxSumLeaving() throws PrismException
+	double maxSumLeaving()
 	{
-		int i;
-		double d, max = Double.NEGATIVE_INFINITY;
-		for (i = 0; i < numTotalChoices; i++) {
-			d = ((ExprFunction) sumLeaving(i)).evaluateAtUpper();
-			if (d > max)
-				max = d;
-		}
-		return max;
+		return maxSumRate;
 	}
 
 	/**
@@ -464,7 +466,7 @@ final class ParamModel extends ModelExplicit
 	 * @param point point to instantiate model at
 	 * @return nonparametric model instantiated at {@code point}
 	 */
-	ParamModel instantiate(Point point)
+	ParamModel instantiate(Point point) throws PrismException
 	{
 		ParamModel result = new ParamModel();
 		result.reserveMem(numStates, numTotalChoices, numTotalTransitions);

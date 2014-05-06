@@ -1293,6 +1293,8 @@ final public class ParamModelChecker extends PrismComponent
 		// Start bounded probabilistic reachability
 		timer = System.currentTimeMillis();
 		mainLog.println("\nStarting transient probability computation...");
+
+		mainLog.println("\nComputing in, out, inout reactions sets...");
 		ctmcRanged.computeInOutReactions();
 
 		// Store num states
