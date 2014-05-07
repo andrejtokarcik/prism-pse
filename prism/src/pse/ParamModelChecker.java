@@ -36,7 +36,6 @@ import prism.PrismPrintStreamLog;
 import explicit.FoxGlynn;
 import explicit.Model;
 import explicit.ModelCheckerResult;
-import explicit.ranged.ModelCheckerResultRanged;
 
 /**
  * Model checker for parametric Markov models.

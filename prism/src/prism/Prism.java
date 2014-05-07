@@ -66,7 +66,6 @@ import sparse.PrismSparse;
 import strat.Strategy;
 import dv.DoubleVector;
 import explicit.ConstructModel;
-import explicit.ranged.ModelCheckerResultRanged;
 import explicit.CTMC;
 import explicit.CTMCModelChecker;
 import explicit.DTMC;
@@ -3353,7 +3352,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		double timeDouble = 0, initTimeDouble = 0;
 		Object time;
 		long l = 0; // timer
-		ModelCheckerResultRanged mcRes;
+		pse.ModelCheckerResultRanged mcRes;
 		explicit.StateValues probsExplMin = null, probsExplMax = null, initDistExplMin = null, initDistExplMax = null;
 
 		// Some checks
