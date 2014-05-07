@@ -3,6 +3,7 @@
 //	Copyright (c) 2013-
 //	Authors:
 //	* Ernst Moritz Hahn <emhahn@cs.ox.ac.uk> (University of Oxford)
+//	* Andrej Tokarcik <andrejtokarcik@gmail.com> (Masaryk University)
 //	
 //------------------------------------------------------------------------------
 //	
@@ -60,22 +61,14 @@ public final class ModelBuilder extends PrismComponent
 	private ModulesFile modulesFile;
 	/** parametric model constructed from {@code modulesFile} */
 	private ParamModel model;
-	/** function factory used in the constructed parametric model */
-	//private FunctionFactory functionFactory;
-	/** names of parameters */
-	//private String[] paramNames;
 	/** lower bounds of parameters */
-	//private double[] lower;
 	private Values paramsLower;
 	/** upper bounds of parameters */
-	//private double[] upper;
 	private Values paramsUpper;
 	/** */
-	//private Map<Expression, Function> expr2functionCache = new HashMap<Expression, Function>();
 	private Map<State, TransitionList> transitionsCache = new HashMap<State, TransitionList>();
 	private Map<Expression, Double> ratePopulationsCache = new HashMap<Expression, Double>();
 	private Map<Expression, Expression> rateParamsCache = new HashMap<Expression, Expression>();
-
 
 	/**
 	 * Constructor

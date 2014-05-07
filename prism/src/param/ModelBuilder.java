@@ -26,10 +26,8 @@
 
 package param;
 
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 import parser.State;
 import parser.ast.Expression;
@@ -41,6 +39,7 @@ import parser.ast.ModulesFile;
 import prism.ModelType;
 import prism.PrismComponent;
 import prism.PrismException;
+import prism.PrismLog;
 import prism.PrismSettings;
 import explicit.IndexedSet;
 import explicit.StateStorage;
@@ -69,11 +68,6 @@ public final class ModelBuilder extends PrismComponent
 	private String functionType;
 	/** maximal error probability of DAG function representation */
 	private double dagMaxError;
-	/** */
-	private boolean plainExpr = false;
-	/** */
-	private Map<Expression, Function> expr2functionCache = new HashMap<Expression, Function>();
-	protected Map<State, TransitionList> transitionsCache = new HashMap<State, TransitionList>();
 
 	/**
 	 * Constructor
@@ -102,12 +96,6 @@ public final class ModelBuilder extends PrismComponent
 	 */
 	Function expr2function(FunctionFactory factory, Expression expr) throws PrismException
 	{
-		// TODO fromExpression() as a method of general FunctionFactory?
-
-		if (plainExpr) {
-			return ((ExprFunctionFactory) factory).fromExpression(expr);
-		}
-
 		if (expr instanceof ExpressionLiteral) {
 			String exprString = ((ExpressionLiteral) expr).getString();
 			if (exprString == null || exprString.equals("")) {
@@ -207,9 +195,6 @@ public final class ModelBuilder extends PrismComponent
 			functionFactory = new CachedFunctionFactory(new JasFunctionFactory(paramNames, lower, upper));
 		} else if (functionType.equals("DAG")) {
 			functionFactory = new DagFunctionFactory(paramNames, lower, upper, dagMaxError, false);
-		} else if (functionType.equals("expr")) {
-			plainExpr = true;
-			functionFactory = new ExprFunctionFactory(paramNames, lower, upper);
 		}
 		long time;
 
@@ -268,8 +253,6 @@ public final class ModelBuilder extends PrismComponent
 		while (!explore.isEmpty()) {
 			state = explore.removeFirst();
 			TransitionList tranlist = engine.calculateTransitions(state);
-			transitionsCache.put(state, tranlist);
-			
 			int numChoices = tranlist.getNumChoices();
 			if (isNonDet) {
 				numTotalChoices += numChoices;
@@ -284,6 +267,7 @@ public final class ModelBuilder extends PrismComponent
 					if (states.add(stateNew)) {
 						numStates++;
 						explore.add(stateNew);
+						states.add(stateNew);
 					}
 				}
 			}
@@ -308,24 +292,20 @@ public final class ModelBuilder extends PrismComponent
 	private ParamModel constructModel(ModulesFile modulesFile) throws PrismException
 	{
 		ModelType modelType;
-		ParamModel model;
 
 		if (modulesFile.getInitialStates() != null) {
 			throw new PrismException("Cannot do explicit-state reachability if there are multiple initial states");
 		}
 
-		modelType = modulesFile.getModelType();
-		if (modelType != ModelType.DTMC && modelType != ModelType.CTMC && modelType != ModelType.MDP) {
-			throw new PrismException("Unsupported model type: " + modelType);
-		}
-
 		mainLog.print("\nComputing reachable states...");
 		mainLog.flush();
 		long timer = System.currentTimeMillis();
-
-		model = new ParamModel();
+		modelType = modulesFile.getModelType();
+		ParamModel model = new ParamModel();
 		model.setModelType(modelType);
-
+		if (modelType != ModelType.DTMC && modelType != ModelType.CTMC && modelType != ModelType.MDP) {
+			throw new PrismException("Unsupported model type: " + modelType);
+		}
 		SymbolicEngine engine = new SymbolicEngine(modulesFile);
 
 		if (modulesFile.getInitialStates() != null) {
@@ -341,7 +321,7 @@ public final class ModelBuilder extends PrismComponent
 		model.addInitialState(permut[0]);
 		int stateNr = 0;
 		for (State state : statesList) {
-			TransitionList tranlist = transitionsCache.get(state);
+			TransitionList tranlist = engine.calculateTransitions(state);
 			int numChoices = tranlist.getNumChoices();
 			Function sumOut;
 			if (isNonDet) {
@@ -354,9 +334,7 @@ public final class ModelBuilder extends PrismComponent
 					for (int succNr = 0; succNr < numSuccessors; succNr++) {
 						ChoiceListFlexi succ = tranlist.getChoice(choiceNr);
 						Expression probExpr = succ.getProbability(succNr);
-						Function f = expr2function(functionFactory, probExpr);
-						expr2functionCache.put(probExpr, f);
-						sumOut = sumOut.add(f);
+						sumOut = sumOut.add(expr2function(functionFactory, probExpr));
 					}
 				}
 			}
@@ -379,10 +357,8 @@ public final class ModelBuilder extends PrismComponent
 					ChoiceListFlexi succ = tranlist.getChoice(choiceNr);
 					State stateNew = succ.computeTarget(succNr, state);
 					Expression probExpr = succ.getProbability(succNr);
-					Function rateFn = expr2functionCache.get(probExpr);
-					Function probFn = rateFn.divide(sumOut);
-					// XXX the first arg should perhaps depend on succNr (e.g., succ.hashCode() ^ succNr)
-					model.addTransition(succ.hashCode(), permut[states.get(state)], permut[states.get(stateNew)], rateFn, probFn, action);
+					Function probFn = expr2function(functionFactory, probExpr).divide(sumOut);
+					model.addTransition(permut[states.get(stateNew)], probFn, action);
 				}
 				if (isNonDet) {
 					model.setSumLeaving(sumOut);
@@ -391,7 +367,7 @@ public final class ModelBuilder extends PrismComponent
 			}
 			if (numChoices == 0) {
 				model.addDeadlockState(stateNr);
-				model.addTransition(-1, stateNr, stateNr, functionFactory.getOne(), functionFactory.getOne(), null);
+				model.addTransition(stateNr, functionFactory.getOne(), null);
 				if (isNonDet) {
 					model.setSumLeaving(sumOut);
 					model.finishChoice();
@@ -407,7 +383,7 @@ public final class ModelBuilder extends PrismComponent
 		model.setFunctionFactory(functionFactory);
 
 		mainLog.println();
-
+		
 		mainLog.print("Reachable states exploration and model construction");
 		mainLog.println(" done in " + ((System.currentTimeMillis() - timer) / 1000.0) + " secs.");
 

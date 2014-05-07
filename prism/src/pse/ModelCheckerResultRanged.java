@@ -24,10 +24,27 @@
 //	
 //==============================================================================
 
-package explicit.ranged;
+package pse;
 
-public interface DTMCRanged extends ModelRanged
-{
-	public void vmMultMin(double vect[], double result[]);
-	public void vmMultMax(double vect[], double result[]);
+import explicit.ModelCheckerResult;
+
+public class ModelCheckerResultRanged {
+    private ModelCheckerResult min;
+    private ModelCheckerResult max;
+    
+    public ModelCheckerResultRanged(ModelCheckerResult min, ModelCheckerResult max)
+    {
+        this.min = min;
+        this.max = max;
+    }
+    
+    public ModelCheckerResult getMin()
+    {
+    	return min;
+    }
+    
+    public ModelCheckerResult getMax()
+    {
+    	return max;
+    }
 }
