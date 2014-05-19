@@ -29,9 +29,6 @@ package explicit;
 import java.io.File;
 import java.util.*;
 
-import explicit.ranged.CTMCRanged;
-import explicit.ranged.DTMCRanged;
-import explicit.ranged.ModelCheckerResultRanged;
 import explicit.rewards.MCRewards;
 import explicit.rewards.StateRewardsArray;
 import parser.ast.*;
@@ -210,38 +207,6 @@ public class CTMCModelChecker extends DTMCModelChecker
 		return probs;
 	}
 
-	public ModelCheckerResultRanged doTransientRanged(CTMCRanged ctmcRanged, double t, StateValues initDistMin, StateValues initDistMax) throws PrismException
-	{
-		ModelCheckerResultRanged res = null;
-		StateValues initDistMinNew = null, initDistMaxNew = null; //probs = null;
-
-		// Build initial distribution (if not specified)
-		if (initDistMin == null) {
-			initDistMinNew = new StateValues(TypeDouble.getInstance(), new Double(0.0), ctmcRanged);
-			double initVal = 1.0 / ctmcRanged.getNumInitialStates();
-			for (int in : ctmcRanged.getInitialStates()) {
-				initDistMinNew.setDoubleValue(in, initVal);
-			}
-		} else {
-			initDistMinNew = initDistMin;
-		}
-		if (initDistMax == null) {
-			initDistMaxNew = new StateValues(TypeDouble.getInstance(), new Double(0.0), ctmcRanged);
-			double initVal = 1.0 / ctmcRanged.getNumInitialStates();
-			for (int in : ctmcRanged.getInitialStates()) {
-				initDistMaxNew.setDoubleValue(in, initVal);
-			}
-		} else {
-			initDistMaxNew = initDistMax;
-		}
-
-		// Compute transient probabilities
-		res = computeTransientProbsRanged(ctmcRanged, t, initDistMinNew.getDoubleArray(), initDistMaxNew.getDoubleArray());
-		//probs = StateValues.createFromDoubleArray(res.soln, ctmcRanged);
-
-		return res;
-	}
-	
 	// Numerical computation functions
 
 	/**
@@ -772,122 +737,6 @@ public class CTMCModelChecker extends DTMCModelChecker
 		res.timeTaken = timer / 1000.0;
 		res.timePre = 0.0;
 		return res;
-	}
-	
-	public ModelCheckerResultRanged computeTransientProbsRanged(CTMCRanged ctmcRanged, double t, double initDistMin[], double initDistMax[]) throws PrismException
-	{
-		ModelCheckerResult min = null, max = null;
-		int i, n, iters;
-		double solnMin[], soln2Min[], sumMin[];
-		double solnMax[], soln2Max[], sumMax[];
-		double tmpsoln[];
-		DTMCRanged dtmc;
-		long timer;
-		// Fox-Glynn stuff
-		FoxGlynn fg;
-		int left, right;
-		double q, qt, acc, weights[], totalWeight;
-
-		// Start bounded probabilistic reachability
-		timer = System.currentTimeMillis();
-		mainLog.println("\nStarting transient probability computation...");
-
-		// Store num states
-		n = ctmcRanged.getNumStates();
-
-		// Get uniformisation rate; do Fox-Glynn
-		q = ctmcRanged.getDefaultUniformisationRate();
-		qt = q * t;
-		mainLog.println("\nUniformisation: q.t = " + q + " x " + t + " = " + qt);
-		termCritParam = 1e-6;
-		acc = termCritParam / 8.0;
-		fg = new FoxGlynn(qt, 1e-300, 1e+300, acc);
-		left = fg.getLeftTruncationPoint();
-		right = fg.getRightTruncationPoint();
-		if (right < 0) {
-			throw new PrismException("Overflow in Fox-Glynn computation (time bound too big?)");
-		}
-		weights = fg.getWeights();
-		totalWeight = fg.getTotalWeight();
-		for (i = left; i <= right; i++) {
-			weights[i - left] /= totalWeight;
-		}
-		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
-
-		// Build (implicit) uniformised DTMC
-		dtmc = ctmcRanged.buildImplicitUniformisedDTMC(q);
-
-		// Create solution vector(s)
-		// For soln, we just use init (since we are free to modify this vector)
-		solnMin = initDistMin;
-		soln2Min = new double[n];
-		sumMin = new double[n];
-		solnMax = initDistMax;
-		soln2Max = new double[n];
-		sumMax = new double[n];
-
-		// Initialise solution vectors
-		// (don't need to do soln2 since will be immediately overwritten)
-		for (i = 0; i < n; i++) {
-			sumMin[i] = 0.0;
-			sumMax[i] = 0.0;
-		}
-
-		// If necessary, do 0th element of summation (doesn't require any matrix powers)
-		if (left == 0) {
-			for (i = 0; i < n; i++) {
-				sumMin[i] += weights[0] * solnMin[i];
-				sumMax[i] += weights[0] * solnMax[i];
-			}
-		}
-
-		// Start iterations
-		iters = 1;
-		while (iters <= right) {
-			// Matrix-vector multiply
-			dtmc.vmMultMin(solnMin, soln2Min);
-			dtmc.vmMultMax(solnMax, soln2Max);
-			
-			// Swap vectors for next iter
-			tmpsoln = solnMin;
-			solnMin = soln2Min;
-			soln2Min = tmpsoln;
-			tmpsoln = solnMax;
-			solnMax = soln2Max;
-			soln2Max = tmpsoln;
-			
-			// Add to sum
-			if (iters >= left) {
-				for (i = 0; i < n; i++) {
-					sumMin[i] += weights[iters - left] * solnMin[i];
-					sumMax[i] += weights[iters - left] * solnMax[i];
-				}
-			}
-			
-			iters++;
-		}
-
-		// Finished bounded probabilistic reachability
-		timer = System.currentTimeMillis() - timer;
-		mainLog.print("Transient probability computation");
-		mainLog.println(" took " + iters + " iters and " + timer / 1000.0 + " seconds.");
-
-		// Return results
-		min = new ModelCheckerResult();
-		min.soln = sumMin;
-		min.lastSoln = soln2Min;
-		min.numIters = iters;
-		min.timeTaken = timer / 1000.0;
-		min.timePre = 0.0;
-		
-		max = new ModelCheckerResult();
-		max.soln = sumMax;
-		max.lastSoln = soln2Max;
-		max.numIters = iters;
-		max.timeTaken = timer / 1000.0;
-		max.timePre = 0.0;
-	
-		return new ModelCheckerResultRanged(min, max);
 	}
 
 	/**
