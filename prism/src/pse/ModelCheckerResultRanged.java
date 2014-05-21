@@ -27,24 +27,29 @@
 package pse;
 
 import explicit.ModelCheckerResult;
+import prism.Pair;
 
-public class ModelCheckerResultRanged {
-    private ModelCheckerResult min;
-    private ModelCheckerResult max;
-    
-    public ModelCheckerResultRanged(ModelCheckerResult min, ModelCheckerResult max)
-    {
-        this.min = min;
-        this.max = max;
-    }
-    
-    public ModelCheckerResult getMin()
-    {
-    	return min;
-    }
-    
-    public ModelCheckerResult getMax()
-    {
-    	return max;
-    }
+public class ModelCheckerResultRanged extends Pair<ModelCheckerResult, ModelCheckerResult>
+{
+	public Pair<Double, Double> decomposition;
+
+	public ModelCheckerResultRanged(ModelCheckerResult min, ModelCheckerResult max, Pair<Double, Double> decomposition) {
+		super(min, max);
+		this.decomposition = decomposition;
+	}
+
+	public ModelCheckerResult getMin()
+	{
+		return first;
+	}
+
+	public ModelCheckerResult getMax()
+	{
+		return second;
+	}
+
+	public Pair<Double, Double> getDecomposition()
+	{
+		return decomposition;
+	}
 }
