@@ -66,13 +66,13 @@ final class ParamModel extends ModelExplicit
 	private int[] choices;
 	/** origins and targets of distribution branches */
 	private int[] colsFrom;
-	private int[] cols;
+	private int[] colsTo;
 	/** */
 	private double[] rateParamsLowers;
 	private double[] rateParamsUppers;
 	private double[] ratePopulations;
 	/** */
-	private boolean[] parametrised;
+	private boolean[] parametrisedSuccs;
 	/** hash codes of updates/reactions associated with distribution branches */
 	private int[] reactions;
 	/** labels - per transition, <i>not</i> per action */
@@ -84,7 +84,6 @@ final class ParamModel extends ModelExplicit
 	/** */
 	private Set<Integer> predecessorsViaReaction = new HashSet<Integer>();
 	/** */
-	// TODO convert into arrays like rows/choices/cols/... above?
 	private Map<Integer, List<Integer>> inReactions;
 	private Map<Integer, List<Entry<Integer, Integer>>> inoutReactions;
 	private Map<Integer, List<Integer>> outReactions;
@@ -181,6 +180,12 @@ final class ParamModel extends ModelExplicit
 	}
 
 	@Override
+	public void buildFromPrismExplicit(String filename) throws PrismException
+	{
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public void exportToPrismExplicit(String baseFilename) throws PrismException
 	{
 		throw new UnsupportedOperationException();
@@ -265,8 +270,8 @@ final class ParamModel extends ModelExplicit
 		rateParamsLowers = new double[numTotalSuccessors];
 		rateParamsUppers = new double[numTotalSuccessors];
 		ratePopulations = new double[numTotalSuccessors];
-		parametrised = new boolean[numTotalSuccessors];
-		cols = new int[numTotalSuccessors];
+		parametrisedSuccs = new boolean[numTotalSuccessors];
+		colsTo = new int[numTotalSuccessors];
 		colsFrom = new int[numTotalSuccessors];
 	}
 
@@ -316,12 +321,12 @@ final class ParamModel extends ModelExplicit
 	{
 		reactions[numTotalTransitions] = reactionHash;
 		colsFrom[numTotalTransitions] = fromState;
-		cols[numTotalTransitions] = toState;
+		colsTo[numTotalTransitions] = toState;
 		rateParamsLowers[numTotalTransitions] = rateParamsLower;
 		rateParamsUppers[numTotalTransitions] = rateParamsUpper;
 		ratePopulations[numTotalTransitions] = ratePopulation;
 		labels[numTotalTransitions] = action;
-		parametrised[numTotalTransitions] = rateParamsLower != rateParamsUpper;
+		parametrisedSuccs[numTotalTransitions] = rateParamsLower != rateParamsUpper;
 
 		predecessorsViaReaction.add(toState ^ reactionHash);
 
@@ -395,7 +400,7 @@ final class ParamModel extends ModelExplicit
 	 */
 	int succState(int succNr)
 	{
-		return cols[succNr];
+		return colsTo[succNr];
 	}
 	
 	/**
@@ -423,21 +428,8 @@ final class ParamModel extends ModelExplicit
 		return maxSumRate;
 	}
 
-	@Override
-	public void buildFromPrismExplicit(String filename) throws PrismException
-	{
-		throw new UnsupportedOperationException();
-	}
-
 	/**
-	 */
-	public boolean hasPredecessorViaReaction(int state, int reaction)
-	{
-		return predecessorsViaReaction.contains(state ^ reaction);
-	}
-
-	/**
-	 * Computes the disjoint sets of in-flowing and/or out-flowing reactions.
+	 * Computes the disjoint sets of in-flowing and out-flowing reactions.
 	 */
 	public void computeInOutReactions() throws PrismException
 	{
@@ -462,7 +454,7 @@ final class ParamModel extends ModelExplicit
 		for (pred = 0; pred < numStates; pred++) {
 			for (predChoice = stateBegin(pred); predChoice < stateEnd(pred); predChoice++) {
 				for (predSucc = choiceBegin(predChoice); predSucc < choiceEnd(predChoice); predSucc++) {
-					if (!parametrised[predSucc])
+					if (!parametrisedSuccs[predSucc])
 						continue;
 
 					inout = false;
@@ -485,7 +477,8 @@ final class ParamModel extends ModelExplicit
 						inReactions.get(state).add(predSucc);
 					}
 
-					if (!hasPredecessorViaReaction(pred, predReaction)) {
+					//if (!hasPredecessorViaReaction(pred, predReaction)) {
+					if (!predecessorsViaReaction.contains(pred ^ predReaction)) {
 						outReactions.get(pred).add(predSucc);
 					}
 				}
@@ -544,7 +537,7 @@ final class ParamModel extends ModelExplicit
 
 		// Non-parametrised transitions
 		for (int succ = 0; succ < numTotalTransitions; succ++) {
-			if (parametrised[succ])
+			if (parametrisedSuccs[succ])
 				continue;
 
 			pred = currState(succ);
