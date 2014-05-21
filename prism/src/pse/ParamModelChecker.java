@@ -28,7 +28,12 @@
 
 package pse;
 
+import java.util.LinkedList;
+import java.util.List;
+import java.util.PriorityQueue;
+
 import parser.type.TypeDouble;
+import prism.Pair;
 import prism.PrismComponent;
 import prism.PrismException;
 import prism.PrismLog;
@@ -76,10 +81,10 @@ final public class ParamModelChecker extends PrismComponent
 
 	// Model checking functions
 
-	public ModelCheckerResultRanged doTransientRanged(Model model, double t, explicit.StateValues initDistMin, explicit.StateValues initDistMax) throws PrismException
+	public List<ModelCheckerResultRanged> doTransientRanged(Model model, double t, double accuracy, explicit.StateValues initDistMin, explicit.StateValues initDistMax) throws PrismException
 	{
 		ParamModel ctmcRanged = (ParamModel) model;
-		ModelCheckerResultRanged res = null;
+		List<ModelCheckerResultRanged> res = null;
 		explicit.StateValues initDistMinNew = null, initDistMaxNew = null; //probs = null;
 
 		// Build initial distribution (if not specified)
@@ -103,16 +108,17 @@ final public class ParamModelChecker extends PrismComponent
 		}
 		
 		// Compute transient probabilities
-		res = computeTransientProbsRanged(ctmcRanged, t, initDistMinNew.getDoubleArray(), initDistMaxNew.getDoubleArray());
+		res = computeTransientProbsRanged(ctmcRanged, t, accuracy, initDistMinNew.getDoubleArray(), initDistMaxNew.getDoubleArray());
 		//probs = StateValues.createFromDoubleArray(res.soln, ctmcRanged);
 
 		return res;
 	}
 
-	public ModelCheckerResultRanged computeTransientProbsRanged(ParamModel ctmcRanged, double t, double initDistMin[], double initDistMax[]) throws PrismException
+	public List<ModelCheckerResultRanged> computeTransientProbsRanged(ParamModel ctmcRanged, double t, double accuracy, double initDistMin[], double initDistMax[]) throws PrismException
 	{
-		ModelCheckerResult min = null, max = null;
-		int i, n, iters;
+		ModelCheckerResult min, max;
+		List<ModelCheckerResultRanged> resList = new LinkedList<ModelCheckerResultRanged>();
+		int i, n, iters, totalIters;
 		double solnMin[], soln2Min[], sumMin[];
 		double solnMax[], soln2Max[], sumMax[];
 		double tmpsoln[];
@@ -122,11 +128,17 @@ final public class ParamModelChecker extends PrismComponent
 		int left, right;
 		double termCritParam, q, qt, acc, weights[], totalWeight;
 
+		// For decomposing the parameter space
+		PriorityQueue<Pair.ComparablePair<Double, Double>> decompositions = new PriorityQueue<Pair.ComparablePair<Double, Double>>();
+		decompositions.add(new Pair.ComparablePair<Double, Double>(0.0, 1.0));
+		int numDecompositions = 1;
+
 		// Start bounded probabilistic reachability
 		timer = System.currentTimeMillis();
 		mainLog.println("\nStarting transient probability computation...");
+		totalIters = 0;
 
-		mainLog.println("\nComputing in, out, inout reactions sets...");
+		mainLog.println("\nComputing in, out, inout reactions...");
 		ctmcRanged.computeInOutReactions();
 
 		// Store num states
@@ -152,78 +164,101 @@ final public class ParamModelChecker extends PrismComponent
 		}
 		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
 
-		// Build (implicit) uniformised DTMC
-		//dtmc = ctmcRanged.buildImplicitUniformisedDTMC(q);
+		while (decompositions.size() != 0) {
+			// Create solution vector(s)
+			solnMin = new double[n];
+			soln2Min = new double[n];
+			sumMin = new double[n];
+			solnMax = new double[n];
+			soln2Max = new double[n];
+			sumMax = new double[n];
 
-		// Create solution vector(s)
-		// For soln, we just use init (since we are free to modify this vector)
-		solnMin = initDistMin;
-		soln2Min = new double[n];
-		sumMin = new double[n];
-		solnMax = initDistMax;
-		soln2Max = new double[n];
-		sumMax = new double[n];
-
-		// Initialise solution vectors
-		// (don't need to do soln2 since will be immediately overwritten)
-		for (i = 0; i < n; i++) {
-			sumMin[i] = 0.0;
-			sumMax[i] = 0.0;
-		}
-
-		// If necessary, do 0th element of summation (doesn't require any matrix powers)
-		if (left == 0) {
+			// Initialise solution vectors
+			// (don't need to do soln2 since will be immediately overwritten)
+			solnMin = initDistMin.clone();
+			solnMax = initDistMax.clone();
 			for (i = 0; i < n; i++) {
-				sumMin[i] += weights[0] * solnMin[i];
-				sumMax[i] += weights[0] * solnMax[i];
+				sumMin[i] = 0.0;
+				sumMax[i] = 0.0;
 			}
-		}
 
-		// Start iterations
-		iters = 1;
-		while (iters <= right) {
-			// Matrix-vector multiply
-			ctmcRanged.vmMult(solnMin, soln2Min, solnMax, soln2Max, q);
-
-			// Swap vectors for next iter
-			tmpsoln = solnMin;
-			solnMin = soln2Min;
-			soln2Min = tmpsoln;
-			tmpsoln = solnMax;
-			solnMax = soln2Max;
-			soln2Max = tmpsoln;
-
-			// Add to sum
-			if (iters >= left) {
+			// If necessary, do 0th element of summation (doesn't require any matrix powers)
+			if (left == 0) {
 				for (i = 0; i < n; i++) {
-					sumMin[i] += weights[iters - left] * solnMin[i];
-					sumMax[i] += weights[iters - left] * solnMax[i];
+					sumMin[i] += weights[0] * solnMin[i];
+					sumMax[i] += weights[0] * solnMax[i];
 				}
 			}
 
-			iters++;
+			// Shrink the parameter space
+			Pair<Double, Double> decomposition = decompositions.remove();
+			ctmcRanged.scaleParameterSpace(decomposition.first, decomposition.second);
+			numDecompositions++;
+
+			try {
+				// Start iterations
+				iters = 1;
+				totalIters++;
+				while (iters <= right) {
+					// Matrix-vector multiply
+					ctmcRanged.vmMult(solnMin, soln2Min, solnMax, soln2Max, q);
+
+					// Swap vectors for next iter
+					tmpsoln = solnMin;
+					solnMin = soln2Min;
+					soln2Min = tmpsoln;
+					tmpsoln = solnMax;
+					solnMax = soln2Max;
+					soln2Max = tmpsoln;
+
+					// Add to sum
+					if (iters >= left) {
+						for (i = 0; i < n; i++) {
+							sumMin[i] += weights[iters - left] * solnMin[i];
+							sumMax[i] += weights[iters - left] * solnMax[i];
+
+							// Check whether the minimised/maximised probs are accurate enough
+							if ((sumMax[i] - sumMin[i]) > accuracy) {
+								throw new SignificantInaccuracy();
+							}
+						}
+					}
+
+					iters++;
+					totalIters++;
+				}
+
+				// Store results
+				min = new ModelCheckerResult();
+				min.soln = sumMin;
+				min.lastSoln = soln2Min;
+				min.numIters = iters;
+				min.timeTaken = timer / 1000.0;
+				min.timePre = 0.0;
+
+				max = new ModelCheckerResult();
+				max.soln = sumMax;
+				max.lastSoln = soln2Max;
+				max.numIters = iters;
+				max.timeTaken = timer / 1000.0;
+				max.timePre = 0.0;
+
+				resList.add(new ModelCheckerResultRanged(min, max, decomposition));
+			} catch (SignificantInaccuracy e) {
+				double a = decomposition.first;
+				double b = decomposition.second - decomposition.first;
+				decompositions.add(new Pair.ComparablePair<Double, Double>(a, a + 0.5 * b));
+				decompositions.add(new Pair.ComparablePair<Double, Double>(a + 0.5 * b, a + b));
+			}
 		}
 
 		// Finished bounded probabilistic reachability
 		timer = System.currentTimeMillis() - timer;
 		mainLog.print("Transient probability computation");
-		mainLog.println(" took " + iters + " iters and " + timer / 1000.0 + " seconds.");
+		mainLog.print(" took " + totalIters + " iters in total");
+		mainLog.print(" (spread over " + numDecompositions + " decompositions, incl. non-leaves)");
+		mainLog.print(" and " + timer / 1000.0 + " seconds.\n");
 
-		// Return results
-		min = new ModelCheckerResult();
-		min.soln = sumMin;
-		min.lastSoln = soln2Min;
-		min.numIters = iters;
-		min.timeTaken = timer / 1000.0;
-		min.timePre = 0.0;
-
-		max = new ModelCheckerResult();
-		max.soln = sumMax;
-		max.lastSoln = soln2Max;
-		max.numIters = iters;
-		max.timeTaken = timer / 1000.0;
-		max.timePre = 0.0;
-
-		return new ModelCheckerResultRanged(min, max);
+		return resList;
 	}
 }

@@ -3346,13 +3346,13 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 	/**
 	 */
-	public void doParamSpaceExplore(UndefinedConstants times, String[] pseNames, String[] pseLowerBounds, String[] pseUpperBounds, File fileIn) throws PrismException
+	public void doParamSpaceExplore(UndefinedConstants times, String[] pseNames, double[] pseLowerBounds, double[] pseUpperBounds, double pseAccuracy, File fileIn) throws PrismException
 	{
 		int i;
 		double timeDouble = 0, initTimeDouble = 0;
 		Object time;
 		long l = 0; // timer
-		pse.ModelCheckerResultRanged mcRes;
+		List<pse.ModelCheckerResultRanged> mcResList;
 		explicit.StateValues probsExplMin = null, probsExplMax = null, initDistExplMin = null, initDistExplMax = null;
 
 		// Some checks
@@ -3411,24 +3411,37 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 				initTimeDouble = 0;
 			}
 			*/
-			mcRes = mc.doTransientRanged(modelExpl, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax);
-			probsExplMin = explicit.StateValues.createFromDoubleArray(mcRes.getMin().soln, modelExpl);
-			probsExplMax = explicit.StateValues.createFromDoubleArray(mcRes.getMax().soln, modelExpl);
-
-			l = System.currentTimeMillis() - l;
+			mcResList = mc.doTransientRanged(modelExpl, timeDouble - initTimeDouble, pseAccuracy, initDistExplMin, initDistExplMax);
 
 			// Results report
 			mainLog.println("\nPrinting transient probabilities w.r.t. the given parameter space:");
 			// TODO: printing to other log files (search for tmpLog used elsewhere)
-
-			mainLog.println("\n== Minimised probabilities ==\n");
-			// print out or export probabilities
-			probsExplMin.print(mainLog, true, false, true, true);
 			
-			mainLog.println("\n== Maximised probabilities ==\n");
-			probsExplMax.print(mainLog, true, false, true, true);
+			for (pse.ModelCheckerResultRanged mcRes : mcResList) {
+				mainLog.print("\n== Decomposition ");
+				Pair<Double, Double> decomposition = mcRes.getDecomposition();
+				for (int pnr = 0; pnr < pseNames.length; pnr++) {
+					if (pnr != 0) mainLog.print(", ");
+					mainLog.print(pseNames[pnr] + "=");
+					mainLog.print(pseLowerBounds[pnr] + decomposition.first * (pseUpperBounds[pnr] - pseLowerBounds[pnr]));
+					mainLog.print(":");
+					mainLog.print(pseLowerBounds[pnr] + decomposition.second * (pseUpperBounds[pnr] - pseLowerBounds[pnr]));
+				}
+				mainLog.print(" ==\n");
+
+				probsExplMin = explicit.StateValues.createFromDoubleArray(mcRes.getMin().soln, modelExpl);
+				probsExplMax = explicit.StateValues.createFromDoubleArray(mcRes.getMax().soln, modelExpl);
+
+				mainLog.println("\n=== Minimised probabilities ===\n");
+				// print out or export probabilities
+				probsExplMin.print(mainLog, true, false, true, true);
+
+				mainLog.println("\n=== Maximised probabilities ===\n");
+				probsExplMax.print(mainLog, true, false, true, true);
+			}
 
 			// print out computation time
+			l = System.currentTimeMillis() - l;
 			mainLog.println("\nTime for parameter space exploration: " + l / 1000.0 + " seconds.");
 
 			// Prepare for next iteration

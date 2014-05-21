@@ -68,6 +68,8 @@ final class ParamModel extends ModelExplicit
 	private int[] colsFrom;
 	private int[] colsTo;
 	/** */
+	private double[] basicRateParamsLowers;
+	private double[] basicRateParamsUppers;
 	private double[] rateParamsLowers;
 	private double[] rateParamsUppers;
 	private double[] ratePopulations;
@@ -267,6 +269,8 @@ final class ParamModel extends ModelExplicit
 		choices = new int[numTotalChoices + 1];
 		labels = new String[numTotalSuccessors];
 		reactions = new int[numTotalSuccessors];
+		basicRateParamsLowers = new double[numTotalSuccessors];
+		basicRateParamsUppers = new double[numTotalSuccessors];
 		rateParamsLowers = new double[numTotalSuccessors];
 		rateParamsUppers = new double[numTotalSuccessors];
 		ratePopulations = new double[numTotalSuccessors];
@@ -322,6 +326,8 @@ final class ParamModel extends ModelExplicit
 		reactions[numTotalTransitions] = reactionHash;
 		colsFrom[numTotalTransitions] = fromState;
 		colsTo[numTotalTransitions] = toState;
+		basicRateParamsLowers[numTotalTransitions] = rateParamsLower;
+		basicRateParamsUppers[numTotalTransitions] = rateParamsUpper;
 		rateParamsLowers[numTotalTransitions] = rateParamsLower;
 		rateParamsUppers[numTotalTransitions] = rateParamsUpper;
 		ratePopulations[numTotalTransitions] = ratePopulation;
@@ -502,18 +508,19 @@ final class ParamModel extends ModelExplicit
 				resultMin[state] += rateParamsLowers[succ] * ratePopulations[succ] * vectMin[pred] / qmax;
 				resultMax[state] += rateParamsUppers[succ] * ratePopulations[succ] * vectMax[pred] / qmax;
 			}
-			
+
 			// Outgoing reactions
 			for (int succ : outReactions.get(state)) {
 				resultMin[state] -= rateParamsUppers[succ] * ratePopulations[succ] * vectMin[state] / qmax;
 				resultMax[state] -= rateParamsLowers[succ] * ratePopulations[succ] * vectMax[state] / qmax;
 			}
-			
+
 			// Both incoming and outgoing
+			// TODO use Pair instead of Entry
 			for (Entry<Integer, Integer> succs : inoutReactions.get(state)) {
 				int predSucc = succs.getKey();
 				int succ = succs.getValue();
-				
+
 				pred = currState(predSucc);
 				assert currState(succ) == state;
 				
@@ -550,6 +557,29 @@ final class ParamModel extends ModelExplicit
 
 			resultMin[state] += rate * vectMin[pred] / qmax;
 			resultMax[state] += rate * vectMax[pred] / qmax;
+		}
+	}
+
+	/**
+	 * Assumption: Transition rates involve at most one parameter
+	 * (cf. the CAV 2013 article, p. 4).
+	 * 
+	 * For instance, the method below would *not* properly scale
+	 * the _parameter_ space if a rate formula included k1 * k2 where
+	 * k1, k2 are parameters. If the parameters were each scaled
+	 * by a factor F, the rate would in turn need to be scaled by F^2.
+	 * The method below, however, directly scales the induced _rate_
+	 * space -- always by F.
+	 * 
+	 * It works correctly with at most one parameter because in that case
+	 * scaling of the rate space corresponds to scaling of the parameter
+	 * space.
+	 */
+	public void scaleParameterSpace(double scaleLower, double scaleUpper)
+	{
+		for (int succ = 0; succ < numTotalTransitions; succ++) {
+			rateParamsLowers[succ] = basicRateParamsLowers[succ] + scaleLower * (basicRateParamsUppers[succ] - basicRateParamsLowers[succ]);
+			rateParamsUppers[succ] = basicRateParamsLowers[succ] + scaleUpper * (basicRateParamsUppers[succ] - basicRateParamsLowers[succ]);
 		}
 	}
 }

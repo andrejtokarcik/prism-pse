@@ -100,18 +100,13 @@ public final class ModelBuilder extends PrismComponent
 	 * @param lower lower bounds of parameters
 	 * @param upper upper bounds of parameters
 	 */
-	public void setParameters(String[] paramNames, String[] lower, String[] upper)
+	public void setParameters(String[] paramNames, double[] lower, double[] upper)
 	{
 		paramsLower = new Values();
 		paramsUpper = new Values();
 		for (int i = 0; i < paramNames.length; i++) {
-			paramsLower.addValue(paramNames[i], Double.parseDouble(lower[i]));
-			paramsUpper.addValue(paramNames[i], Double.parseDouble(upper[i]));
-			/*
-			// TODO Either here or in PrismCL?
-			if (this.lower[param] > this.upper[param])
-				throw new PrismException();
-			*/
+			paramsLower.addValue(paramNames[i], lower[i]);
+			paramsUpper.addValue(paramNames[i], upper[i]);
 		}
 	}
 
@@ -295,7 +290,7 @@ public final class ModelBuilder extends PrismComponent
 				int a = tranlist.getTransitionModuleOrActionIndex(tranlist.getTotalIndexOfTransition(choiceNr, 0));
 				String action = a < 0 ? null : modulesFile.getSynch(a - 1);
 				int numSuccessors = choice.size();
-				ChoiceListFlexi succ = tranlist.getChoice(choiceNr);
+				ChoiceListFlexi succ = tranlist.getChoice(choiceNr);   // FIXME succ == choice
 				for (int succNr = 0; succNr < numSuccessors; succNr++) {
 					State stateNew = succ.computeTarget(succNr, state);
 					Expression rateExpr = succ.getProbability(succNr);
