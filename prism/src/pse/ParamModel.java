@@ -28,7 +28,6 @@
 package pse;
 
 import java.io.File;
-import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -37,12 +36,12 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 
 import parser.Values;
 import prism.ModelType;
+import prism.Pair;
 import prism.PrismException;
 import prism.PrismLog;
 import explicit.ModelExplicit;
@@ -87,7 +86,7 @@ final class ParamModel extends ModelExplicit
 	private Set<Integer> predecessorsViaReaction = new HashSet<Integer>();
 	/** */
 	private Map<Integer, List<Integer>> inReactions;
-	private Map<Integer, List<Entry<Integer, Integer>>> inoutReactions;
+	private Map<Integer, List<Pair<Integer, Integer>>> inoutReactions;
 	private Map<Integer, List<Integer>> outReactions;
 
 	/**
@@ -448,11 +447,11 @@ final class ParamModel extends ModelExplicit
 
 		// Initialise the reaction sets
 		inReactions = new HashMap<Integer, List<Integer>>(numStates);
-		inoutReactions = new HashMap<Integer, List<Entry<Integer, Integer>>>(numStates);
+		inoutReactions = new HashMap<Integer, List<Pair<Integer, Integer>>>(numStates);
 		outReactions = new HashMap<Integer, List<Integer>>(numStates);
 		for (state = 0; state < numStates; state++) {
 			inReactions.put(state, new ArrayList<Integer>());
-			inoutReactions.put(state, new ArrayList<Entry<Integer, Integer>>());
+			inoutReactions.put(state, new ArrayList<Pair<Integer, Integer>>());
 			outReactions.put(state, new ArrayList<Integer>());
 		}
 
@@ -471,7 +470,7 @@ final class ParamModel extends ModelExplicit
 						for (succ = choiceBegin(choice); succ < choiceEnd(choice); succ++) {
 							if (getReaction(succ) == predReaction) {
 								inout = true;
-								inoutReactions.get(state).add(new SimpleImmutableEntry<Integer, Integer>(predSucc, succ));
+								inoutReactions.get(state).add(new Pair<Integer, Integer>(predSucc, succ));
 
 								// TODO: Perhaps we can break the two innermost for-loops from here?
 								// I.e., is `state` guaranteed not to have another succ with this reaction?
@@ -516,17 +515,16 @@ final class ParamModel extends ModelExplicit
 			}
 
 			// Both incoming and outgoing
-			// TODO use Pair instead of Entry
-			for (Entry<Integer, Integer> succs : inoutReactions.get(state)) {
-				int predSucc = succs.getKey();
-				int succ = succs.getValue();
+			for (Pair<Integer, Integer> succs : inoutReactions.get(state)) {
+				int predSucc = succs.first;
+				int succ = succs.second;
 
 				pred = currState(predSucc);
 				assert currState(succ) == state;
-				
+
 				// The rate params assumed to be the same for both `pred` and `state`
 				assert rateParamsLowers[predSucc] == rateParamsLowers[succ] && rateParamsUppers[predSucc] == rateParamsUppers[succ];
-				
+
 				midSumNumeratorMin = vectMin[pred] * ratePopulations[predSucc] - vectMin[state] * ratePopulations[succ];
 				if (midSumNumeratorMin > 0) {
 					resultMin[state] += rateParamsLowers[succ] * midSumNumeratorMin / qmax;
