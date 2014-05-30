@@ -26,7 +26,10 @@
 
 package explicit;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +54,9 @@ public class DTMCUniformisedSimple extends DTMCExplicit
 	// Number of extra transitions added (just for stats)
 	protected int numExtraTransitions;
 
+	//
+	protected List<Map<Integer, Double>> dtmcMatrix;
+
 	/**
 	 * Constructor: create from CTMC and uniformisation rate q.
 	 */
@@ -59,11 +65,19 @@ public class DTMCUniformisedSimple extends DTMCExplicit
 		this.ctmc = ctmc;
 		this.numStates = ctmc.getNumStates();
 		this.q = q;
+
 		numExtraTransitions = 0;
+		dtmcMatrix = new ArrayList<Map<Integer, Double>>(this.numStates);
 		for (int i = 0; i < numStates; i++) {
-			if (ctmc.getTransitions(i).get(i) == 0 && ctmc.getTransitions(i).sumAllBut(i) < q) {
+			Distribution distr = ctmc.getTransitions(i);
+			if (distr.get(i) == 0 && distr.sumAllBut(i) < q) {
 				numExtraTransitions++;
 			}
+			Map<Integer, Double> dtmcDistr = new HashMap<Integer, Double>(distr.size());
+			for (Map.Entry<Integer, Double> e : distr) {
+				dtmcDistr.put(e.getKey(), e.getValue() / q);
+			}
+			dtmcMatrix.add(dtmcDistr);
 		}
 	}
 
@@ -282,28 +296,25 @@ public class DTMCUniformisedSimple extends DTMCExplicit
 	public void vmMult(double vect[], double result[])
 	{
 		int i, j;
-		double prob, sum;
-		Distribution distr;
-		
+		double probq, sumq;
+
 		// Initialise result to 0
-		for (j = 0; j < numStates; j++) {
-			result[j] = 0;
-		}
+		Arrays.fill(result,  0);
+
 		// Go through matrix elements (by row)
 		for (i = 0; i < numStates; i++) {
-			distr = ctmc.getTransitions(i);
-			sum = 0.0;
-			for (Map.Entry<Integer, Double> e : distr) {
+			sumq = 0.0;
+			for (Map.Entry<Integer, Double> e : dtmcMatrix.get(i).entrySet()) {
 				j = (Integer) e.getKey();
-				prob = (Double) e.getValue();
+				probq = (Double) e.getValue();
 				// Non-diagonal entries only
 				if (j != i) {
-					sum += prob;
-					result[j] += (prob / q) * vect[i];
+					sumq += probq;
+					result[j] += probq * vect[i];
 				}
 			}
 			// Diagonal entry is 1 - sum/q
-			result[i] += (1 - sum / q) * vect[i];
+			result[i] += (1 - sumq) * vect[i];
 		}
 	}
 
