@@ -290,16 +290,14 @@ public final class ModelBuilder extends PrismComponent
 				int a = tranlist.getTransitionModuleOrActionIndex(tranlist.getTotalIndexOfTransition(choiceNr, 0));
 				String action = a < 0 ? null : modulesFile.getSynch(a - 1);
 				int numSuccessors = choice.size();
-				ChoiceListFlexi succ = tranlist.getChoice(choiceNr);   // FIXME succ == choice
 				for (int succNr = 0; succNr < numSuccessors; succNr++) {
-					State stateNew = succ.computeTarget(succNr, state);
-					Expression rateExpr = succ.getProbability(succNr);
+					State stateNew = choice.computeTarget(succNr, state);
+					Expression rateExpr = choice.getProbability(succNr);
 					Expression rateParams = getRateParams(rateExpr);
 					double rateParamsLower = rateParams.evaluateDouble(paramsLower);
 					double rateParamsUpper = rateParams.evaluateDouble(paramsUpper);
 					double ratePopulation = getRatePopulation(rateExpr);
-					// XXX the first arg should perhaps depend on succNr (e.g., succ.hashCode() ^ succNr)
-					model.addTransition(succ.hashCode(), permut[states.get(state)], permut[states.get(stateNew)], rateParamsLower, rateParamsUpper, ratePopulation, action);
+					model.addTransition(choice.hashCode(), permut[states.get(state)], permut[states.get(stateNew)], rateParamsLower, rateParamsUpper, ratePopulation, action);
 					sumOut = Expression.Plus(sumOut, rateExpr);
 				}
 			}

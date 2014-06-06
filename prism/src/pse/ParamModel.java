@@ -74,7 +74,7 @@ final class ParamModel extends ModelExplicit
 	private double[] ratePopulations;
 	/** */
 	private boolean[] parametrisedSuccs;
-	/** hash codes of updates/reactions associated with distribution branches */
+	/** hash codes of choices/reactions associated with distribution branches */
 	private int[] reactions;
 	/** labels - per transition, <i>not</i> per action */
 	private String[] labels;
@@ -320,9 +320,9 @@ final class ParamModel extends ModelExplicit
 	 * @param probFn with which probability it leads to this state
 	 * @param action action with which the choice is labelled
 	 */
-	void addTransition(int reactionHash, int fromState, int toState, double rateParamsLower, double rateParamsUpper, double ratePopulation, String action)
+	void addTransition(int reaction, int fromState, int toState, double rateParamsLower, double rateParamsUpper, double ratePopulation, String action)
 	{
-		reactions[numTotalTransitions] = reactionHash;
+		reactions[numTotalTransitions] = reaction;
 		colsFrom[numTotalTransitions] = fromState;
 		colsTo[numTotalTransitions] = toState;
 		basicRateParamsLowers[numTotalTransitions] = rateParamsLower;
@@ -333,7 +333,7 @@ final class ParamModel extends ModelExplicit
 		labels[numTotalTransitions] = action;
 		parametrisedSuccs[numTotalTransitions] = rateParamsLower != rateParamsUpper;
 
-		predecessorsViaReaction.add(toState ^ reactionHash);
+		predecessorsViaReaction.add(toState ^ reaction);
 
 		numTotalTransitions++;
 	}
@@ -482,7 +482,6 @@ final class ParamModel extends ModelExplicit
 						inReactions.get(state).add(predSucc);
 					}
 
-					//if (!hasPredecessorViaReaction(pred, predReaction)) {
 					if (!predecessorsViaReaction.contains(pred ^ predReaction)) {
 						outReactions.get(pred).add(predSucc);
 					}
