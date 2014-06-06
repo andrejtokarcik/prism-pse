@@ -42,12 +42,7 @@ import explicit.FoxGlynn;
 import explicit.Model;
 import explicit.ModelCheckerResult;
 
-/**
- * Model checker for parametric Markov models.
- * 
- * @author Ernst Moritz Hahn <emhahn@cs.ox.ac.uk> (University of Oxford)
- */
-final public class ParamModelChecker extends PrismComponent
+final public class PSEModelChecker extends PrismComponent
 {
 	// Log for output (default to System.out)
 	private PrismLog mainLog = new PrismPrintStreamLog(System.out);
@@ -55,7 +50,7 @@ final public class ParamModelChecker extends PrismComponent
 	/**
 	 * Constructor
 	 */
-	public ParamModelChecker(PrismComponent parent) throws PrismException
+	public PSEModelChecker(PrismComponent parent) throws PrismException
 	{
 		super(parent);
 	}
@@ -83,7 +78,7 @@ final public class ParamModelChecker extends PrismComponent
 
 	public List<ModelCheckerResultRanged> doTransientRanged(Model model, double t, double accuracy, explicit.StateValues initDistMin, explicit.StateValues initDistMax) throws PrismException
 	{
-		ParamModel ctmcRanged = (ParamModel) model;
+		PSEModel ctmcRanged = (PSEModel) model;
 		List<ModelCheckerResultRanged> res = null;
 		explicit.StateValues initDistMinNew = null, initDistMaxNew = null; //probs = null;
 
@@ -114,7 +109,7 @@ final public class ParamModelChecker extends PrismComponent
 		return res;
 	}
 
-	public List<ModelCheckerResultRanged> computeTransientProbsRanged(ParamModel ctmcRanged, double t, double accuracy, double initDistMin[], double initDistMax[]) throws PrismException
+	public List<ModelCheckerResultRanged> computeTransientProbsRanged(PSEModel ctmcRanged, double t, double accuracy, double initDistMin[], double initDistMax[]) throws PrismException
 	{
 		ModelCheckerResult min, max;
 		List<ModelCheckerResultRanged> resList = new LinkedList<ModelCheckerResultRanged>();

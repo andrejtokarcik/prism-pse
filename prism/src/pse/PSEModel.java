@@ -46,14 +46,7 @@ import prism.PrismException;
 import prism.PrismLog;
 import explicit.ModelExplicit;
 
-/**
- * Represents a parametric Markov model.
- * This class is used to store all types of parametric model, both models
- * with and without nondeterminism, discrete- as well as continuous-time.
- * This turned out the be the most convenient way to implement model checking
- * for parametric models.
- */
-final class ParamModel extends ModelExplicit
+final class PSEModel extends ModelExplicit
 {
 	/** total number of nondeterministic choices over all states */
 	private int numTotalChoices;
@@ -92,7 +85,7 @@ final class ParamModel extends ModelExplicit
 	/**
 	 * Constructs a new parametric model.
 	 */
-	ParamModel()
+	PSEModel()
 	{
 		numStates = 0;
 		numTotalChoices = 0;

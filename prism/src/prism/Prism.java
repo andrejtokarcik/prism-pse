@@ -3402,7 +3402,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			
 			l = System.currentTimeMillis();
 
-			pse.ParamModelChecker mc = new pse.ParamModelChecker(this);
+			pse.PSEModelChecker mc = new pse.PSEModelChecker(this);
 			/*
 			// TODO
 			if (i == 0) {

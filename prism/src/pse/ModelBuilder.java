@@ -53,14 +53,14 @@ import explicit.StateStorage;
  * Class to construct a parametric Markov model.
  * 
  * @author Ernst Moritz Hahn <emhahn@cs.ox.ac.uk> (University of Oxford)
- * @see ParamModel
+ * @see PSEModel
  */
 public final class ModelBuilder extends PrismComponent
 {
 	/** {@code ModulesFile} to be transformed to a {@code ParamModel} */
 	private ModulesFile modulesFile;
 	/** parametric model constructed from {@code modulesFile} */
-	private ParamModel model;
+	private PSEModel model;
 	/** lower bounds of parameters */
 	private Values paramsLower;
 	/** upper bounds of parameters */
@@ -126,7 +126,7 @@ public final class ModelBuilder extends PrismComponent
 		// build model
 		time = System.currentTimeMillis();
 		modulesFile = (ModulesFile) modulesFile.deepCopy().replaceConstants(modulesFile.getConstantValues()).simplify();
-		ParamModel modelExpl = constructModel(modulesFile);
+		PSEModel modelExpl = constructModel(modulesFile);
 		time = System.currentTimeMillis() - time;
 
 		mainLog.println("\nTime for model construction: " + time / 1000.0 + " seconds.");
@@ -154,7 +154,7 @@ public final class ModelBuilder extends PrismComponent
 	 * @param states list of states to be filled by this method
 	 * @throws PrismException thrown if problems in underlying methods occur
 	 */
-	private void reserveMemoryAndExploreStates(ModulesFile modulesFile, ParamModel model, ModelType modelType, SymbolicEngine engine, StateStorage<State> states)
+	private void reserveMemoryAndExploreStates(ModulesFile modulesFile, PSEModel model, ModelType modelType, SymbolicEngine engine, StateStorage<State> states)
 			throws PrismException
 	{
 		boolean isNonDet = modelType == ModelType.MDP;
@@ -247,10 +247,10 @@ public final class ModelBuilder extends PrismComponent
 	 * @return parametric model constructed
 	 * @throws PrismException thrown if model cannot be constructed
 	 */
-	private ParamModel constructModel(ModulesFile modulesFile) throws PrismException
+	private PSEModel constructModel(ModulesFile modulesFile) throws PrismException
 	{
 		ModelType modelType;
-		ParamModel model;
+		PSEModel model;
 
 		if (modulesFile.getInitialStates() != null) {
 			throw new PrismException("Cannot do explicit-state reachability if there are multiple initial states");
@@ -265,7 +265,7 @@ public final class ModelBuilder extends PrismComponent
 		mainLog.flush();
 		long timer = System.currentTimeMillis();
 
-		model = new ParamModel();
+		model = new PSEModel();
 		model.setModelType(modelType);
 
 		SymbolicEngine engine = new SymbolicEngine(modulesFile);
