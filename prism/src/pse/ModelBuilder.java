@@ -157,7 +157,6 @@ public final class ModelBuilder extends PrismComponent
 	private void reserveMemoryAndExploreStates(ModulesFile modulesFile, PSEModel model, ModelType modelType, SymbolicEngine engine, StateStorage<State> states)
 			throws PrismException
 	{
-		boolean isNonDet = modelType == ModelType.MDP;
 		int numStates = 0;
 		int numTotalChoices = 0;
 		int numTotalSuccessors = 0;
@@ -175,11 +174,7 @@ public final class ModelBuilder extends PrismComponent
 			transitionsCache.put(state, tranlist);
 			
 			int numChoices = tranlist.getNumChoices();
-			if (isNonDet) {
-				numTotalChoices += numChoices;
-			} else {
-				numTotalChoices += 1;
-			}
+			numTotalChoices += 1;
 			for (int choiceNr = 0; choiceNr < numChoices; choiceNr++) {
 				int numSuccessors = tranlist.getChoice(choiceNr).size();
 				numTotalSuccessors += numSuccessors;
@@ -192,9 +187,6 @@ public final class ModelBuilder extends PrismComponent
 				}
 			}
 			if (numChoices == 0) {
-				if (isNonDet) {
-					numTotalChoices++;
-				}
 				numTotalSuccessors++;
 			}
 		}
