@@ -29,18 +29,15 @@
 package pse;
 
 import java.util.LinkedList;
-import java.util.List;
-import java.util.PriorityQueue;
 
 import parser.type.TypeDouble;
-import prism.Pair;
 import prism.PrismComponent;
 import prism.PrismException;
 import prism.PrismLog;
 import prism.PrismPrintStreamLog;
 import explicit.FoxGlynn;
 import explicit.Model;
-import explicit.ModelCheckerResult;
+import explicit.StateValues;
 
 final public class PSEModelChecker extends PrismComponent
 {
@@ -76,11 +73,11 @@ final public class PSEModelChecker extends PrismComponent
 
 	// Model checking functions
 
-	public List<ModelCheckerResultRanged> doTransientRanged(Model model, double t, double accuracy, explicit.StateValues initDistMin, explicit.StateValues initDistMax) throws PrismException
+	public BoxRegionValues doTransientRanged(Model model, double t, double accuracy, explicit.StateValues initDistMin, explicit.StateValues initDistMax) throws PrismException
 	{
 		PSEModel ctmcRanged = (PSEModel) model;
-		List<ModelCheckerResultRanged> res = null;
-		explicit.StateValues initDistMinNew = null, initDistMaxNew = null; //probs = null;
+		BoxRegionValues res = null;
+		explicit.StateValues initDistMinNew = null, initDistMaxNew = null;
 
 		// Build initial distribution (if not specified)
 		if (initDistMin == null) {
@@ -104,15 +101,13 @@ final public class PSEModelChecker extends PrismComponent
 		
 		// Compute transient probabilities
 		res = computeTransientProbsRanged(ctmcRanged, t, accuracy, initDistMinNew.getDoubleArray(), initDistMaxNew.getDoubleArray());
-		//probs = StateValues.createFromDoubleArray(res.soln, ctmcRanged);
 
 		return res;
 	}
 
-	public List<ModelCheckerResultRanged> computeTransientProbsRanged(PSEModel ctmcRanged, double t, double accuracy, double initDistMin[], double initDistMax[]) throws PrismException
+	public BoxRegionValues computeTransientProbsRanged(PSEModel ctmcRanged, double t, double accuracy, double initDistMin[], double initDistMax[]) throws PrismException
 	{
-		ModelCheckerResult min, max;
-		List<ModelCheckerResultRanged> resList = new LinkedList<ModelCheckerResultRanged>();
+		BoxRegionValues regionValues = new BoxRegionValues(ctmcRanged);
 		int i, n, iters, totalIters;
 		double solnMin[], soln2Min[], sumMin[];
 		double solnMax[], soln2Max[], sumMax[];
@@ -124,8 +119,8 @@ final public class PSEModelChecker extends PrismComponent
 		double termCritParam, q, qt, acc, weights[], totalWeight;
 
 		// For decomposing the parameter space
-		PriorityQueue<Pair.ComparablePair<Double, Double>> decompositions = new PriorityQueue<Pair.ComparablePair<Double, Double>>();
-		decompositions.add(new Pair.ComparablePair<Double, Double>(0.0, 1.0));
+		LinkedList<BoxRegion> regions = new LinkedList<BoxRegion>();
+		regions.add(new BoxRegion(0.0, 1.0));
 		int numDecompositions = 1;
 
 		// Start bounded probabilistic reachability
@@ -140,7 +135,6 @@ final public class PSEModelChecker extends PrismComponent
 		n = ctmcRanged.getNumStates();
 
 		// Get uniformisation rate; do Fox-Glynn
-		// XXX the choice of `q` may also cause the rounding differences in results?
 		q = 1.02 * ctmcRanged.maxSumLeaving();
 		qt = q * t;
 		mainLog.println("\nUniformisation: q.t = " + q + " x " + t + " = " + qt);
@@ -159,7 +153,7 @@ final public class PSEModelChecker extends PrismComponent
 		}
 		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
 
-		while (decompositions.size() != 0) {
+		while (regions.size() != 0) {
 			// Create solution vector(s)
 			solnMin = new double[n];
 			soln2Min = new double[n];
@@ -186,8 +180,8 @@ final public class PSEModelChecker extends PrismComponent
 			}
 
 			// Shrink the parameter space
-			Pair<Double, Double> decomposition = decompositions.remove();
-			ctmcRanged.scaleParameterSpace(decomposition.first, decomposition.second);
+			BoxRegion region = regions.remove();
+			ctmcRanged.scaleParameterSpace(region.getMinCoeff(), region.getMaxCoeff());
 			numDecompositions++;
 
 			try {
@@ -223,37 +217,22 @@ final public class PSEModelChecker extends PrismComponent
 					totalIters++;
 				}
 
-				// Store results
-				min = new ModelCheckerResult();
-				min.soln = sumMin;
-				min.lastSoln = soln2Min;
-				min.numIters = iters;
-				min.timeTaken = timer / 1000.0;
-				min.timePre = 0.0;
-
-				max = new ModelCheckerResult();
-				max.soln = sumMax;
-				max.lastSoln = soln2Max;
-				max.numIters = iters;
-				max.timeTaken = timer / 1000.0;
-				max.timePre = 0.0;
-
-				resList.add(new ModelCheckerResultRanged(min, max, decomposition));
+				// Store result
+				regionValues.add(region, sumMin, sumMax);
 			} catch (SignificantInaccuracy e) {
-				double a = decomposition.first;
-				double b = decomposition.second - decomposition.first;
-				decompositions.add(new Pair.ComparablePair<Double, Double>(a, a + 0.5 * b));
-				decompositions.add(new Pair.ComparablePair<Double, Double>(a + 0.5 * b, a + b));
+				// Decompose the current region!
+				regions.add(region.lowerHalf());
+				regions.add(region.upperHalf());
 			}
 		}
 
 		// Finished bounded probabilistic reachability
 		timer = System.currentTimeMillis() - timer;
 		mainLog.print("Transient probability computation");
-		mainLog.print(" took " + totalIters + " iters in total");
-		mainLog.print(" (spread over " + numDecompositions + " decompositions, incl. non-leaves)");
-		mainLog.print(" and " + timer / 1000.0 + " seconds.\n");
+		mainLog.print(" took " + totalIters + " iters, " + numDecompositions + " decompositions");
+		mainLog.print(" (resulting in " + regionValues.getNumRegions() + " final regions)");
+		mainLog.print(" and " + timer / 1000.0 + " seconds in total.\n");
 
-		return resList;
+		return regionValues;
 	}
 }

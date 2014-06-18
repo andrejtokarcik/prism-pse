@@ -26,30 +26,32 @@
 
 package pse;
 
-import explicit.ModelCheckerResult;
 import prism.Pair;
 
-public class ModelCheckerResultRanged extends Pair<ModelCheckerResult, ModelCheckerResult>
+public class BoxRegion extends Pair.ComparablePair<Double, Double>
 {
-	public Pair<Double, Double> decomposition;
-
-	public ModelCheckerResultRanged(ModelCheckerResult min, ModelCheckerResult max, Pair<Double, Double> decomposition) {
+	public BoxRegion(double min, double max)
+	{
 		super(min, max);
-		this.decomposition = decomposition;
 	}
 
-	public ModelCheckerResult getMin()
+	public double getMinCoeff()
 	{
 		return first;
 	}
 
-	public ModelCheckerResult getMax()
+	public double getMaxCoeff()
 	{
 		return second;
 	}
-
-	public Pair<Double, Double> getDecomposition()
+	
+	public BoxRegion lowerHalf()
 	{
-		return decomposition;
+		return new BoxRegion(first, first + 0.5 * (second - first));
+	}
+	
+	public BoxRegion upperHalf()
+	{
+		return new BoxRegion(first + 0.5 * (second - first), second);
 	}
 }

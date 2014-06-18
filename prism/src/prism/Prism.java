@@ -36,6 +36,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map.Entry;
 
 import jdd.JDD;
 import jdd.JDDNode;
@@ -3352,8 +3353,8 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		double timeDouble = 0, initTimeDouble = 0;
 		Object time;
 		long l = 0; // timer
-		List<pse.ModelCheckerResultRanged> mcResList;
-		explicit.StateValues probsExplMin = null, probsExplMax = null, initDistExplMin = null, initDistExplMax = null;
+		pse.BoxRegionValues regionValues;
+		explicit.StateValues initDistExplMin = null, initDistExplMax = null;
 
 		// Some checks
 		if (pseNames == null)
@@ -3411,33 +3412,30 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 				initTimeDouble = 0;
 			}
 			*/
-			mcResList = mc.doTransientRanged(modelExpl, timeDouble - initTimeDouble, pseAccuracy, initDistExplMin, initDistExplMax);
+			regionValues = mc.doTransientRanged(modelExpl, timeDouble - initTimeDouble, pseAccuracy, initDistExplMin, initDistExplMax);
 
 			// Results report
 			mainLog.println("\nPrinting transient probabilities w.r.t. the given parameter space:");
 			// TODO: printing to other log files (search for tmpLog used elsewhere)
 			
-			for (pse.ModelCheckerResultRanged mcRes : mcResList) {
-				mainLog.print("\n== Decomposition ");
-				Pair<Double, Double> decomposition = mcRes.getDecomposition();
+			for (Entry<pse.BoxRegion, Pair<explicit.StateValues, explicit.StateValues>> entry : regionValues) {
+				mainLog.print("\n== Region ");
+				pse.BoxRegion region = entry.getKey();
 				for (int pnr = 0; pnr < pseNames.length; pnr++) {
 					if (pnr != 0) mainLog.print(", ");
 					mainLog.print(pseNames[pnr] + "=");
-					mainLog.print(pseLowerBounds[pnr] + decomposition.first * (pseUpperBounds[pnr] - pseLowerBounds[pnr]));
+					mainLog.print(pseLowerBounds[pnr] + region.getMinCoeff() * (pseUpperBounds[pnr] - pseLowerBounds[pnr]));
 					mainLog.print(":");
-					mainLog.print(pseLowerBounds[pnr] + decomposition.second * (pseUpperBounds[pnr] - pseLowerBounds[pnr]));
+					mainLog.print(pseLowerBounds[pnr] + region.getMaxCoeff() * (pseUpperBounds[pnr] - pseLowerBounds[pnr]));
 				}
 				mainLog.print(" ==\n");
 
-				probsExplMin = explicit.StateValues.createFromDoubleArray(mcRes.getMin().soln, modelExpl);
-				probsExplMax = explicit.StateValues.createFromDoubleArray(mcRes.getMax().soln, modelExpl);
-
 				mainLog.println("\n=== Minimised probabilities ===\n");
 				// print out or export probabilities
-				probsExplMin.print(mainLog, true, false, true, true);
+				entry.getValue().first.print(mainLog, true, false, true, true);
 
 				mainLog.println("\n=== Maximised probabilities ===\n");
-				probsExplMax.print(mainLog, true, false, true, true);
+				entry.getValue().second.print(mainLog, true, false, true, true);
 			}
 
 			// print out computation time
@@ -3445,17 +3443,11 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			mainLog.println("\nTime for parameter space exploration: " + l / 1000.0 + " seconds.");
 
 			// Prepare for next iteration
-			initDistExplMin = probsExplMin;
-			initDistExplMax = probsExplMax;
+			initDistExplMin = null;
+			initDistExplMax = null;
 			initTimeDouble = timeDouble;
 			times.iterateProperty();
 		}
-
-		// tidy up
-		if (probsExplMin != null)
-			probsExplMin.clear();
-		if (probsExplMax != null)
-			probsExplMax.clear();
 	}
 
 
