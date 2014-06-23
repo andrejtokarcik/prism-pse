@@ -2969,7 +2969,49 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
 		return mc.check(modelExpl, prop.getExpression());
 	}
-	
+
+	/**
+	 */
+	public Result modelCheckPSE(PropertiesFile propertiesFile, Property prop, String[] pseNames, double[] pseLowerBounds, double[] pseUpperBounds)
+			throws PrismException
+	{
+		// Some checks
+		if (pseNames == null) {
+			throw new PrismException("Must specify some parameters when using " + "the parametric analysis");
+		}
+		if (!(currentModelType == ModelType.CTMC))
+			throw new PrismException("PSE model checking is only supported for CTMCs");
+		/*
+		if (!getExplicit())
+			throw new PrismException("Parameter space exploration supported for the explicit engine only");
+		*/
+
+		Values definedPFConstants = propertiesFile.getConstantValues();
+		Values constlist = currentModulesFile.getConstantValues();
+		for (int pnr = 0; pnr < pseNames.length; pnr++) {
+			constlist.removeValue(pseNames[pnr]);
+		}
+
+		// Print info
+		mainLog.printSeparator();
+		mainLog.println("\nParametric model checking: " + prop);
+		if (currentDefinedMFConstants != null && currentDefinedMFConstants.getNumValues() > 0)
+			mainLog.println("Model constants: " + currentDefinedMFConstants);
+		if (definedPFConstants != null && definedPFConstants.getNumValues() > 0)
+			mainLog.println("Property constants: " + definedPFConstants);
+
+		pse.ModelBuilder builder = new pse.ModelBuilder(this);
+		builder.setModulesFile(currentModulesFile);
+		builder.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
+		builder.build();
+		explicit.Model modelExpl = builder.getModel();
+		pse.PSEModelChecker mc = new pse.PSEModelChecker(this);
+		//mc.setModelBuilder(builder);
+		//mc.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
+		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
+		return mc.check(modelExpl, prop.getExpression());
+	}
+
 	/**
 	 * Export a strategy. The associated model should be attached to the strategy.
 	 * Strictly, speaking that does not need to be the currently loaded model,

@@ -88,7 +88,8 @@ public class PrismCL implements PrismModelListener
 	private boolean simulate = false;
 	private boolean simpath = false;
 	private boolean param = false;
-	private boolean paramSpaceExplore = false;
+	private boolean pse = false;
+	private boolean pseCheck = false;
 	private ModelType typeOverride = null;
 	private boolean orderingOverride = false;
 	private boolean explicitbuild = false;
@@ -244,7 +245,7 @@ public class PrismCL implements PrismModelListener
 					undefinedConstants[i].removeConstants(paramNames);
 				}
 			}
-			if (paramSpaceExplore) {
+			if (pse || pseCheck) {
 				undefinedMFConstants.removeConstants(pseNames);
 				for (i = 0; i < numPropertiesToCheck; i++) {
 					undefinedConstants[i].removeConstants(pseNames);
@@ -353,13 +354,12 @@ public class PrismCL implements PrismModelListener
 								definedPFConstants = undefinedConstants[j].getPFConstantValues();
 								propertiesFile.setSomeUndefinedConstants(definedPFConstants);
 							}
-							// Normal model checking
-							if (!simulate && !param) {
-								res = prism.modelCheck(propertiesFile, propertiesToCheck.get(j));
-							}
 							// Parametric model checking
-							else if (param) {
+							if (param) {
 								res = prism.modelCheckParametric(propertiesFile, propertiesToCheck.get(j), paramNames, paramLowerBounds, paramUpperBounds);
+							}
+							else if (pseCheck) {
+								res = prism.modelCheckPSE(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds);
 							}
 							// Approximate (simulation-based) model checking
 							else if (simulate) {
@@ -367,8 +367,9 @@ public class PrismCL implements PrismModelListener
 								res = prism.modelCheckSimulator(propertiesFile, propertiesToCheck.get(j).getExpression(), definedPFConstants, null, simMaxPath,
 										simMethod);
 								simMethod.reset();
+							// Normal model checking
 							} else {
-								throw new PrismException("Cannot use parametric model checking and simulation at the same time");
+								res = prism.modelCheck(propertiesFile, propertiesToCheck.get(j));
 							}
 						} catch (PrismException e) {
 							// in case of error, report it, store exception as the result and proceed
@@ -447,7 +448,7 @@ public class PrismCL implements PrismModelListener
 			}
 
 			// Explicitly request a build if necessary
-			if (propertiesToCheck.size() == 0 && !steadystate && !dotransient && !paramSpaceExplore && !simpath && !nobuild && prism.modelCanBeBuilt() && !prism.modelIsBuilt()) {
+			if (propertiesToCheck.size() == 0 && !steadystate && !dotransient && !pse && !simpath && !nobuild && prism.modelCanBeBuilt() && !prism.modelIsBuilt()) {
 				try {
 					prism.buildModel();
 				} catch (PrismException e) {
@@ -904,7 +905,7 @@ public class PrismCL implements PrismModelListener
 	{
 		ModelType modelType;
 
-		if (paramSpaceExplore) {
+		if (pse) {
 			try {
 				// TODO: PSE results export
 
@@ -1078,7 +1079,7 @@ public class PrismCL implements PrismModelListener
 				}
 				// explore parameter space with given ranges
 				else if (sw.equals("pse")) {
-					paramSpaceExplore = true;
+					pse = true;
 					if (i < args.length - 3) {
 						pseTime = args[++i];
 						pseSwitch = args[++i].trim();
@@ -1087,6 +1088,19 @@ public class PrismCL implements PrismModelListener
 						} catch (NumberFormatException e) {
 							errorAndExit("Invalid accuracy value for -" + sw + " switch");
 						}
+					} else {
+						errorAndExit("Incomplete -" + sw + " switch");
+					}
+				}
+				else if (sw.equals("psecheck")) {
+					pseCheck = true;
+					if (i < args.length - 1) {
+						pseCheck = true;
+						// store argument for later use (append if already partially specified)
+						if ("".equals(pseSwitch))
+							pseSwitch = args[++i].trim();
+						else
+							pseSwitch += "," + args[++i].trim();
 					} else {
 						errorAndExit("Incomplete -" + sw + " switch");
 					}
@@ -2027,7 +2041,7 @@ public class PrismCL implements PrismModelListener
 		}
 
 		// process parameter space ranges
-		if (paramSpaceExplore) {
+		if (pse || pseCheck) {
 			String[] pseDefs = pseSwitch.split(",");
 			pseNames = new String[pseDefs.length];
 			pseLowerBounds = new double[pseDefs.length];

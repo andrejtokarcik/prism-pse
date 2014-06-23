@@ -119,7 +119,7 @@ public class PrismSettings implements Observer
 	public static final	String PRISM_PARAM_SUBSUME_REGIONS			= "prism.param.subsumeRegions";
 	public static final String PRISM_PARAM_DAG_MAX_ERROR			= "prism.param.functionDagMaxError";
 
-	public static final	String PRISM_PSE_ENABLED				= "prism.pse.enabled";
+	public static final	String PRISM_PSE_ENABLED					= "prism.pse.enabled";
 
 	public static final String PRISM_FAU_EPSILON					= "prism.fau.epsilon";
 	public static final String PRISM_FAU_DELTA						= "prism.fau.delta";

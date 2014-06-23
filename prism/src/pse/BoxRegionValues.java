@@ -45,11 +45,23 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, Pair<StateValu
 		valuesPairs = new TreeMap<BoxRegion, Pair<StateValues, StateValues>>();
 	}
 
+	public BoxRegionValues(Model model, BoxRegion region, StateValues minValues, StateValues maxValues)
+	{
+		this(model);
+		add(region, minValues, maxValues);
+	}
+
+	public BoxRegionValues(Model model, BoxRegion region, double[] minValues, double[] maxValues)
+	{
+		this(model);
+		add(region, minValues, maxValues);
+	}
+
 	public void add(BoxRegion region, StateValues minValues, StateValues maxValues)
 	{
 		valuesPairs.put(region, new Pair<StateValues, StateValues>(minValues, maxValues));
 	}
-	
+
 	public void add(BoxRegion region, double[] min, double[] max)
 	{
 		StateValues minValues = StateValues.createFromDoubleArray(min, model);

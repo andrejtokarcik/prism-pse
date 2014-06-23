@@ -571,7 +571,103 @@ final class PSEModel extends ModelExplicit
 			double rate = rateParamsLowers[succ] * ratePopulations[succ];
 
 			resultMin[pred] -= rate * vectMin[pred] / q;
-			resultMax[pred] -= rate * vectMin[pred] / q;
+			resultMax[pred] -= rate * vectMax[pred] / q;
+
+			resultMin[state] += rate * vectMin[pred] / q;
+			resultMax[state] += rate * vectMax[pred] / q;
+		}
+	}
+
+	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], BitSet subset, boolean complement, double q) throws PrismException
+	{
+		if (subset == null) {
+			// Loop over all states
+			subset = new BitSet(numStates);
+			subset.set(0, numStates - 1);
+		}
+
+		if (complement) {
+			subset.flip(0, numStates - 1);
+		}
+
+		int pred, state;
+		double midSumNumeratorMin, midSumNumeratorMax;
+
+		for (state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
+			// Initialise the result
+			resultMin[state] = vectMin[state];
+			resultMax[state] = vectMax[state];
+
+			// Outgoing reactions are not considered in backwards transient probability computation.
+
+			// Incoming reactions (NB propagating backwards!)
+			for (int succ : outReactions.get(state)) {
+				// Note the exchange: succState(succ) is stored as pred
+				pred = succState(succ);
+
+				resultMin[state] -= rateParamsUppers[succ] * ratePopulations[succ] * vectMin[state] / q;
+				resultMax[state] -= rateParamsLowers[succ] * ratePopulations[succ] * vectMax[state] / q;
+
+				resultMin[state] += rateParamsLowers[succ] * ratePopulations[succ] * vectMin[pred] / q;
+				resultMax[state] += rateParamsUppers[succ] * ratePopulations[succ] * vectMax[pred] / q;
+			}
+
+			// Both incoming and outgoing
+			for (Pair<Integer, Integer> succs : inoutReactions.get(state)) {
+				// Note the exchange: succs.second is stored as predSucc
+				int predSucc = succs.second;
+				int succ = succs.first;
+
+				// Note the exchange: succState(predSucc) is stored as pred
+				pred = succState(predSucc);
+				assert succState(succ) == state;
+
+				if (!subset.get(currState(succ))) {
+					// Reduce to the case of an incoming reaction
+					resultMin[state] -= rateParamsUppers[predSucc] * ratePopulations[predSucc] * vectMin[state] / q;
+					resultMax[state] -= rateParamsLowers[predSucc] * ratePopulations[predSucc] * vectMax[state] / q;
+
+					resultMin[state] += rateParamsLowers[predSucc] * ratePopulations[predSucc] * vectMin[pred] / q;
+					resultMax[state] += rateParamsUppers[predSucc] * ratePopulations[predSucc] * vectMax[pred] / q;
+
+					continue;
+				}
+
+				// The rate params assumed to be the same for both `pred` and `state`
+				assert rateParamsLowers[predSucc] == rateParamsLowers[succ] && rateParamsUppers[predSucc] == rateParamsUppers[succ];
+
+				midSumNumeratorMin = vectMin[pred] * ratePopulations[predSucc] - vectMin[state] * ratePopulations[predSucc];
+				if (midSumNumeratorMin > 0) {
+					resultMin[state] += rateParamsLowers[succ] * midSumNumeratorMin / q;
+				} else {
+					resultMin[state] += rateParamsUppers[succ] * midSumNumeratorMin / q;
+				}
+
+				midSumNumeratorMax = vectMax[pred] * ratePopulations[predSucc] - vectMax[state] * ratePopulations[predSucc];
+				if (midSumNumeratorMax > 0) {
+					resultMax[state] += rateParamsUppers[succ] * midSumNumeratorMax / q;
+				} else {
+					resultMax[state] += rateParamsLowers[succ] * midSumNumeratorMax / q;
+				}
+			}
+		}
+
+		// Optimisation: Non-parametrised transitions
+		for (int succ = 0; succ < numTotalTransitions; succ++) {
+			if (parametrisedSuccs[succ])
+				continue;
+
+			// Note the exchange: succState(succ) is stored as pred
+			pred = succState(succ);
+			state = currState(succ);
+
+			if (!subset.get(state))
+				continue;
+
+			double rate = rateParamsLowers[succ] * ratePopulations[succ];
+
+			resultMin[state] -= rate * vectMin[state] / q;
+			resultMax[state] -= rate * vectMax[state] / q;
 
 			resultMin[state] += rate * vectMin[pred] / q;
 			resultMax[state] += rate * vectMax[pred] / q;

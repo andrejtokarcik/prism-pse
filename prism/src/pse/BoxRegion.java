@@ -30,9 +30,14 @@ import prism.Pair;
 
 public class BoxRegion extends Pair.ComparablePair<Double, Double>
 {
+	public static BoxRegion completeSpace = new BoxRegion(0, 1);
+
 	public BoxRegion(double min, double max)
 	{
 		super(min, max);
+		assert 0 <= min && min <= 1;
+		assert 0 <= max && max <= 1;
+		assert min <= max;
 	}
 
 	public double getMinCoeff()
@@ -53,5 +58,11 @@ public class BoxRegion extends Pair.ComparablePair<Double, Double>
 	public BoxRegion upperHalf()
 	{
 		return new BoxRegion(first + 0.5 * (second - first), second);
+	}
+	
+	@Override
+	public String toString() {
+		// TODO: Multiply actual param bounds (supplied via BoxRegionFactory, cf. param?)
+		return "[" + first + ", " + second + "]";
 	}
 }
