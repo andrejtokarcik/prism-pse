@@ -121,7 +121,7 @@ final public class PSEModelChecker extends PrismComponent
 		// For decomposing the parameter space
 		LinkedList<BoxRegion> regions = new LinkedList<BoxRegion>();
 		regions.add(new BoxRegion(0.0, 1.0));
-		int numDecompositions = 1;
+		int numDecompositions = 0;
 
 		// Start bounded probabilistic reachability
 		timer = System.currentTimeMillis();
@@ -135,7 +135,7 @@ final public class PSEModelChecker extends PrismComponent
 		n = ctmcRanged.getNumStates();
 
 		// Get uniformisation rate; do Fox-Glynn
-		q = 1.02 * ctmcRanged.maxSumLeaving();
+		q = ctmcRanged.getDefaultUniformisationRate();
 		qt = q * t;
 		mainLog.println("\nUniformisation: q.t = " + q + " x " + t + " = " + qt);
 		termCritParam = 1e-6;
@@ -189,7 +189,7 @@ final public class PSEModelChecker extends PrismComponent
 				iters = 1;
 				totalIters++;
 				while (iters <= right) {
-					// Matrix-vector multiply
+					// Vector-matrix multiply
 					ctmcRanged.vmMult(solnMin, soln2Min, solnMax, soln2Max, q);
 
 					// Swap vectors for next iter

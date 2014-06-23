@@ -71,8 +71,8 @@ final class PSEModel extends ModelExplicit
 	private int[] reactions;
 	/** labels - per transition, <i>not</i> per action */
 	private String[] labels;
-	/** */
-	private double maxSumRate = Double.NEGATIVE_INFINITY;
+	/** total sum of leaving rates for a given nondeterministic choice */
+	private double[] exitRates;
 	/** model type */
 	private ModelType modelType;
 	/** */
@@ -269,6 +269,7 @@ final class PSEModel extends ModelExplicit
 		parametrisedSuccs = new boolean[numTotalSuccessors];
 		colsTo = new int[numTotalSuccessors];
 		colsFrom = new int[numTotalSuccessors];
+		exitRates = new double[numTotalChoices];
 	}
 
 	/**
@@ -332,11 +333,15 @@ final class PSEModel extends ModelExplicit
 	}
 
 	/**
+	 * Sets the total sum of leaving rate of the current nondeterministic choice.
+	 * For discrete-time models, this function shall always be called with
+	 * {@code leaving = 1}.
+	 * 
+	 * @param leaving total sum of leaving rate of the current nondeterministic choice
 	 */
 	void setSumLeaving(double leaving)
 	{
-		if (leaving > maxSumRate)
-			maxSumRate = leaving;
+		exitRates[numTotalChoices] = leaving;
 	}
 
 	/**
@@ -421,13 +426,36 @@ final class PSEModel extends ModelExplicit
 	
 	/**
 	 */
-	double maxSumLeaving()
+	double getMaxExitRate()
 	{
-		return maxSumRate;
+		BitSet allStates = new BitSet(numStates);
+		allStates.set(0, numStates - 1);
+		return getMaxExitRate(allStates);
+	}
+
+	double getMaxExitRate(BitSet subset)
+	{
+		double max = Double.NEGATIVE_INFINITY;
+		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
+			for (int choice = stateBegin(state); choice < stateEnd(state); choice++) {
+				if (exitRates[choice] > max)
+					max = exitRates[choice];
+			}
+		}
+		return max;
+	}
+
+	double getDefaultUniformisationRate()
+	{
+		return 1.02 * getMaxExitRate();
+	}
+
+	double getDefaultUniformisationRate(BitSet nonAbs)
+	{
+		return 1.02 * getMaxExitRate(nonAbs);
 	}
 
 	/**
-	 * Computes the disjoint sets of in-flowing and out-flowing reactions.
 	 */
 	public void computeInOutReactions() throws PrismException
 	{
@@ -483,7 +511,7 @@ final class PSEModel extends ModelExplicit
 		}
 	}
 
-	public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], double qmax) throws PrismException
+	public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], double q) throws PrismException
 	{
 		int pred, state;
 		double midSumNumeratorMin, midSumNumeratorMax;
@@ -496,14 +524,14 @@ final class PSEModel extends ModelExplicit
 			// Incoming reactions
 			for (int succ : inReactions.get(state)) {
 				pred = currState(succ);
-				resultMin[state] += rateParamsLowers[succ] * ratePopulations[succ] * vectMin[pred] / qmax;
-				resultMax[state] += rateParamsUppers[succ] * ratePopulations[succ] * vectMax[pred] / qmax;
+				resultMin[state] += rateParamsLowers[succ] * ratePopulations[succ] * vectMin[pred] / q;
+				resultMax[state] += rateParamsUppers[succ] * ratePopulations[succ] * vectMax[pred] / q;
 			}
 
 			// Outgoing reactions
 			for (int succ : outReactions.get(state)) {
-				resultMin[state] -= rateParamsUppers[succ] * ratePopulations[succ] * vectMin[state] / qmax;
-				resultMax[state] -= rateParamsLowers[succ] * ratePopulations[succ] * vectMax[state] / qmax;
+				resultMin[state] -= rateParamsUppers[succ] * ratePopulations[succ] * vectMin[state] / q;
+				resultMax[state] -= rateParamsLowers[succ] * ratePopulations[succ] * vectMax[state] / q;
 			}
 
 			// Both incoming and outgoing
@@ -519,20 +547,20 @@ final class PSEModel extends ModelExplicit
 
 				midSumNumeratorMin = vectMin[pred] * ratePopulations[predSucc] - vectMin[state] * ratePopulations[succ];
 				if (midSumNumeratorMin > 0) {
-					resultMin[state] += rateParamsLowers[succ] * midSumNumeratorMin / qmax;
+					resultMin[state] += rateParamsLowers[succ] * midSumNumeratorMin / q;
 				} else {
-					resultMin[state] += rateParamsUppers[succ] * midSumNumeratorMin / qmax;
+					resultMin[state] += rateParamsUppers[succ] * midSumNumeratorMin / q;
 				}
 				midSumNumeratorMax = vectMax[pred] * ratePopulations[predSucc] - vectMax[state] * ratePopulations[succ];
 				if (midSumNumeratorMax > 0) {
-					resultMax[state] += rateParamsUppers[succ] * midSumNumeratorMax / qmax;
+					resultMax[state] += rateParamsUppers[succ] * midSumNumeratorMax / q;
 				} else {
-					resultMax[state] += rateParamsLowers[succ] * midSumNumeratorMax / qmax;
+					resultMax[state] += rateParamsLowers[succ] * midSumNumeratorMax / q;
 				}
 			}
 		}
 
-		// Non-parametrised transitions
+		// Optimisation: Non-parametrised transitions
 		for (int succ = 0; succ < numTotalTransitions; succ++) {
 			if (parametrisedSuccs[succ])
 				continue;
@@ -542,11 +570,11 @@ final class PSEModel extends ModelExplicit
 
 			double rate = rateParamsLowers[succ] * ratePopulations[succ];
 
-			resultMin[pred] -= rate * vectMin[pred] / qmax;
-			resultMax[pred] -= rate * vectMin[pred] / qmax;
+			resultMin[pred] -= rate * vectMin[pred] / q;
+			resultMax[pred] -= rate * vectMin[pred] / q;
 
-			resultMin[state] += rate * vectMin[pred] / qmax;
-			resultMax[state] += rate * vectMax[pred] / qmax;
+			resultMin[state] += rate * vectMin[pred] / q;
+			resultMax[state] += rate * vectMax[pred] / q;
 		}
 	}
 
