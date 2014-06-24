@@ -182,12 +182,14 @@ final public class PSEModelChecker extends PrismComponent
 		Result result = new Result();
 		result.setResult(regionValues);
 
+		/*
 		// Print result to log
 		String resultString = "Result";
 		if (!("Result".equals(expr.getResultName())))
 			resultString += " (" + expr.getResultName().toLowerCase() + ")";
 		resultString += ": " + result.getResultString();
 		mainLog.print("\n" + resultString);
+		*/
 
 		return result;
 	}
@@ -223,8 +225,10 @@ final public class PSEModelChecker extends PrismComponent
 		boolean filterTrue = Expression.isTrue(filter);
 		String filterStatesString = filterTrue ? "all states" : "states satisfying filter";
 
-		BitSet bsFilterMin = checkExpression(model, filter).getMin(BoxRegion.completeSpace).getBitSet();
-		BitSet bsFilterMax = checkExpression(model, filter).getMax(BoxRegion.completeSpace).getBitSet();
+		BoxRegionValues filterRgnVals = checkExpression(model, filter);
+		assert filterRgnVals.getNumRegions() == 1;
+		BitSet bsFilterMin = filterRgnVals.getMin(BoxRegion.completeSpace).getBitSet();
+		BitSet bsFilterMax = filterRgnVals.getMax(BoxRegion.completeSpace).getBitSet();
 		boolean filterInit = (filter instanceof ExpressionLabel && ((ExpressionLabel) filter).getName().equals("init"));
 		boolean filterInitSingle = filterInit & model.getNumInitialStates() == 1;
 		if (bsFilterMin.isEmpty()) {
@@ -232,176 +236,183 @@ final public class PSEModelChecker extends PrismComponent
 		}
 		if (!filterInit) {
 			mainLog.println("\nStates satisfying filter " + filter + ":");
-			mainLog.println("MIN= " + bsFilterMin.cardinality());
+			mainLog.println("MIN = " + bsFilterMin.cardinality());
 			mainLog.println("MAX = " + bsFilterMax.cardinality());
 		}
 
-		BoxRegionValues rgnVals = checkExpression(model, expr.getOperand());
-		StateValues rgnValsMin = rgnVals.getMin(BoxRegion.completeSpace);
-		StateValues rgnValsMax = rgnVals.getMax(BoxRegion.completeSpace);
+		BoxRegionValues subRgnVals = checkExpression(model, expr.getOperand());
+		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : subRgnVals) {
+			BoxRegion region = entry.getKey();
+			StateValues subRgnValsMin = entry.getValue().getMin();
+			StateValues subRgnValsMax = entry.getValue().getMax();
 
-		// Compute result according to filter type
-		FilterOperator op = expr.getOperatorType();
-		switch (op) {
-		case PRINT:
-		case PRINTALL:
-			if (expr.getType() instanceof TypeBool) {
-				mainLog.print("\nSatisfying states");
-				mainLog.println(filterTrue ? ":" : " that are also in filter " + filter + ":");
-				mainLog.println("\nMIN\n");
-				rgnValsMin.printFiltered(mainLog, bsFilterMin);
-				mainLog.println("\nMAX\n");
-				rgnValsMax.printFiltered(mainLog, bsFilterMax);
-			} else {
-				if (op == FilterOperator.PRINT) {
-					mainLog.println("\nResults (non-zero only) for filter " + filter + ":");
+			// Prepend all result strings with info about current region
+			resultExpl = "== " + region.toString() + " ==\n";
+
+			// Compute result according to filter type
+			FilterOperator op = expr.getOperatorType();
+			switch (op) {
+			case PRINT:
+			case PRINTALL:
+				mainLog.print(resultExpl);
+				if (expr.getType() instanceof TypeBool) {
+					mainLog.print("\nSatisfying states");
+					mainLog.println(filterTrue ? ":" : " that are also in filter " + filter + ":");
 					mainLog.println("\nMIN\n");
-					rgnValsMin.printFiltered(mainLog, bsFilterMin);
+					subRgnValsMin.printFiltered(mainLog, bsFilterMin);
 					mainLog.println("\nMAX\n");
-					rgnValsMax.printFiltered(mainLog, bsFilterMax);
+					subRgnValsMax.printFiltered(mainLog, bsFilterMax);
 				} else {
-					mainLog.println("\nResults (including zeros) for filter " + filter + ":");
-					mainLog.println("\nMIN\n");
-					rgnValsMin.printFiltered(mainLog, bsFilterMin, false, false, true, true);
-					mainLog.println("\nMAX\n");
-					rgnValsMax.printFiltered(mainLog, bsFilterMax, false, false, true, true);
+					if (op == FilterOperator.PRINT) {
+						mainLog.println("\nResults (non-zero only) for filter " + filter + ":");
+						mainLog.println("\nMIN\n");
+						subRgnValsMin.printFiltered(mainLog, bsFilterMin);
+						mainLog.println("\nMAX\n");
+						subRgnValsMax.printFiltered(mainLog, bsFilterMax);
+					} else {
+						mainLog.println("\nResults (including zeros) for filter " + filter + ":");
+						mainLog.println("\nMIN\n");
+						subRgnValsMin.printFiltered(mainLog, bsFilterMin, false, false, true, true);
+						mainLog.println("\nMAX\n");
+						subRgnValsMax.printFiltered(mainLog, bsFilterMax, false, false, true, true);
+					}
 				}
-			}
-			resRgnVals = rgnVals;
-			break;
-		case MIN:
-		case MAX:
-		case ARGMIN:
-		case ARGMAX:
-			throw new UnsupportedOperationException();
-		case COUNT:
-			resObjMin = new Integer(rgnValsMin.countOverBitSet(bsFilterMin));
-			resObjMax = new Integer(rgnValsMax.countOverBitSet(bsFilterMax));
-			resRgnValsMin = new StateValues(expr.getType(), resObjMin, model);
-			resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
-			resRgnVals = new BoxRegionValues(model, BoxRegion.completeSpace, resRgnValsMin, resRgnValsMax);
+				resRgnVals = subRgnVals;
+				break;
+			case MIN:
+			case MAX:
+			case ARGMIN:
+			case ARGMAX:
+				throw new UnsupportedOperationException();
+			case COUNT:
+				resObjMin = new Integer(subRgnValsMin.countOverBitSet(bsFilterMin));
+				resObjMax = new Integer(subRgnValsMax.countOverBitSet(bsFilterMax));
+				resRgnValsMin = new StateValues(expr.getType(), resObjMin, model);
+				resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
+				resRgnVals = new BoxRegionValues(model, region, resRgnValsMin, resRgnValsMax);
 
-			resultExpl = filterTrue ? "Count of satisfying states" : "Count of satisfying states also in filter";
-			mainLog.println("\n" + resultExpl + ":");
-			mainLog.println("MIN = " + resObjMin);
-			mainLog.println("MAX = " + resObjMax);
-			break;
-		case SUM:
-		case AVG:
-			throw new PrismException("Operation not implemented for parametric models");
-		case FIRST:
-			resObjMin = rgnValsMin.firstFromBitSet(bsFilterMin);
-			resObjMax = rgnValsMax.firstFromBitSet(bsFilterMax);
-			resRgnValsMin = new StateValues(expr.getType(), resObjMin, model);
-			resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
-			resRgnVals = new BoxRegionValues(model, BoxRegion.completeSpace, resRgnValsMin, resRgnValsMax);
+				resultExpl += filterTrue ? "Count of satisfying states" : "Count of satisfying states also in filter";
+				mainLog.println("\n" + resultExpl + ":");
+				mainLog.println("MIN = " + resObjMin);
+				mainLog.println("MAX = " + resObjMax);
+				break;
+			case SUM:
+			case AVG:
+				throw new PrismException("Operation not implemented for parametric models");
+			case FIRST:
+				resObjMin = subRgnValsMin.firstFromBitSet(bsFilterMin);
+				resObjMax = subRgnValsMax.firstFromBitSet(bsFilterMax);
+				resRgnValsMin = new StateValues(expr.getType(), resObjMin, model);
+				resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
+				resRgnVals = new BoxRegionValues(model, region, resRgnValsMin, resRgnValsMax);
 
-			resultExpl = "Value in ";
-			if (filterInit) {
-				resultExpl += filterInitSingle ? "the initial state" : "first initial state";
-			} else {
-				resultExpl += filterTrue ? "the first state" : "first state satisfying filter";
-			}
-			mainLog.println("\n" + resultExpl + ":");
-			mainLog.println("MIN = " + resObjMin);
-			mainLog.println("MAX = " + resObjMax);
-			break;
-		case RANGE:
-			resObjMin = new prism.Interval(rgnValsMin.minOverBitSet(bsFilterMin), rgnValsMin.maxOverBitSet(bsFilterMin));
-			resObjMax = new prism.Interval(rgnValsMax.minOverBitSet(bsFilterMax), rgnValsMax.maxOverBitSet(bsFilterMax));
-			resRgnVals = rgnVals;
+				resultExpl += "Value in ";
+				if (filterInit) {
+					resultExpl += filterInitSingle ? "the initial state" : "first initial state";
+				} else {
+					resultExpl += filterTrue ? "the first state" : "first state satisfying filter";
+				}
+				mainLog.println("\n" + resultExpl + ":");
+				mainLog.println("MIN = " + resObjMin);
+				mainLog.println("MAX = " + resObjMax);
+				break;
+			case RANGE:
+				resObjMin = new prism.Interval(subRgnValsMin.minOverBitSet(bsFilterMin), subRgnValsMin.maxOverBitSet(bsFilterMin));
+				resObjMax = new prism.Interval(subRgnValsMax.minOverBitSet(bsFilterMax), subRgnValsMax.maxOverBitSet(bsFilterMax));
+				resRgnVals = subRgnVals;
 
-			resultExpl = "Range of values over ";
-			resultExpl += filterInit ? "initial states" : filterStatesString;
-			mainLog.println("\n" + resultExpl + ":");
-			mainLog.println("MIN = " + resObjMin);
-			mainLog.println("MAX = " + resObjMax);
-			break;
-		case FORALL:
-			bsMin = rgnValsMin.getBitSet();
-			bsMax = rgnValsMax.getBitSet();
+				resultExpl += "Range of values over ";
+				resultExpl += filterInit ? "initial states" : filterStatesString;
+				mainLog.println("\n" + resultExpl + ":");
+				mainLog.println("MIN = " + resObjMin);
+				mainLog.println("MAX = " + resObjMax);
+				break;
+			case FORALL:
+				bsMin = subRgnValsMin.getBitSet();
+				bsMax = subRgnValsMax.getBitSet();
 
-			mainLog.println("\nNumber of states satisfying " + expr.getOperand() + ":");
-			mainLog.print("MIN = " + bsMin.cardinality());
-			mainLog.println(bsMin.cardinality() == model.getNumStates() ? " (all in model)" : "");
-			mainLog.print("MAX = " + bsMax.cardinality());
-			mainLog.println(bsMax.cardinality() == model.getNumStates() ? " (all in model)" : "");
+				mainLog.println("\nNumber of states satisfying " + expr.getOperand() + ":");
+				mainLog.print("MIN = " + bsMin.cardinality());
+				mainLog.println(bsMin.cardinality() == model.getNumStates() ? " (all in model)" : "");
+				mainLog.print("MAX = " + bsMax.cardinality());
+				mainLog.println(bsMax.cardinality() == model.getNumStates() ? " (all in model)" : "");
 
-			resObjMin = new Boolean(rgnValsMin.forallOverBitSet(bsFilterMin));
-			resObjMax = new Boolean(rgnValsMax.forallOverBitSet(bsFilterMax));
-			resRgnValsMin = new StateValues(expr.getType(), resObjMin, model);
-			resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
-			resRgnVals = new BoxRegionValues(model, BoxRegion.completeSpace, resRgnValsMin, resRgnValsMax);
+				resObjMin = new Boolean(subRgnValsMin.forallOverBitSet(bsFilterMin));
+				resObjMax = new Boolean(subRgnValsMax.forallOverBitSet(bsFilterMax));
+				resRgnValsMin = new StateValues(expr.getType(), resObjMin, model);
+				resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
+				resRgnVals = new BoxRegionValues(model, region, resRgnValsMin, resRgnValsMax);
 
-			mainLog.print("\nProperty satisfied in {");
-			mainLog.print("MIN = " + rgnValsMin.countOverBitSet(bsFilterMin) + ", ");
-			mainLog.print("MAX = " + rgnValsMin.countOverBitSet(bsFilterMin) + "}");
-			if (filterInit) {
-				mainLog.println(" of " + model.getNumInitialStates() + " initial states.");
-			} else {
+				mainLog.print("\nProperty satisfied in {");
+				mainLog.print("MIN = " + subRgnValsMin.countOverBitSet(bsFilterMin) + ", ");
+				mainLog.print("MAX = " + subRgnValsMin.countOverBitSet(bsFilterMin) + "}");
+				if (filterInit) {
+					mainLog.println(" of " + model.getNumInitialStates() + " initial states.");
+				} else {
+					if (filterTrue) {
+						mainLog.println(" of all " + model.getNumStates() + " states.");
+					} else {
+						mainLog.print(" of {");
+						mainLog.print("MIN = " + bsFilterMin.cardinality() + ", ");
+						mainLog.print("MAX = " + bsFilterMax.cardinality() + "}");
+						mainLog.println(" filter states.");
+					}
+				}
+				break;
+			case EXISTS:
+				bsMin = subRgnValsMin.getBitSet();
+				bsMax = subRgnValsMax.getBitSet();
+				resObjMin = new Boolean(subRgnValsMin.existsOverBitSet(bsFilterMin));
+				resObjMax = new Boolean(subRgnValsMax.existsOverBitSet(bsFilterMax));
+				resRgnValsMin = new StateValues(expr.getType(), resObjMin, model);
+				resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
+				resRgnVals = new BoxRegionValues(model, region, resRgnValsMin, resRgnValsMax);
+
+				// Create explanation of result and print some details to log
+				resultExpl += "MIN = Property satisfied in ";
 				if (filterTrue) {
-					mainLog.println(" of all " + model.getNumStates() + " states.");
+					resultExpl += ((boolean) resObjMin) ? "at least one state" : "no states";
 				} else {
-					mainLog.print(" of {");
-					mainLog.print("MIN = " + bsFilterMin.cardinality() + ", ");
-					mainLog.print("MAX = " + bsFilterMax.cardinality() + "}");
-					mainLog.println(" filter states.");
+					resultExpl += ((boolean) resObjMin) ? "at least one filter state" : "no filter states";
 				}
-			}
-			break;
-		case EXISTS:
-			bsMin = rgnValsMin.getBitSet();
-			bsMax = rgnValsMax.getBitSet();
-			resObjMin = new Boolean(rgnValsMin.existsOverBitSet(bsFilterMin));
-			resObjMax = new Boolean(rgnValsMax.existsOverBitSet(bsFilterMax));
-			resRgnValsMin = new StateValues(expr.getType(), resObjMin, model);
-			resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
-			resRgnVals = new BoxRegionValues(model, BoxRegion.completeSpace, resRgnValsMin, resRgnValsMax);
+				resultExpl += "\nMAX = Property satisfied in ";
+				if (filterTrue) {
+					resultExpl += ((boolean) resObjMax) ? "at least one state" : "no states";
+				} else {
+					resultExpl += ((boolean) resObjMax) ? "at least one filter state" : "no filter states";
+				}
+				mainLog.println("\n" + resultExpl);
+				break;
+			case STATE:
+				// Check filter satisfied by exactly one state
+				if (bsFilterMin.cardinality() != 1 || bsFilterMax.cardinality() != 1) {
+					String s = "Filter should be satisfied in exactly 1 state";
+					s += " (but \"" + filter + "\" is true in {";
+					s += "MIN = " + bsFilterMin.cardinality() + ", ";
+					s += "MAX = " + bsFilterMax.cardinality() + "} states)";
+					throw new PrismException(s);
+				}
 
-			// Create explanation of result and print some details to log
-			resultExpl = "MIN = Property satisfied in ";
-			if (filterTrue) {
-				resultExpl += ((boolean) resObjMin) ? "at least one state" : "no states";
-			} else {
-				resultExpl += ((boolean) resObjMin) ? "at least one filter state" : "no filter states";
-			}
-			resultExpl = "\nMAX = Property satisfied in ";
-			if (filterTrue) {
-				resultExpl += ((boolean) resObjMax) ? "at least one state" : "no states";
-			} else {
-				resultExpl += ((boolean) resObjMax) ? "at least one filter state" : "no filter states";
-			}
-			mainLog.println("\n" + resultExpl);
-			break;
-		case STATE:
-			// Check filter satisfied by exactly one state
-			if (bsFilterMin.cardinality() != 1 || bsFilterMax.cardinality() != 1) {
-				String s = "Filter should be satisfied in exactly 1 state";
-				s += " (but \"" + filter + "\" is true in {";
-				s += "MIN = " + bsFilterMin.cardinality() + ", ";
-				s += "MAX = " + bsFilterMax.cardinality() + "} states)";
-				throw new PrismException(s);
-			}
+				resObjMin = subRgnValsMin.firstFromBitSet(bsFilterMin);
+				resObjMax = subRgnValsMax.firstFromBitSet(bsFilterMax);
+				resRgnValsMin = new StateValues(expr.getType(), resObjMin, model);
+				resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
+				resRgnVals = new BoxRegionValues(model, region, resRgnValsMin, resRgnValsMax);
 
-			resObjMin = rgnValsMin.firstFromBitSet(bsFilterMin);
-			resObjMax = rgnValsMax.firstFromBitSet(bsFilterMax);
-			resRgnValsMin = new StateValues(expr.getType(), resObjMin, model);
-			resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
-			resRgnVals = new BoxRegionValues(model, BoxRegion.completeSpace, resRgnValsMin, resRgnValsMax);
-
-			// Create explanation of result and print some details to log
-			resultExpl = "Value in ";
-			if (filterInit) {
-				resultExpl += "the initial state";
-			} else {
-				resultExpl += "the filter state";
+				// Create explanation of result and print some details to log
+				resultExpl += "Value in ";
+				if (filterInit) {
+					resultExpl += "the initial state";
+				} else {
+					resultExpl += "the filter state";
+				}
+				mainLog.println("\n" + resultExpl + ":");
+				mainLog.println("MIN = " + resObjMin);
+				mainLog.println("MAX = " + resObjMax);
+				break;
+			default:
+				throw new PrismException("Unrecognised filter type \"" + expr.getOperatorName() + "\"");
 			}
-			mainLog.println("\n" + resultExpl + ":");
-			mainLog.println("MIN = " + resObjMin);
-			mainLog.println("MAX = " + resObjMax);
-			break;
-		default:
-			throw new PrismException("Unrecognised filter type \"" + expr.getOperatorName() + "\"");
 		}
 
 		return resRgnVals;
@@ -452,9 +463,9 @@ final public class PSEModelChecker extends PrismComponent
 		// Otherwise, compare against bound to get set of satisfying states
 		else {
 			for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
-				BitSet solMin = entry.getValue().getMin().getBitSetFromInterval(relOp, p);
-				BitSet solMax = entry.getValue().getMax().getBitSetFromInterval(relOp, p);
-				regionValues.put(entry.getKey(), solMin, solMax);
+				BitSet solnMin = entry.getValue().getMin().getBitSetFromInterval(relOp, p);
+				BitSet solnMax = entry.getValue().getMax().getBitSetFromInterval(relOp, p);
+				regionValues.put(entry.getKey(), solnMin, solnMax);
 			}
 			return regionValues;
 		}
@@ -491,14 +502,14 @@ final public class PSEModelChecker extends PrismComponent
 			}
 			// Negation
 			else if (exprUnary.getOperator() == ExpressionUnaryOp.NOT) {
-				// TODO
-				/*
 				// Compute, then subtract from 1
-				mcRes = checkProbPathFormulaSimple(model, exprUnary.getOperand());
-				mcRes.timesConstant(-1.0);
-				mcRes.plusConstant(1.0);
-				*/
-				throw new UnsupportedOperationException();
+				regionValues = checkProbPathFormulaSimple(model, exprUnary.getOperand());
+				for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
+					entry.getValue().getMin().timesConstant(-1.0);
+					entry.getValue().getMin().plusConstant(1.0);
+					entry.getValue().getMax().timesConstant(-1.0);
+					entry.getValue().getMax().plusConstant(1.0);
+				}
 			}
 		}
 		// Temporal operators
@@ -506,9 +517,7 @@ final public class PSEModelChecker extends PrismComponent
 			ExpressionTemporal exprTemp = (ExpressionTemporal) expr;
 			// Next
 			if (exprTemp.getOperator() == ExpressionTemporal.P_X) {
-				// TODO
-				//probs = checkProbNext(model, exprTemp);
-				throw new UnsupportedOperationException();
+				regionValues = checkProbNext(model, exprTemp);
 			}
 			// Until
 			else if (exprTemp.getOperator() == ExpressionTemporal.P_U) {
@@ -530,6 +539,53 @@ final public class PSEModelChecker extends PrismComponent
 			throw new PrismException("Unrecognised path operator in P operator");
 
 		return regionValues;
+	}
+
+	/**
+	 * Model check a next operator.
+	 */
+	protected BoxRegionValues checkProbNext(Model model, ExpressionTemporal expr) throws PrismException
+	{
+		BoxRegionValues op2RgnVals = checkExpression(model, expr.getOperand2());
+		assert op2RgnVals.getNumRegions() == 1;
+		BitSet targetMin = op2RgnVals.getMin(BoxRegion.completeSpace).getBitSet();
+		BitSet targetMax = op2RgnVals.getMax(BoxRegion.completeSpace).getBitSet();
+		return computeNextProbs((PSEModel) model, targetMin, targetMax);
+	}
+
+	public BoxRegionValues computeNextProbs(PSEModel ctmcRanged, BitSet targetMin, BitSet targetMax) throws PrismException
+	{
+		// TODO
+		return null;
+	}
+
+	/**
+	 * Compute probabilities for an (unbounded) until operator.
+	 */
+	protected BoxRegionValues checkProbUntil(Model model, ExpressionTemporal expr) throws PrismException
+	{
+		BitSet b1, b2;
+		BoxRegionValues probs = null;
+
+		// TODO
+		/*
+		// model check operands first
+		b1 = checkExpression(model, expr.getOperand1()).getBitSet();
+		b2 = checkExpression(model, expr.getOperand2()).getBitSet();
+
+		probs = computeUntilProbs((PSEModel) model, b1, b2);
+
+		return probs;
+		*/
+
+		throw new UnsupportedOperationException();
+	}
+
+	public BoxRegionValues computeUntilProbs(PSEModel ctmcRanged, BitSet remain, BitSet target) throws PrismException
+	{
+		// TODO
+		//return computeReachProbs(ctmcRanged, remain, target, null, null);
+		throw new UnsupportedOperationException();
 	}
 
 	/**
@@ -573,10 +629,13 @@ final public class PSEModelChecker extends PrismComponent
 		}
 
 		// model check operands first
-		b1Min = checkExpression(model, expr.getOperand1()).getMin(BoxRegion.completeSpace).getBitSet();
-		b1Max = checkExpression(model, expr.getOperand1()).getMax(BoxRegion.completeSpace).getBitSet();
-		b2Min = checkExpression(model, expr.getOperand2()).getMin(BoxRegion.completeSpace).getBitSet();
-		b2Max = checkExpression(model, expr.getOperand2()).getMax(BoxRegion.completeSpace).getBitSet();
+		BoxRegionValues op1RgnVals = checkExpression(model, expr.getOperand1());
+		BoxRegionValues op2RgnVals = checkExpression(model, expr.getOperand2());
+		assert op1RgnVals.getNumRegions() == 1 && op2RgnVals.getNumRegions() == 1;
+		b1Min = op1RgnVals.getMin(BoxRegion.completeSpace).getBitSet();
+		b1Max = op1RgnVals.getMax(BoxRegion.completeSpace).getBitSet();
+		b2Min = op2RgnVals.getMin(BoxRegion.completeSpace).getBitSet();
+		b2Max = op2RgnVals.getMax(BoxRegion.completeSpace).getBitSet();
 
 		// compute probabilities
 
@@ -706,7 +765,6 @@ final public class PSEModelChecker extends PrismComponent
 		// Initialise solution vectors.
 		// Vectors soln/soln2 are 1 for target states, or multProbs[i] if supplied.
 		// Vector sum is all zeros (done by array creation).
-		// XXX: soln2 is immediately overwritten here as well, isn't it?
 		if (multProbsMin != null) {
 			for (i = 0; i < n; i++)
 				solnMin[i] = soln2Min[i] = targetMin.get(i) ? multProbsMin[i] : 0.0;
@@ -764,35 +822,6 @@ final public class PSEModelChecker extends PrismComponent
 		mainLog.print(" and " + timer / 1000.0 + " seconds in total.\n");
 
 		return regionValues;
-	}
-
-	/**
-	 * Compute probabilities for an (unbounded) until operator.
-	 */
-	protected BoxRegionValues checkProbUntil(Model model, ExpressionTemporal expr) throws PrismException
-	{
-		BitSet b1, b2;
-		BoxRegionValues probs = null;
-
-		// TODO
-		/*
-		// model check operands first
-		b1 = checkExpression(model, expr.getOperand1()).getBitSet();
-		b2 = checkExpression(model, expr.getOperand2()).getBitSet();
-
-		probs = computeUntilProbs((PSEModel) model, b1, b2);
-
-		return probs;
-		*/
-
-		throw new UnsupportedOperationException();
-	}
-
-	public BoxRegionValues computeUntilProbs(PSEModel ctmcRanged, BitSet remain, BitSet target) throws PrismException
-	{
-		// TODO
-		//return computeReachProbs(ctmcRanged, remain, target, null, null);
-		throw new UnsupportedOperationException();
 	}
 
 	// Transient analysis
@@ -890,10 +919,13 @@ final public class PSEModelChecker extends PrismComponent
 			// (don't need to do soln2 since will be immediately overwritten)
 			solnMin = initDistMin.clone();
 			solnMax = initDistMax.clone();
+			/*
+			// Done by array creation...?
 			for (i = 0; i < n; i++) {
 				sumMin[i] = 0.0;
 				sumMax[i] = 0.0;
 			}
+			*/
 
 			// If necessary, do 0th element of summation (doesn't require any matrix powers)
 			if (left == 0) {
