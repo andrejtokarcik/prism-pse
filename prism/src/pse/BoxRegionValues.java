@@ -26,6 +26,7 @@
 
 package pse;
 
+import java.util.BitSet;
 import java.util.TreeMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
@@ -68,25 +69,32 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 	public BoxRegionValues(Model model, BoxRegion region, StateValues minValues, StateValues maxValues)
 	{
 		this(model);
-		add(region, minValues, maxValues);
+		put(region, minValues, maxValues);
 	}
 
 	public BoxRegionValues(Model model, BoxRegion region, double[] minValues, double[] maxValues)
 	{
 		this(model);
-		add(region, minValues, maxValues);
+		put(region, minValues, maxValues);
 	}
 
-	public void add(BoxRegion region, StateValues minValues, StateValues maxValues)
+	public void put(BoxRegion region, StateValues minValues, StateValues maxValues)
 	{
 		valuesPairs.put(region, new StateValuesPair(minValues, maxValues));
 	}
 
-	public void add(BoxRegion region, double[] min, double[] max)
+	public void put(BoxRegion region, double[] min, double[] max)
 	{
 		StateValues minValues = StateValues.createFromDoubleArray(min, model);
 		StateValues maxValues = StateValues.createFromDoubleArray(max, model);
-		add(region, minValues, maxValues);
+		put(region, minValues, maxValues);
+	}
+
+	public void put(BoxRegion region, BitSet min, BitSet max)
+	{
+		StateValues minValues = StateValues.createFromBitSet(min, model);
+		StateValues maxValues = StateValues.createFromBitSet(max, model);
+		put(region, minValues, maxValues);
 	}
 
 	public StateValues getMin(BoxRegion region)

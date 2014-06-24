@@ -30,6 +30,7 @@ package pse;
 
 import java.util.BitSet;
 import java.util.LinkedList;
+import java.util.Map.Entry;
 
 import parser.Values;
 import parser.ast.Expression;
@@ -40,6 +41,7 @@ import parser.ast.ExpressionTemporal;
 import parser.ast.ExpressionUnaryOp;
 import parser.ast.ModulesFile;
 import parser.ast.PropertiesFile;
+import parser.ast.RelOp;
 import parser.ast.ExpressionFilter.FilterOperator;
 import parser.type.TypeBool;
 import parser.type.TypeDouble;
@@ -187,8 +189,6 @@ final public class PSEModelChecker extends PrismComponent
 		resultString += ": " + result.getResultString();
 		mainLog.print("\n" + resultString);
 
-		// TODO: regionValues.clear()?
-
 		return result;
 	}
 
@@ -288,7 +288,7 @@ final public class PSEModelChecker extends PrismComponent
 			break;
 		case SUM:
 		case AVG:
-			throw new UnsupportedOperationException();
+			throw new PrismException("Operation not implemented for parametric models");
 		case FIRST:
 			resObjMin = rgnValsMin.firstFromBitSet(bsFilterMin);
 			resObjMax = rgnValsMax.firstFromBitSet(bsFilterMax);
@@ -414,11 +414,13 @@ final public class PSEModelChecker extends PrismComponent
 	{
 		Expression pb; // Probability bound (expression)
 		double p = 0; // Probability bound (actual value)
+		RelOp relOp; // Relational operator
 		ModelType modelType = model.getModelType();
 
 		BoxRegionValues regionValues = null;
 
 		// Get info from prob operator
+		relOp = expr.getRelOp();
 		pb = expr.getProb();
 		if (pb != null) {
 			p = pb.evaluateDouble(constantValues);
@@ -449,8 +451,12 @@ final public class PSEModelChecker extends PrismComponent
 		}
 		// Otherwise, compare against bound to get set of satisfying states
 		else {
-			// TODO
-			throw new UnsupportedOperationException();
+			for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
+				BitSet solMin = entry.getValue().getMin().getBitSetFromInterval(relOp, p);
+				BitSet solMax = entry.getValue().getMax().getBitSetFromInterval(relOp, p);
+				regionValues.put(entry.getKey(), solMin, solMax);
+			}
+			return regionValues;
 		}
 	}
 
@@ -464,8 +470,7 @@ final public class PSEModelChecker extends PrismComponent
 		if (expr.isSimplePathFormula()) {
 			return checkProbPathFormulaSimple(model, expr);
 		} else {
-			// TODO return checkProbPathFormulaLTL(model, expr, false);
-			throw new UnsupportedOperationException();
+			throw new PrismException("Operation not implemented for parametric models");
 		}
 	}
 
@@ -750,7 +755,7 @@ final public class PSEModelChecker extends PrismComponent
 		}
 
 		// Store result
-		regionValues.add(BoxRegion.completeSpace, sumMin, sumMax);
+		regionValues.put(BoxRegion.completeSpace, sumMin, sumMax);
 
 		// Finished bounded probabilistic reachability
 		timer = System.currentTimeMillis() - timer;
@@ -937,7 +942,7 @@ final public class PSEModelChecker extends PrismComponent
 				}
 
 				// Store result
-				regionValues.add(region, sumMin, sumMax);
+				regionValues.put(region, sumMin, sumMax);
 			} catch (SignificantInaccuracy e) {
 				// Decompose the current region!
 				regions.add(region.lowerHalf());
