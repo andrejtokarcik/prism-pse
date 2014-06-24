@@ -3459,8 +3459,10 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			// Results report
 			mainLog.println("\nPrinting transient probabilities w.r.t. the given parameter space:");
 			// TODO: printing to other log files (search for tmpLog used elsewhere)
-			
+
+			// print out or export probabilities
 			for (Entry<pse.BoxRegion, pse.BoxRegionValues.StateValuesPair> entry : regionValues) {
+				// TODO: merge with BoxRegionValues.toString()
 				mainLog.print("\n== Region ");
 				pse.BoxRegion region = entry.getKey();
 				for (int pnr = 0; pnr < pseNames.length; pnr++) {
@@ -3473,11 +3475,10 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 				mainLog.print(" ==\n");
 
 				mainLog.println("\n=== Minimised probabilities ===\n");
-				// print out or export probabilities
-				entry.getValue().getMin().print(mainLog, true, false, true, true);
+				entry.getValue().getMin().print(mainLog);
 
 				mainLog.println("\n=== Maximised probabilities ===\n");
-				entry.getValue().getMax().print(mainLog, true, false, true, true);
+				entry.getValue().getMax().print(mainLog);
 			}
 
 			// print out computation time

@@ -62,7 +62,7 @@ public class BoxRegion extends Pair.ComparablePair<Double, Double>
 	
 	@Override
 	public String toString() {
-		// TODO: Multiply actual param bounds (supplied via BoxRegionFactory, cf. param?)
-		return "[" + first + ", " + second + "]";
+		// TODO: Multiply by actual param bounds (e.g. supplied via BoxRegionFactory as in param?)
+		return "Region [" + first + ", " + second + "]";
 	}
 }

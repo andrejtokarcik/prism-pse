@@ -26,6 +26,8 @@
 
 package pse;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.util.BitSet;
 import java.util.TreeMap;
 import java.util.Iterator;
@@ -34,6 +36,7 @@ import java.util.Map.Entry;
 import explicit.Model;
 import explicit.StateValues;
 import prism.Pair;
+import prism.PrismPrintStreamLog;
 
 public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValues.StateValuesPair>>
 {
@@ -117,4 +120,33 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 	{
 		return valuesPairs.entrySet().iterator();
 	}
+
+	@Override
+	public String toString()
+	{
+		// XXX: hackity hack because StateValues hasn't got toString(), just print()
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		PrismPrintStreamLog dump = new PrismPrintStreamLog(new PrintStream(baos));
+
+		StringBuilder builder = new StringBuilder();
+		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : valuesPairs.entrySet()) {
+			builder.append("== " + entry.getKey().toString() + " ==\n");
+			builder.append("\n");
+			builder.append("=== Minimised state values ===\n");
+			baos.reset();
+			entry.getValue().getMin().print(dump);
+			builder.append(baos.toString());
+			builder.append("\n");
+			builder.append("=== Maximised state values ===\n");
+			baos.reset();
+			entry.getValue().getMax().print(dump);
+			builder.append(baos.toString());
+			builder.append("\n");
+		}
+		dump.close();
+		return builder.toString();
+	}
+
+	// TODO to facilitate garbage-collecting
+	//public void clear()
 }
