@@ -34,15 +34,35 @@ import explicit.Model;
 import explicit.StateValues;
 import prism.Pair;
 
-public class BoxRegionValues implements Iterable<Entry<BoxRegion, Pair<StateValues, StateValues>>>
+public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValues.StateValuesPair>>
 {
 	private Model model;
-	private TreeMap<BoxRegion, Pair<StateValues, StateValues>> valuesPairs;
+	private TreeMap<BoxRegion, BoxRegionValues.StateValuesPair> valuesPairs;
+
+	public static class StateValuesPair extends Pair<StateValues, StateValues>
+	{
+		public StateValues min;
+		public StateValues max;
+
+		public StateValuesPair(StateValues min, StateValues max) {
+			super(min, max);
+			this.min = min;
+			this.max = max;
+		}
+
+		public StateValues getMin() {
+			return min;
+		}
+
+		public StateValues getMax() {
+			return max;
+		}
+	}
 
 	public BoxRegionValues(Model model)
 	{
 		this.model = model;
-		valuesPairs = new TreeMap<BoxRegion, Pair<StateValues, StateValues>>();
+		valuesPairs = new TreeMap<BoxRegion, BoxRegionValues.StateValuesPair>();
 	}
 
 	public BoxRegionValues(Model model, BoxRegion region, StateValues minValues, StateValues maxValues)
@@ -59,7 +79,7 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, Pair<StateValu
 
 	public void add(BoxRegion region, StateValues minValues, StateValues maxValues)
 	{
-		valuesPairs.put(region, new Pair<StateValues, StateValues>(minValues, maxValues));
+		valuesPairs.put(region, new StateValuesPair(minValues, maxValues));
 	}
 
 	public void add(BoxRegion region, double[] min, double[] max)
@@ -71,12 +91,12 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, Pair<StateValu
 
 	public StateValues getMin(BoxRegion region)
 	{
-		return valuesPairs.get(region).first;
+		return valuesPairs.get(region).getMin();
 	}
 
 	public StateValues getMax(BoxRegion region)
 	{
-		return valuesPairs.get(region).second;
+		return valuesPairs.get(region).getMax();
 	}
 
 	public int getNumRegions()
@@ -85,7 +105,7 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, Pair<StateValu
 	}
 
 	@Override
-	public Iterator<Entry<BoxRegion, Pair<StateValues, StateValues>>> iterator()
+	public Iterator<Entry<BoxRegion, BoxRegionValues.StateValuesPair>> iterator()
 	{
 		return valuesPairs.entrySet().iterator();
 	}
