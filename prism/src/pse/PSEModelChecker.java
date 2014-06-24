@@ -481,7 +481,7 @@ final public class PSEModelChecker extends PrismComponent
 		if (expr.isSimplePathFormula()) {
 			return checkProbPathFormulaSimple(model, expr);
 		} else {
-			throw new PrismException("Operation not implemented for parametric models");
+			throw new PrismException("PSE supports unnested CSL formulae only");
 		}
 	}
 
@@ -517,16 +517,14 @@ final public class PSEModelChecker extends PrismComponent
 			ExpressionTemporal exprTemp = (ExpressionTemporal) expr;
 			// Next
 			if (exprTemp.getOperator() == ExpressionTemporal.P_X) {
-				regionValues = checkProbNext(model, exprTemp);
+				throw new PrismException("X operator requires embedded DTMC representation not supported by PSE");
 			}
 			// Until
 			else if (exprTemp.getOperator() == ExpressionTemporal.P_U) {
 				if (exprTemp.hasBounds()) {
 					regionValues = checkProbBoundedUntil(model, exprTemp);
 				} else {
-					// TODO
-					//probs = checkProbUntil(model, exprTemp);
-					throw new UnsupportedOperationException();
+					throw new PrismException("PSE supports bounded until only");
 				}
 			}
 			// Anything else - convert to until and recurse
@@ -539,53 +537,6 @@ final public class PSEModelChecker extends PrismComponent
 			throw new PrismException("Unrecognised path operator in P operator");
 
 		return regionValues;
-	}
-
-	/**
-	 * Model check a next operator.
-	 */
-	protected BoxRegionValues checkProbNext(Model model, ExpressionTemporal expr) throws PrismException
-	{
-		BoxRegionValues op2RgnVals = checkExpression(model, expr.getOperand2());
-		assert op2RgnVals.getNumRegions() == 1;
-		BitSet targetMin = op2RgnVals.getMin(BoxRegion.completeSpace).getBitSet();
-		BitSet targetMax = op2RgnVals.getMax(BoxRegion.completeSpace).getBitSet();
-		return computeNextProbs((PSEModel) model, targetMin, targetMax);
-	}
-
-	public BoxRegionValues computeNextProbs(PSEModel ctmcRanged, BitSet targetMin, BitSet targetMax) throws PrismException
-	{
-		// TODO
-		return null;
-	}
-
-	/**
-	 * Compute probabilities for an (unbounded) until operator.
-	 */
-	protected BoxRegionValues checkProbUntil(Model model, ExpressionTemporal expr) throws PrismException
-	{
-		BitSet b1, b2;
-		BoxRegionValues probs = null;
-
-		// TODO
-		/*
-		// model check operands first
-		b1 = checkExpression(model, expr.getOperand1()).getBitSet();
-		b2 = checkExpression(model, expr.getOperand2()).getBitSet();
-
-		probs = computeUntilProbs((PSEModel) model, b1, b2);
-
-		return probs;
-		*/
-
-		throw new UnsupportedOperationException();
-	}
-
-	public BoxRegionValues computeUntilProbs(PSEModel ctmcRanged, BitSet remain, BitSet target) throws PrismException
-	{
-		// TODO
-		//return computeReachProbs(ctmcRanged, remain, target, null, null);
-		throw new UnsupportedOperationException();
 	}
 
 	/**
@@ -650,22 +601,7 @@ final public class PSEModelChecker extends PrismComponent
 
 			// >= lTime
 			if (uTime == -1) {
-				// check for special case of lTime == 0, this is actually an unbounded until
-				if (lTime == 0) {
-					// TODO
-					// compute probs
-					//regionValues = computeUntilProbs((PSEModel) model, b1, b2);
-					throw new UnsupportedOperationException();
-				} else {
-					// TODO
-					/*
-					// compute unbounded until probs
-					tmpRegionValues = computeUntilProbs((PSEModel) model, b1, b2);
-					// compute bounded until probs
-					regionValues = computeTransientBackwardsProbsRanged((PSEModel) model, b1, b1, lTime, tmpRegionValues);
-					*/
-					throw new UnsupportedOperationException();
-				}
+				throw new PrismException("PSE supports bounded until only");
 			}
 			// <= uTime
 			else if (lTime == 0) {
