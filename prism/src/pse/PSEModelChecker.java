@@ -337,8 +337,8 @@ final public class PSEModelChecker extends PrismComponent
 				mainLog.print("MAX = " + bsMax.cardinality());
 				mainLog.println(bsMax.cardinality() == model.getNumStates() ? " (all in model)" : "");
 
-				resObjMin = new Boolean(subRgnValsMin.forallOverBitSet(bsFilterMin));
-				resObjMax = new Boolean(subRgnValsMax.forallOverBitSet(bsFilterMax));
+				resObjMin = subRgnValsMin.forallOverBitSet(bsFilterMin);
+				resObjMax = subRgnValsMax.forallOverBitSet(bsFilterMax);
 				resRgnValsMin = new StateValues(expr.getType(), resObjMin, model);
 				resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
 				resRgnVals = new BoxRegionValues(model, region, resRgnValsMin, resRgnValsMax);
@@ -362,24 +362,25 @@ final public class PSEModelChecker extends PrismComponent
 			case EXISTS:
 				bsMin = subRgnValsMin.getBitSet();
 				bsMax = subRgnValsMax.getBitSet();
-				resObjMin = new Boolean(subRgnValsMin.existsOverBitSet(bsFilterMin));
-				resObjMax = new Boolean(subRgnValsMax.existsOverBitSet(bsFilterMax));
-				resRgnValsMin = new StateValues(expr.getType(), resObjMin, model);
-				resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
+				// XXX: an attempt to fix Milan's compilation error 2014-06-24
+				boolean bObjMin = subRgnValsMin.existsOverBitSet(bsFilterMin);
+				boolean bObjMax = subRgnValsMax.existsOverBitSet(bsFilterMax);
+				resRgnValsMin = new StateValues(expr.getType(), bObjMin, model);
+				resRgnValsMax = new StateValues(expr.getType(), bObjMax, model);
 				resRgnVals = new BoxRegionValues(model, region, resRgnValsMin, resRgnValsMax);
 
 				// Create explanation of result and print some details to log
 				resultExpl += "MIN = Property satisfied in ";
 				if (filterTrue) {
-					resultExpl += ((boolean) resObjMin) ? "at least one state" : "no states";
+					resultExpl += bObjMin ? "at least one state" : "no states";
 				} else {
-					resultExpl += ((boolean) resObjMin) ? "at least one filter state" : "no filter states";
+					resultExpl += bObjMin ? "at least one filter state" : "no filter states";
 				}
 				resultExpl += "\nMAX = Property satisfied in ";
 				if (filterTrue) {
-					resultExpl += ((boolean) resObjMax) ? "at least one state" : "no states";
+					resultExpl += bObjMax ? "at least one state" : "no states";
 				} else {
-					resultExpl += ((boolean) resObjMax) ? "at least one filter state" : "no filter states";
+					resultExpl += bObjMax ? "at least one filter state" : "no filter states";
 				}
 				mainLog.println("\n" + resultExpl);
 				break;
