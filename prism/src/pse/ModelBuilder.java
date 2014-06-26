@@ -158,7 +158,6 @@ public final class ModelBuilder extends PrismComponent
 			throws PrismException
 	{
 		int numStates = 0;
-		int numTotalChoices = 0;
 		int numTotalSuccessors = 0;
 
 		LinkedList<State> explore = new LinkedList<State>();
@@ -174,7 +173,6 @@ public final class ModelBuilder extends PrismComponent
 			transitionsCache.put(state, tranlist);
 			
 			int numChoices = tranlist.getNumChoices();
-			numTotalChoices += 1;
 			for (int choiceNr = 0; choiceNr < numChoices; choiceNr++) {
 				int numSuccessors = tranlist.getChoice(choiceNr).size();
 				numTotalSuccessors += numSuccessors;
@@ -191,7 +189,7 @@ public final class ModelBuilder extends PrismComponent
 			}
 		}
 
-		model.reserveMem(numStates, numTotalChoices, numTotalSuccessors);
+		model.reserveMem(numStates, numTotalSuccessors);
 	}
 
 	/**
@@ -281,24 +279,25 @@ public final class ModelBuilder extends PrismComponent
 				ChoiceListFlexi choice = tranlist.getChoice(choiceNr);
 				int a = tranlist.getTransitionModuleOrActionIndex(tranlist.getTotalIndexOfTransition(choiceNr, 0));
 				String action = a < 0 ? null : modulesFile.getSynch(a - 1);
-				int numSuccessors = choice.size();
-				for (int succNr = 0; succNr < numSuccessors; succNr++) {
-					State stateNew = choice.computeTarget(succNr, state);
-					Expression rateExpr = choice.getProbability(succNr);
-					Expression rateParams = getRateParams(rateExpr);
-					double rateParamsLower = rateParams.evaluateDouble(paramsLower);
-					double rateParamsUpper = rateParams.evaluateDouble(paramsUpper);
-					double ratePopulation = getRatePopulation(rateExpr);
-					model.addTransition(choice.hashCode(), permut[states.get(state)], permut[states.get(stateNew)], rateParamsLower, rateParamsUpper, ratePopulation, action);
-					sumOut = Expression.Plus(sumOut, rateExpr);
-				}
+
+				// CTMCs should only have a single nondeterministic choice per state
+				assert choice.size() == 1;
+
+				State stateNew = choice.computeTarget(0, state);
+				Expression rateExpr = choice.getProbability(0);
+				Expression rateParams = getRateParams(rateExpr);
+				double rateParamsLower = rateParams.evaluateDouble(paramsLower);
+				double rateParamsUpper = rateParams.evaluateDouble(paramsUpper);
+				double ratePopulation = getRatePopulation(rateExpr);
+				model.addTransition(choice.hashCode(), permut[states.get(state)], permut[states.get(stateNew)], rateParamsLower, rateParamsUpper, ratePopulation, action);
+				sumOut = Expression.Plus(sumOut, rateExpr);
 			}
 			if (numChoices == 0) {
 				model.addDeadlockState(stateNr);
+				// TODO s/-1/null/
 				model.addTransition(-1, stateNr, stateNr, 1, 1, 1, null);
 			}
 			model.setSumLeaving(sumOut.evaluateDouble(paramsUpper));
-			model.finishChoice();
 			model.finishState();
 			stateNr++;
 		}

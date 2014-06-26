@@ -48,14 +48,10 @@ import explicit.ModelExplicit;
 
 final class PSEModel extends ModelExplicit
 {
-	/** total number of nondeterministic choices over all states */
-	private int numTotalChoices;
 	/** total number of probabilistic transitions over all states */
 	private int numTotalTransitions;
 	/** begin and end of state transitions */
 	private int[] rows;
-	/** begin and end of a distribution in a nondeterministic choice */
-	private int[] choices;
 	/** origins and targets of distribution branches */
 	private int[] colsFrom;
 	private int[] colsTo;
@@ -66,12 +62,12 @@ final class PSEModel extends ModelExplicit
 	private double[] rateParamsUppers;
 	private double[] ratePopulations;
 	/** */
-	private boolean[] parametrisedSuccs;
-	/** hash codes of choices/reactions associated with distribution branches */
+	private boolean[] parametrisedTransitions;
+	/** reactions - classes of transitions */
 	private int[] reactions;
 	/** labels - per transition, <i>not</i> per action */
 	private String[] labels;
-	/** total sum of leaving rates for a given nondeterministic choice */
+	/** total sum of leaving rates for a state */
 	private double[] exitRates;
 	/** model type */
 	private ModelType modelType;
@@ -88,7 +84,6 @@ final class PSEModel extends ModelExplicit
 	PSEModel()
 	{
 		numStates = 0;
-		numTotalChoices = 0;
 		numTotalTransitions = 0;
 		initialStates = new LinkedList<Integer>();
 		deadlocks = new TreeSet<Integer>();
@@ -133,11 +128,9 @@ final class PSEModel extends ModelExplicit
 	@Override
 	public boolean isSuccessor(int s1, int s2)
 	{
-		for (int choice = stateBegin(s1); choice < stateEnd(s1); choice++) {
-			for (int succ = choiceBegin(choice); succ < choiceEnd(choice); succ++) {
-				if (succState(succ) == s2) {
-					return true;
-				}
+		for (int trans = stateBegin(s1); trans < stateEnd(s1); trans++) {
+			if (succState(trans) == s2) {
+				return true;
 			}
 		}
 		return false;
@@ -236,83 +229,45 @@ final class PSEModel extends ModelExplicit
 		return s;
 	}
 
-	// Other
-	
-	public int getNumChoices(int state)
-	{
-		return stateEnd(state) - stateBegin(state);
-	}
-
-	public int getNumTotalChoices()
-	{
-		return numTotalChoices;
-	}
-
 	/**
 	 * Allocates memory for subsequent construction of model. 
 	 * 
 	 * @param numStates number of states of the model
-	 * @param numTotalChoices total number of nondeterministic choices of the model
-	 * @param numTotalSuccessors total number of probabilistic transitions of the model
+	 * @param numTotalTransitions total number of probabilistic transitions of the model
 	 */
-	void reserveMem(int numStates, int numTotalChoices, int numTotalSuccessors)
+	void reserveMem(int numStates, int numTotalTransitions)
 	{
 		rows = new int[numStates + 1];
-		choices = new int[numTotalChoices + 1];
-		labels = new String[numTotalSuccessors];
-		reactions = new int[numTotalSuccessors];
-		basicRateParamsLowers = new double[numTotalSuccessors];
-		basicRateParamsUppers = new double[numTotalSuccessors];
-		rateParamsLowers = new double[numTotalSuccessors];
-		rateParamsUppers = new double[numTotalSuccessors];
-		ratePopulations = new double[numTotalSuccessors];
-		parametrisedSuccs = new boolean[numTotalSuccessors];
-		colsTo = new int[numTotalSuccessors];
-		colsFrom = new int[numTotalSuccessors];
-		exitRates = new double[numTotalChoices];
+		labels = new String[numTotalTransitions];
+		reactions = new int[numTotalTransitions];
+		basicRateParamsLowers = new double[numTotalTransitions];
+		basicRateParamsUppers = new double[numTotalTransitions];
+		rateParamsLowers = new double[numTotalTransitions];
+		rateParamsUppers = new double[numTotalTransitions];
+		ratePopulations = new double[numTotalTransitions];
+		parametrisedTransitions = new boolean[numTotalTransitions];
+		colsTo = new int[numTotalTransitions];
+		colsFrom = new int[numTotalTransitions];
+		exitRates = new double[numStates];
 	}
 
 	/**
 	 * Finish the current state.
 	 * Starting with the 0th state, this function shall be called once all
 	 * nondeterministic decisions of the current nth state have been added.
-	 * Subsequent method calls of {@code finishChoice} and {@code addTransition}
+	 * Subsequent method calls of {@code addTransition}
 	 * will then apply to the (n+1)th state. Notice that this method must be
 	 * called for each state of the method, even the last one, once all its
 	 * transitions have been added.
 	 */
 	void finishState()
 	{
-		rows[numStates + 1] = numTotalChoices;
+		rows[numStates + 1] = numTotalTransitions;
 		numStates++;
 	}
 
 	/**
-	 * Finished the current nondeterministic choice.
-	 * Subsequent calls of {@code addTransition} will in turn add probabilistic
-	 * branches to the next nondeterministic choice. Notice that this method has
-	 * to be called for all nondeterministic choices of a state, even the last
-	 * one. Notice that DTMCs and CTMCs should only have a single
-	 * nondeterministic choice per state.
-	 */
-	void finishChoice()
-	{
-		choices[numTotalChoices + 1] = numTotalTransitions;
-		numTotalChoices++;
-	}
-
-	/**
-	 * Adds a probabilistic branch to the current nondeterministic choice.
-	 * Notice that by this function the probability to leave to a given state
-	 * shall be specified, <i>not</i> the rate to this state. Instead, the
-	 * sum of rates leaving a certain nondeterministic decision shall be
-	 * specified using {@code setSumLeaving}.
-	 * 
-	 * @param reactionHash
-	 * @param toState to which state the probabilistic choice leads
-	 * @param rate
-	 * @param probFn with which probability it leads to this state
-	 * @param action action with which the choice is labelled
+	 * Adds a probabilistic transition from the current state.
 	 */
 	void addTransition(int reaction, int fromState, int toState, double rateParamsLower, double rateParamsUpper, double ratePopulation, String action)
 	{
@@ -325,7 +280,7 @@ final class PSEModel extends ModelExplicit
 		rateParamsUppers[numTotalTransitions] = rateParamsUpper;
 		ratePopulations[numTotalTransitions] = ratePopulation;
 		labels[numTotalTransitions] = action;
-		parametrisedSuccs[numTotalTransitions] = rateParamsLower != rateParamsUpper;
+		parametrisedTransitions[numTotalTransitions] = rateParamsLower != rateParamsUpper;
 
 		predecessorsViaReaction.add(toState ^ reaction);
 
@@ -333,22 +288,15 @@ final class PSEModel extends ModelExplicit
 	}
 
 	/**
-	 * Sets the total sum of leaving rate of the current nondeterministic choice.
-	 * For discrete-time models, this function shall always be called with
-	 * {@code leaving = 1}.
-	 * 
-	 * @param leaving total sum of leaving rate of the current nondeterministic choice
+	 * Sets the total sum of leaving rates from the current state.
 	 */
 	void setSumLeaving(double leaving)
 	{
-		exitRates[numTotalChoices] = leaving;
+		exitRates[numStates] = leaving;
 	}
 
 	/**
-	 * Returns the number of the first nondeterministic choice of {@code state}.
-	 * 
-	 * @param state state to return number of first nondeterministic choice of
-	 * @return number of first nondeterministic choice of {@code state}
+	 * Returns the number of the first transition of {@code state}.
 	 */
 	int stateBegin(int state)
 	{
@@ -356,36 +304,11 @@ final class PSEModel extends ModelExplicit
 	}
 
 	/**
-	 * Returns the number of the last nondeterministic choice of {@code state} plus one.
-	 * 
-	 * @param state state to return number of last nondeterministic choice of
-	 * @return number of first nondeterministic choice of {@code state} plus one
+	 * Returns the number of the last transition of {@code state} plus one.
 	 */
 	int stateEnd(int state)
 	{
 		return rows[state + 1];
-	}
-
-	/**
-	 * Returns the first probabilistic branch of the given nondeterministic decision.
-	 * 
-	 * @param choice choice of which to return the first probabilitic branch
-	 * @return number of first probabilistic branch of {@choice}
-	 */
-	int choiceBegin(int choice)
-	{
-		return choices[choice];
-	}
-
-	/**
-	 * Returns the last probabilistic branch of the given nondeterministic decision plus one.
-	 * 
-	 * @param choice choice of which to return the first probabilitic branch
-	 * @return number of last probabilistic branch of {@choice} plus one
-	 */
-	int choiceEnd(int choice)
-	{
-		return choices[choice + 1];
 	}
 
 	/**
@@ -437,10 +360,8 @@ final class PSEModel extends ModelExplicit
 	{
 		double max = Double.NEGATIVE_INFINITY;
 		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
-			for (int choice = stateBegin(state); choice < stateEnd(state); choice++) {
-				if (exitRates[choice] > max)
-					max = exitRates[choice];
-			}
+			if (exitRates[state] > max)
+				max = exitRates[state];
 		}
 		return max;
 	}
@@ -459,53 +380,48 @@ final class PSEModel extends ModelExplicit
 	 */
 	public void computeInOutReactions() throws PrismException
 	{
-		int pred, predChoice, predSucc, predReaction, state, choice, succ;
-		boolean inout;
-		
+		/*
 		assert inReactions == null;
 		assert inoutReactions == null;
 		assert outReactions == null;
+		*/
+		if (inReactions != null && inoutReactions != null && outReactions != null)
+			return;
 
 		// Initialise the reaction sets
 		inReactions = new HashMap<Integer, List<Integer>>(numStates);
 		inoutReactions = new HashMap<Integer, List<Pair<Integer, Integer>>>(numStates);
 		outReactions = new HashMap<Integer, List<Integer>>(numStates);
-		for (state = 0; state < numStates; state++) {
+		for (int state = 0; state < numStates; state++) {
 			inReactions.put(state, new ArrayList<Integer>());
 			inoutReactions.put(state, new ArrayList<Pair<Integer, Integer>>());
 			outReactions.put(state, new ArrayList<Integer>());
 		}
 
 		// Populate the sets with transition indices
-		for (pred = 0; pred < numStates; pred++) {
-			for (predChoice = stateBegin(pred); predChoice < stateEnd(pred); predChoice++) {
-				for (predSucc = choiceBegin(predChoice); predSucc < choiceEnd(predChoice); predSucc++) {
-					if (!parametrisedSuccs[predSucc])
-						continue;
+		for (int pred = 0; pred < numStates; pred++) {
+			for (int predTrans = stateBegin(pred); predTrans < stateEnd(pred); predTrans++) {
+				if (!parametrisedTransitions[predTrans])
+					continue;
 
-					inout = false;
-					predReaction = getReaction(predSucc);
-					state = succState(predSucc);
-					
-					for (choice = stateBegin(state); choice < stateEnd(state); choice++) {
-						for (succ = choiceBegin(choice); succ < choiceEnd(choice); succ++) {
-							if (getReaction(succ) == predReaction) {
-								inout = true;
-								inoutReactions.get(state).add(new Pair<Integer, Integer>(predSucc, succ));
+				boolean inout = false;
+				int predReaction = getReaction(predTrans);
+				int state = succState(predTrans);
 
-								// TODO: Perhaps we can break the two innermost for-loops from here?
-								// I.e., is `state` guaranteed not to have another succ with this reaction?
-							}
-						}
+				for (int trans = stateBegin(state); trans < stateEnd(state); trans++) {
+					if (getReaction(trans) == predReaction) {
+						inout = true;
+						inoutReactions.get(state).add(new Pair<Integer, Integer>(predTrans, trans));
+						break;
 					}
+				}
 
-					if (!inout) {
-						inReactions.get(state).add(predSucc);
-					}
+				if (!inout) {
+					inReactions.get(state).add(predTrans);
+				}
 
-					if (!predecessorsViaReaction.contains(pred ^ predReaction)) {
-						outReactions.get(pred).add(predSucc);
-					}
+				if (!predecessorsViaReaction.contains(pred ^ predReaction)) {
+					outReactions.get(pred).add(predTrans);
 				}
 			}
 		}
@@ -562,7 +478,7 @@ final class PSEModel extends ModelExplicit
 
 		// Optimisation: Non-parametrised transitions
 		for (int succ = 0; succ < numTotalTransitions; succ++) {
-			if (parametrisedSuccs[succ])
+			if (parametrisedTransitions[succ])
 				continue;
 
 			pred = currState(succ);
@@ -654,7 +570,7 @@ final class PSEModel extends ModelExplicit
 
 		// Optimisation: Non-parametrised transitions
 		for (int succ = 0; succ < numTotalTransitions; succ++) {
-			if (parametrisedSuccs[succ])
+			if (parametrisedTransitions[succ])
 				continue;
 
 			// Note the exchange: succState(succ) is stored as pred

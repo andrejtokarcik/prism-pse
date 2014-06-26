@@ -124,6 +124,7 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 	@Override
 	public String toString()
 	{
+		// TODO: create StateValues.toString() with relevant code from here
 		// XXX: hackity hack because StateValues hasn't got toString(), just print()
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		PrismPrintStreamLog dump = new PrismPrintStreamLog(new PrintStream(baos));
@@ -131,7 +132,6 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 		StringBuilder builder = new StringBuilder();
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : valuesPairs.entrySet()) {
 			builder.append("== " + entry.getKey().toString() + " ==\n");
-			builder.append("\n");
 			builder.append("=== Minimised state values ===\n");
 			baos.reset();
 			entry.getValue().getMin().print(dump);
