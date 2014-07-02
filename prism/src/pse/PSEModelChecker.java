@@ -518,7 +518,7 @@ final public class PSEModelChecker extends PrismComponent
 			ExpressionTemporal exprTemp = (ExpressionTemporal) expr;
 			// Next
 			if (exprTemp.getOperator() == ExpressionTemporal.P_X) {
-				throw new PrismException("X operator requires embedded DTMC representation not supported by PSE");
+				throw new PrismException("X operator requires the embedded-DTMC representation not supported by PSE");
 			}
 			// Until
 			else if (exprTemp.getOperator() == ExpressionTemporal.P_U) {
@@ -654,11 +654,14 @@ final public class PSEModelChecker extends PrismComponent
 		assert nonAbsMin.equals(nonAbsMax);
 		BitSet nonAbs = nonAbsMin;
 
+		// Store num states
+		n = ctmcRanged.getNumStates();
+
 		// Optimisations: If (nonAbs is empty or t = 0) and multProbs is null, this is easy.
 		if ((((nonAbsMin != null && nonAbsMin.isEmpty()) || (t == 0)) && multProbsMin == null) &&
 				(((nonAbsMax != null && nonAbsMax.isEmpty()) || (t == 0)) && multProbsMax == null)) {
-			solnMin = Utils.bitsetToDoubleArray(targetMin, ctmcRanged.getNumStates());
-			solnMax = Utils.bitsetToDoubleArray(targetMax, ctmcRanged.getNumStates());
+			solnMin = Utils.bitsetToDoubleArray(targetMin, n);
+			solnMax = Utils.bitsetToDoubleArray(targetMax, n);
 			return new BoxRegionValues(ctmcRanged, BoxRegion.completeSpace, solnMin, solnMax);
 		}
 
@@ -668,9 +671,6 @@ final public class PSEModelChecker extends PrismComponent
 
 		mainLog.println("\nComputing in, out, inout reactions...");
 		ctmcRanged.computeInOutReactions();
-
-		// Store num states
-		n = ctmcRanged.getNumStates();
 
 		// Get uniformisation rate; do Fox-Glynn
 		q = ctmcRanged.getDefaultUniformisationRate(nonAbs);

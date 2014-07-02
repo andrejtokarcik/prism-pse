@@ -129,9 +129,8 @@ final class PSEModel extends ModelExplicit
 	public boolean isSuccessor(int s1, int s2)
 	{
 		for (int trans = stateBegin(s1); trans < stateEnd(s1); trans++) {
-			if (succState(trans) == s2) {
+			if (succState(trans) == s2)
 				return true;
-			}
 		}
 		return false;
 	}
@@ -313,38 +312,39 @@ final class PSEModel extends ModelExplicit
 
 	/**
 	 */
-	int getReaction(int succNr)
+	boolean parametrised(int trans)
 	{
-		return reactions[succNr];
+		return parametrisedTransitions[trans];
 	}
 
 	/**
-	 * Returns the successor state of the given probabilistic branch.
-	 * 
-	 * @param succNr probabilistic branch to return successor state of
-	 * @return state which probabilistic branch leads to
 	 */
-	int succState(int succNr)
+	int getReaction(int trans)
 	{
-		return colsTo[succNr];
+		return reactions[trans];
+	}
+
+	/**
+	 * Returns the successor state of the given transition.
+	 */
+	int succState(int trans)
+	{
+		return colsTo[trans];
 	}
 	
 	/**
 	 */
-	int currState(int succNr)
+	int currState(int trans)
 	{
-		return colsFrom[succNr];
+		return colsFrom[trans];
 	}
 
 	/**
-	 * Returns the label of the given probabilistic branch
-	 * 
-	 * @param succNr probabilistic branch to return label of
-	 * @return label of given probabilistic branch
+	 * Returns the label of the given transition.
 	 */
-	String getLabel(int succNr)
+	String getLabel(int trans)
 	{
-		return labels[succNr];
+		return labels[trans];
 	}
 	
 	/**
@@ -380,11 +380,6 @@ final class PSEModel extends ModelExplicit
 	 */
 	public void computeInOutReactions() throws PrismException
 	{
-		/*
-		assert inReactions == null;
-		assert inoutReactions == null;
-		assert outReactions == null;
-		*/
 		if (inReactions != null && inoutReactions != null && outReactions != null)
 			return;
 
@@ -401,7 +396,7 @@ final class PSEModel extends ModelExplicit
 		// Populate the sets with transition indices
 		for (int pred = 0; pred < numStates; pred++) {
 			for (int predTrans = stateBegin(pred); predTrans < stateEnd(pred); predTrans++) {
-				if (!parametrisedTransitions[predTrans])
+				if (!parametrised(predTrans))
 					continue;
 
 				boolean inout = false;
@@ -428,57 +423,54 @@ final class PSEModel extends ModelExplicit
 	public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], double q)
 			throws PrismException
 	{
-		int pred, state;
-		double midSumNumeratorMin, midSumNumeratorMax;
-		
-		for (state = 0; state < numStates; state++) {
+		for (int state = 0; state < numStates; state++) {
 			// Initialise the result
 			resultMin[state] = vectMin[state];
 			resultMax[state] = vectMax[state];
 
 			// Incoming reactions
-			for (int succ : inReactions.get(state)) {
-				pred = currState(succ);
-				resultMin[state] += rateParamsLowers[succ] * ratePopulations[succ] * vectMin[pred] / q;
-				resultMax[state] += rateParamsUppers[succ] * ratePopulations[succ] * vectMax[pred] / q;
+			for (int trans : inReactions.get(state)) {
+				int pred = currState(trans);
+				resultMin[state] += rateParamsLowers[trans] * ratePopulations[trans] * vectMin[pred] / q;
+				resultMax[state] += rateParamsUppers[trans] * ratePopulations[trans] * vectMax[pred] / q;
 			}
 
 			// Outgoing reactions
-			for (int succ : outReactions.get(state)) {
-				resultMin[state] -= rateParamsUppers[succ] * ratePopulations[succ] * vectMin[state] / q;
-				resultMax[state] -= rateParamsLowers[succ] * ratePopulations[succ] * vectMax[state] / q;
+			for (int trans : outReactions.get(state)) {
+				resultMin[state] -= rateParamsUppers[trans] * ratePopulations[trans] * vectMin[state] / q;
+				resultMax[state] -= rateParamsLowers[trans] * ratePopulations[trans] * vectMax[state] / q;
 			}
 
 			// Both incoming and outgoing
-			for (Pair<Integer, Integer> succs : inoutReactions.get(state)) {
-				int predSucc = succs.first;
-				int succ = succs.second;
+			for (Pair<Integer, Integer> transs : inoutReactions.get(state)) {
+				int predTrans = transs.first;
+				int trans = transs.second;
 
-				pred = currState(predSucc);
-				assert currState(succ) == state;
+				int pred = currState(predTrans);
+				assert currState(trans) == state;
 
-				// The rate params assumed to be the same for both `pred` and `state`
-				assert rateParamsLowers[predSucc] == rateParamsLowers[succ] && rateParamsUppers[predSucc] == rateParamsUppers[succ];
+				// The rate params of the two considered transitions must be identical
+				assert rateParamsLowers[predTrans] == rateParamsLowers[trans] && rateParamsUppers[predTrans] == rateParamsUppers[trans];
 
-				midSumNumeratorMin = ratePopulations[predSucc] * vectMin[pred] - ratePopulations[succ] * vectMin[state];
-				if (midSumNumeratorMin > 0) resultMin[state] += rateParamsLowers[succ] * midSumNumeratorMin / q;
-				else resultMin[state] += rateParamsUppers[succ] * midSumNumeratorMin / q;
+				double midSumNumeratorMin = ratePopulations[predTrans] * vectMin[pred] - ratePopulations[trans] * vectMin[state];
+				if (midSumNumeratorMin > 0) resultMin[state] += rateParamsLowers[trans] * midSumNumeratorMin / q;
+				else resultMin[state] += rateParamsUppers[trans] * midSumNumeratorMin / q;
 
-				midSumNumeratorMax = ratePopulations[predSucc] * vectMax[pred] - ratePopulations[succ] * vectMax[state];
-				if (midSumNumeratorMax > 0) resultMax[state] += rateParamsUppers[succ] * midSumNumeratorMax / q;
-				else resultMax[state] += rateParamsLowers[succ] * midSumNumeratorMax / q;
+				double midSumNumeratorMax = ratePopulations[predTrans] * vectMax[pred] - ratePopulations[trans] * vectMax[state];
+				if (midSumNumeratorMax > 0) resultMax[state] += rateParamsUppers[trans] * midSumNumeratorMax / q;
+				else resultMax[state] += rateParamsLowers[trans] * midSumNumeratorMax / q;
 			}
 		}
 
 		// Optimisation: Non-parametrised transitions
-		for (int succ = 0; succ < numTotalTransitions; succ++) {
-			if (parametrisedTransitions[succ])
+		for (int trans = 0; trans < numTotalTransitions; trans++) {
+			if (parametrised(trans))
 				continue;
 
-			pred = currState(succ);
-			state = succState(succ);
+			int pred = currState(trans);
+			int state = succState(trans);
 
-			double rate = rateParamsLowers[succ] * ratePopulations[succ];
+			double rate = rateParamsLowers[trans] * ratePopulations[trans];
 
 			resultMin[pred] -= rate * vectMin[pred] / q;
 			resultMax[pred] -= rate * vectMax[pred] / q;
@@ -488,18 +480,18 @@ final class PSEModel extends ModelExplicit
 		}
 	}
 
-	private double mvMultMidSumEvalMin(int succ, double vectMinPred, double vectMinState, double q)
+	private double mvMultMidSumEvalMin(int trans, double vectMinPred, double vectMinState, double q)
 	{
-		double midSumNumeratorMin = ratePopulations[succ] * vectMinPred - ratePopulations[succ] * vectMinState;
-		if (midSumNumeratorMin > 0) return rateParamsLowers[succ] * midSumNumeratorMin / q;
-		else return rateParamsUppers[succ] * midSumNumeratorMin / q;
+		double midSumNumeratorMin = ratePopulations[trans] * vectMinPred - ratePopulations[trans] * vectMinState;
+		if (midSumNumeratorMin > 0) return rateParamsLowers[trans] * midSumNumeratorMin / q;
+		else return rateParamsUppers[trans] * midSumNumeratorMin / q;
 	}
 
-	private double mvMultMidSumEvalMax(int succ, double vectMaxPred, double vectMaxState, double q)
+	private double mvMultMidSumEvalMax(int trans, double vectMaxPred, double vectMaxState, double q)
 	{
-		double midSumNumeratorMin = ratePopulations[succ] * vectMaxPred - ratePopulations[succ] * vectMaxState;
-		if (midSumNumeratorMin > 0) return rateParamsUppers[succ] * midSumNumeratorMin / q;
-		else return rateParamsLowers[succ] * midSumNumeratorMin / q;
+		double midSumNumeratorMin = ratePopulations[trans] * vectMaxPred - ratePopulations[trans] * vectMaxState;
+		if (midSumNumeratorMin > 0) return rateParamsUppers[trans] * midSumNumeratorMin / q;
+		else return rateParamsLowers[trans] * midSumNumeratorMin / q;
 	}
 	
 	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], BitSet subset, boolean complement, double q)
@@ -515,62 +507,60 @@ final class PSEModel extends ModelExplicit
 			subset.flip(0, numStates - 1);
 		}
 
-		int pred, state;
-
-		for (state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
+		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
 			// Initialise the result
 			resultMin[state] = vectMin[state];
 			resultMax[state] = vectMax[state];
 
 			// Incoming reactions (NB propagating backwards!)
-			for (int succ : outReactions.get(state)) {
-				// Note the exchange: succState(succ) is stored as pred
-				pred = succState(succ);
-				resultMin[state] += mvMultMidSumEvalMin(succ, vectMin[pred], vectMin[state], q);
-				resultMax[state] += mvMultMidSumEvalMax(succ, vectMax[pred], vectMax[state], q);
+			for (int trans : outReactions.get(state)) {
+				// Note the exchange: succState(trans) is stored as pred
+				int pred = succState(trans);
+				resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[pred], vectMin[state], q);
+				resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[pred], vectMax[state], q);
 			}
 			
 			// Outgoing reactions (taken backwards) are not considered
 			// when computing backwards transient probabilities.
 
 			// Both incoming and outgoing
-			for (Pair<Integer, Integer> succs : inoutReactions.get(state)) {
-				// Note the exchange: succs.second is stored as predSucc
-				int predSucc = succs.second;
-				int succ = succs.first;
+			for (Pair<Integer, Integer> transs : inoutReactions.get(state)) {
+				// Note the exchange: transs.second is stored as predTrans
+				int predTrans = transs.second;
+				int trans = transs.first;
 
-				// Note the exchange: succState(predSucc) is stored as pred
-				pred = succState(predSucc);
-				assert succState(succ) == state;
+				// Note the exchange: succState(predTrans) is stored as pred
+				int pred = succState(predTrans);
+				assert succState(trans) == state;
 
-				if (!subset.get(currState(succ))) {
+				if (!subset.get(currState(trans))) {
 					// Reduce to the case of an incoming reaction
-					resultMin[state] += mvMultMidSumEvalMin(succ, vectMin[pred], vectMin[state], q);
-					resultMax[state] += mvMultMidSumEvalMax(succ, vectMax[pred], vectMax[state], q);
+					resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[pred], vectMin[state], q);
+					resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[pred], vectMax[state], q);
 					continue;
 				}
 
-				// The rate params assumed to be the same for both `pred` and `state`
-				assert rateParamsLowers[predSucc] == rateParamsLowers[succ] && rateParamsUppers[predSucc] == rateParamsUppers[succ];
+				// The rate params of the two considered transitions must be identical
+				assert rateParamsLowers[predTrans] == rateParamsLowers[trans] && rateParamsUppers[predTrans] == rateParamsUppers[trans];
 
-				resultMin[state] += mvMultMidSumEvalMin(predSucc, vectMin[pred], vectMin[state], q);
-				resultMax[state] += mvMultMidSumEvalMax(predSucc, vectMax[pred], vectMax[state], q);
+				resultMin[state] += mvMultMidSumEvalMin(predTrans, vectMin[pred], vectMin[state], q);
+				resultMax[state] += mvMultMidSumEvalMax(predTrans, vectMax[pred], vectMax[state], q);
 			}
 		}
 
 		// Optimisation: Non-parametrised transitions
-		for (int succ = 0; succ < numTotalTransitions; succ++) {
-			if (parametrisedTransitions[succ])
+		for (int trans = 0; trans < numTotalTransitions; trans++) {
+			if (parametrised(trans))
 				continue;
 
-			// Note the exchange: succState(succ) is stored as pred
-			pred = succState(succ);
-			state = currState(succ);
+			// Note the exchange: succState(trans) is stored as pred
+			int pred = succState(trans);
+			int state = currState(trans);
 
 			if (!subset.get(state))
 				continue;
 
-			double rate = rateParamsLowers[succ] * ratePopulations[succ];
+			double rate = rateParamsLowers[trans] * ratePopulations[trans];
 			resultMin[state] += rate * (vectMin[pred] - vectMin[state]) / q;
 			resultMax[state] += rate * (vectMax[pred] - vectMax[state]) / q;
 		}
@@ -593,9 +583,9 @@ final class PSEModel extends ModelExplicit
 	 */
 	public void scaleParameterSpace(double scaleLower, double scaleUpper)
 	{
-		for (int succ = 0; succ < numTotalTransitions; succ++) {
-			rateParamsLowers[succ] = basicRateParamsLowers[succ] + scaleLower * (basicRateParamsUppers[succ] - basicRateParamsLowers[succ]);
-			rateParamsUppers[succ] = basicRateParamsLowers[succ] + scaleUpper * (basicRateParamsUppers[succ] - basicRateParamsLowers[succ]);
+		for (int trans = 0; trans < numTotalTransitions; trans++) {
+			rateParamsLowers[trans] = basicRateParamsLowers[trans] + scaleLower * (basicRateParamsUppers[trans] - basicRateParamsLowers[trans]);
+			rateParamsUppers[trans] = basicRateParamsLowers[trans] + scaleUpper * (basicRateParamsUppers[trans] - basicRateParamsLowers[trans]);
 		}
 	}
 }

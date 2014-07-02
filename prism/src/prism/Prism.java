@@ -2977,10 +2977,10 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	{
 		// Some checks
 		if (pseNames == null) {
-			throw new PrismException("Must specify some parameters when using " + "the parametric analysis");
+			throw new PrismException("Must specify some parameters in order to perform PSE model checking");
 		}
 		if (!(currentModelType == ModelType.CTMC))
-			throw new PrismException("PSE model checking is only supported for CTMCs");
+			throw new PrismException("PSE model checking supported for CTMCs only");
 		/*
 		if (!getExplicit())
 			throw new PrismException("Parameter space exploration supported for the explicit engine only");
@@ -2994,7 +2994,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 		// Print info
 		mainLog.printSeparator();
-		mainLog.println("\nParametric model checking: " + prop);
+		mainLog.println("\nPSE model checking: " + prop);
 		if (currentDefinedMFConstants != null && currentDefinedMFConstants.getNumValues() > 0)
 			mainLog.println("Model constants: " + currentDefinedMFConstants);
 		if (definedPFConstants != null && definedPFConstants.getNumValues() > 0)
