@@ -609,7 +609,7 @@ final public class PSEModelChecker extends PrismComponent
 				// nb: uTime != 0 since would be caught above (trivial case)
 				b1Min.andNot(b2Min);
 				b1Max.andNot(b2Max);
-				regionValues = computeTransientBackwardsProbsRanged((PSEModel) model, b2Min, b1Min, b2Max, b1Max, uTime, null, null);
+				regionValues = computeTransientBackwardsProbs((PSEModel) model, b2Min, b1Min, b2Max, b1Max, uTime, null, null);
 				// set values to exactly 1 for target (b2) states
 				// (these are computed inexactly during uniformisation)
 				int n = model.getNumStates();
@@ -626,21 +626,21 @@ final public class PSEModelChecker extends PrismComponent
 				tmpMin.andNot(b2Min);
 				tmpMax = (BitSet) b1Max.clone();
 				tmpMax.andNot(b2Max);
-				tmpRegionValues = computeTransientBackwardsProbsRanged((PSEModel) model, b2Min, tmpMin, b2Max, tmpMax, uTime - lTime, null, null);
+				tmpRegionValues = computeTransientBackwardsProbs((PSEModel) model, b2Min, tmpMin, b2Max, tmpMax, uTime - lTime, null, null);
 				double[] multProbsMin = tmpRegionValues.getMin(BoxRegion.completeSpace).getDoubleArray();
 				double[] multProbsMax = tmpRegionValues.getMax(BoxRegion.completeSpace).getDoubleArray();
-				regionValues = computeTransientBackwardsProbsRanged((PSEModel) model, b1Min, b1Min, b1Max, b1Max, lTime, multProbsMin, multProbsMax);
+				regionValues = computeTransientBackwardsProbs((PSEModel) model, b1Min, b1Min, b1Max, b1Max, lTime, multProbsMin, multProbsMax);
 			}
 		}
 
 		return regionValues;
 	}
 
-	public BoxRegionValues computeTransientBackwardsProbsRanged(PSEModel ctmcRanged,
+	public BoxRegionValues computeTransientBackwardsProbs(PSEModel model,
 			BitSet targetMin, BitSet nonAbsMin, BitSet targetMax, BitSet nonAbsMax,
 			double t, double multProbsMin[], double multProbsMax[]) throws PrismException
 	{
-		BoxRegionValues regionValues = new BoxRegionValues(ctmcRanged);
+		BoxRegionValues regionValues = new BoxRegionValues(model);
 		int i, n, iters;
 		double solnMin[], soln2Min[], sumMin[];
 		double solnMax[], soln2Max[], sumMax[];
@@ -655,14 +655,14 @@ final public class PSEModelChecker extends PrismComponent
 		BitSet nonAbs = nonAbsMin;
 
 		// Store num states
-		n = ctmcRanged.getNumStates();
+		n = model.getNumStates();
 
 		// Optimisations: If (nonAbs is empty or t = 0) and multProbs is null, this is easy.
 		if ((((nonAbsMin != null && nonAbsMin.isEmpty()) || (t == 0)) && multProbsMin == null) &&
 				(((nonAbsMax != null && nonAbsMax.isEmpty()) || (t == 0)) && multProbsMax == null)) {
 			solnMin = Utils.bitsetToDoubleArray(targetMin, n);
 			solnMax = Utils.bitsetToDoubleArray(targetMax, n);
-			return new BoxRegionValues(ctmcRanged, BoxRegion.completeSpace, solnMin, solnMax);
+			return new BoxRegionValues(model, BoxRegion.completeSpace, solnMin, solnMax);
 		}
 
 		// Start backwards transient computation
@@ -670,10 +670,10 @@ final public class PSEModelChecker extends PrismComponent
 		mainLog.println("\nStarting backwards transient probability computation...");
 
 		mainLog.println("\nComputing in, out, inout reactions...");
-		ctmcRanged.computeInOutReactions();
+		model.computeInOutReactions();
 
 		// Get uniformisation rate; do Fox-Glynn
-		q = ctmcRanged.getDefaultUniformisationRate(nonAbs);
+		q = model.getDefaultUniformisationRate(nonAbs);
 		qt = q * t;
 		mainLog.println("\nUniformisation: q.t = " + q + " x " + t + " = " + qt);
 		termCritParam = 1e-6;
@@ -729,7 +729,7 @@ final public class PSEModelChecker extends PrismComponent
 		iters = 1;
 		while (iters <= right) {
 			// Matrix-vector multiply
-			ctmcRanged.mvMult(solnMin, soln2Min, solnMax, soln2Max, nonAbs, false, q);
+			model.mvMult(solnMin, soln2Min, solnMax, soln2Max, nonAbs, false, q);
 
 			// Swap vectors for next iter
 			tmpsoln = solnMin;
@@ -763,26 +763,26 @@ final public class PSEModelChecker extends PrismComponent
 
 	// Transient analysis
 
-	public BoxRegionValues doTransientRanged(Model model, double t, double accuracy, explicit.StateValues initDistMin, explicit.StateValues initDistMax) throws PrismException
+	public BoxRegionValues doTransient(Model modelExpl, double t, double accuracy, explicit.StateValues initDistMin, explicit.StateValues initDistMax) throws PrismException
 	{
-		PSEModel ctmcRanged = (PSEModel) model;
+		PSEModel model = (PSEModel) modelExpl;
 		BoxRegionValues res = null;
 		explicit.StateValues initDistMinNew = null, initDistMaxNew = null;
 
 		// Build initial distribution (if not specified)
 		if (initDistMin == null) {
-			initDistMinNew = new explicit.StateValues(TypeDouble.getInstance(), new Double(0.0), ctmcRanged);
-			double initVal = 1.0 / ctmcRanged.getNumInitialStates();
-			for (int in : ctmcRanged.getInitialStates()) {
+			initDistMinNew = new explicit.StateValues(TypeDouble.getInstance(), new Double(0.0), model);
+			double initVal = 1.0 / model.getNumInitialStates();
+			for (int in : model.getInitialStates()) {
 				initDistMinNew.setDoubleValue(in, initVal);
 			}
 		} else {
 			initDistMinNew = initDistMin;
 		}
 		if (initDistMax == null) {
-			initDistMaxNew = new explicit.StateValues(TypeDouble.getInstance(), new Double(0.0), ctmcRanged);
-			double initVal = 1.0 / ctmcRanged.getNumInitialStates();
-			for (int in : ctmcRanged.getInitialStates()) {
+			initDistMaxNew = new explicit.StateValues(TypeDouble.getInstance(), new Double(0.0), model);
+			double initVal = 1.0 / model.getNumInitialStates();
+			for (int in : model.getInitialStates()) {
 				initDistMaxNew.setDoubleValue(in, initVal);
 			}
 		} else {
@@ -790,14 +790,14 @@ final public class PSEModelChecker extends PrismComponent
 		}
 		
 		// Compute transient probabilities
-		res = computeTransientProbsRanged(ctmcRanged, t, accuracy, initDistMinNew.getDoubleArray(), initDistMaxNew.getDoubleArray());
+		res = computeTransientProbs(model, t, accuracy, initDistMinNew.getDoubleArray(), initDistMaxNew.getDoubleArray());
 
 		return res;
 	}
 
-	public BoxRegionValues computeTransientProbsRanged(PSEModel ctmcRanged, double t, double accuracy, double initDistMin[], double initDistMax[]) throws PrismException
+	public BoxRegionValues computeTransientProbs(PSEModel model, double t, double accuracy, double initDistMin[], double initDistMax[]) throws PrismException
 	{
-		BoxRegionValues regionValues = new BoxRegionValues(ctmcRanged);
+		BoxRegionValues regionValues = new BoxRegionValues(model);
 		int i, n, iters, totalIters;
 		double solnMin[], soln2Min[], sumMin[];
 		double solnMax[], soln2Max[], sumMax[];
@@ -819,13 +819,13 @@ final public class PSEModelChecker extends PrismComponent
 		totalIters = 0;
 
 		mainLog.println("\nComputing in, out, inout reactions...");
-		ctmcRanged.computeInOutReactions();
+		model.computeInOutReactions();
 
 		// Store num states
-		n = ctmcRanged.getNumStates();
+		n = model.getNumStates();
 
 		// Get uniformisation rate; do Fox-Glynn
-		q = ctmcRanged.getDefaultUniformisationRate();
+		q = model.getDefaultUniformisationRate();
 		qt = q * t;
 		mainLog.println("\nUniformisation: q.t = " + q + " x " + t + " = " + qt);
 		termCritParam = 1e-6;
@@ -874,7 +874,7 @@ final public class PSEModelChecker extends PrismComponent
 
 			// Shrink the parameter space
 			BoxRegion region = regions.remove();
-			ctmcRanged.scaleParameterSpace(region.getMinCoeff(), region.getMaxCoeff());
+			model.scaleParameterSpace(region.getMinCoeff(), region.getMaxCoeff());
 			numDecompositions++;
 
 			try {
@@ -883,7 +883,7 @@ final public class PSEModelChecker extends PrismComponent
 				totalIters++;
 				while (iters <= right) {
 					// Vector-matrix multiply
-					ctmcRanged.vmMult(solnMin, soln2Min, solnMax, soln2Max, q);
+					model.vmMult(solnMin, soln2Min, solnMax, soln2Max, q);
 
 					// Swap vectors for next iter
 					tmpsoln = solnMin;
