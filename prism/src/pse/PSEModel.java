@@ -416,18 +416,17 @@ final class PSEModel extends ModelExplicit
 					}
 				}
 
-				if (!inout) {
+				if (!inout)
 					inReactions.get(state).add(predTrans);
-				}
 
-				if (!predecessorsViaReaction.contains(pred ^ predReaction)) {
+				if (!predecessorsViaReaction.contains(pred ^ predReaction))
 					outReactions.get(pred).add(predTrans);
-				}
 			}
 		}
 	}
 
-	public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], double q) throws PrismException
+	public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], double q)
+			throws PrismException
 	{
 		int pred, state;
 		double midSumNumeratorMin, midSumNumeratorMax;
@@ -461,18 +460,13 @@ final class PSEModel extends ModelExplicit
 				// The rate params assumed to be the same for both `pred` and `state`
 				assert rateParamsLowers[predSucc] == rateParamsLowers[succ] && rateParamsUppers[predSucc] == rateParamsUppers[succ];
 
-				midSumNumeratorMin = vectMin[pred] * ratePopulations[predSucc] - vectMin[state] * ratePopulations[succ];
-				if (midSumNumeratorMin > 0) {
-					resultMin[state] += rateParamsLowers[succ] * midSumNumeratorMin / q;
-				} else {
-					resultMin[state] += rateParamsUppers[succ] * midSumNumeratorMin / q;
-				}
-				midSumNumeratorMax = vectMax[pred] * ratePopulations[predSucc] - vectMax[state] * ratePopulations[succ];
-				if (midSumNumeratorMax > 0) {
-					resultMax[state] += rateParamsUppers[succ] * midSumNumeratorMax / q;
-				} else {
-					resultMax[state] += rateParamsLowers[succ] * midSumNumeratorMax / q;
-				}
+				midSumNumeratorMin = ratePopulations[predSucc] * vectMin[pred] - ratePopulations[succ] * vectMin[state];
+				if (midSumNumeratorMin > 0) resultMin[state] += rateParamsLowers[succ] * midSumNumeratorMin / q;
+				else resultMin[state] += rateParamsUppers[succ] * midSumNumeratorMin / q;
+
+				midSumNumeratorMax = ratePopulations[predSucc] * vectMax[pred] - ratePopulations[succ] * vectMax[state];
+				if (midSumNumeratorMax > 0) resultMax[state] += rateParamsUppers[succ] * midSumNumeratorMax / q;
+				else resultMax[state] += rateParamsLowers[succ] * midSumNumeratorMax / q;
 			}
 		}
 
@@ -494,7 +488,22 @@ final class PSEModel extends ModelExplicit
 		}
 	}
 
-	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], BitSet subset, boolean complement, double q) throws PrismException
+	private double mvMultMidSumEvalMin(int succ, double vectMinPred, double vectMinState, double q)
+	{
+		double midSumNumeratorMin = ratePopulations[succ] * vectMinPred - ratePopulations[succ] * vectMinState;
+		if (midSumNumeratorMin > 0) return rateParamsLowers[succ] * midSumNumeratorMin / q;
+		else return rateParamsUppers[succ] * midSumNumeratorMin / q;
+	}
+
+	private double mvMultMidSumEvalMax(int succ, double vectMaxPred, double vectMaxState, double q)
+	{
+		double midSumNumeratorMin = ratePopulations[succ] * vectMaxPred - ratePopulations[succ] * vectMaxState;
+		if (midSumNumeratorMin > 0) return rateParamsUppers[succ] * midSumNumeratorMin / q;
+		else return rateParamsLowers[succ] * midSumNumeratorMin / q;
+	}
+	
+	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], BitSet subset, boolean complement, double q)
+			throws PrismException
 	{
 		if (subset == null) {
 			// Loop over all states
@@ -507,28 +516,22 @@ final class PSEModel extends ModelExplicit
 		}
 
 		int pred, state;
-		double midSumNumeratorMin, midSumNumeratorMax;
 
 		for (state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
 			// Initialise the result
 			resultMin[state] = vectMin[state];
 			resultMax[state] = vectMax[state];
 
-			// Outgoing reactions are not considered in backwards transient probability computation.
-
 			// Incoming reactions (NB propagating backwards!)
 			for (int succ : outReactions.get(state)) {
 				// Note the exchange: succState(succ) is stored as pred
 				pred = succState(succ);
-
-				midSumNumeratorMin = vectMin[pred] * ratePopulations[succ] - vectMin[state] * ratePopulations[succ];
-				if (midSumNumeratorMin > 0) resultMin[state] += rateParamsLowers[succ] * midSumNumeratorMin / q;
-				else resultMin[state] += rateParamsUppers[succ] * midSumNumeratorMin / q;
-
-				midSumNumeratorMax = vectMax[pred] * ratePopulations[succ] - vectMax[state] * ratePopulations[succ];
-				if (midSumNumeratorMax > 0) resultMax[state] += rateParamsUppers[succ] * midSumNumeratorMax / q;
-				else resultMax[state] += rateParamsLowers[succ] * midSumNumeratorMax / q;
+				resultMin[state] += mvMultMidSumEvalMin(succ, vectMin[pred], vectMin[state], q);
+				resultMax[state] += mvMultMidSumEvalMax(succ, vectMax[pred], vectMax[state], q);
 			}
+			
+			// Outgoing reactions (taken backwards) are not considered
+			// when computing backwards transient probabilities.
 
 			// Both incoming and outgoing
 			for (Pair<Integer, Integer> succs : inoutReactions.get(state)) {
@@ -542,27 +545,16 @@ final class PSEModel extends ModelExplicit
 
 				if (!subset.get(currState(succ))) {
 					// Reduce to the case of an incoming reaction
-					midSumNumeratorMin = vectMin[pred] * ratePopulations[succ] - vectMin[state] * ratePopulations[succ];
-					if (midSumNumeratorMin > 0) resultMin[state] += rateParamsLowers[succ] * midSumNumeratorMin / q;
-					else resultMin[state] += rateParamsUppers[succ] * midSumNumeratorMin / q;
-
-					midSumNumeratorMax = vectMax[pred] * ratePopulations[succ] - vectMax[state] * ratePopulations[succ];
-					if (midSumNumeratorMax > 0)	resultMax[state] += rateParamsUppers[succ] * midSumNumeratorMax / q;
-					else resultMax[state] += rateParamsLowers[succ] * midSumNumeratorMax / q;
-
+					resultMin[state] += mvMultMidSumEvalMin(succ, vectMin[pred], vectMin[state], q);
+					resultMax[state] += mvMultMidSumEvalMax(succ, vectMax[pred], vectMax[state], q);
 					continue;
 				}
 
 				// The rate params assumed to be the same for both `pred` and `state`
 				assert rateParamsLowers[predSucc] == rateParamsLowers[succ] && rateParamsUppers[predSucc] == rateParamsUppers[succ];
 
-				midSumNumeratorMin = vectMin[pred] * ratePopulations[predSucc] - vectMin[state] * ratePopulations[predSucc];
-				if (midSumNumeratorMin > 0) resultMin[state] += rateParamsLowers[succ] * midSumNumeratorMin / q;
-				else resultMin[state] += rateParamsUppers[succ] * midSumNumeratorMin / q;
-
-				midSumNumeratorMax = vectMax[pred] * ratePopulations[predSucc] - vectMax[state] * ratePopulations[predSucc];
-				if (midSumNumeratorMax > 0) resultMax[state] += rateParamsUppers[succ] * midSumNumeratorMax / q;
-				else resultMax[state] += rateParamsLowers[succ] * midSumNumeratorMax / q;
+				resultMin[state] += mvMultMidSumEvalMin(predSucc, vectMin[pred], vectMin[state], q);
+				resultMax[state] += mvMultMidSumEvalMax(predSucc, vectMax[pred], vectMax[state], q);
 			}
 		}
 
