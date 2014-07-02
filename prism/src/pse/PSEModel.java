@@ -521,11 +521,13 @@ final class PSEModel extends ModelExplicit
 				// Note the exchange: succState(succ) is stored as pred
 				pred = succState(succ);
 
-				resultMin[state] -= rateParamsUppers[succ] * ratePopulations[succ] * vectMin[state] / q;
-				resultMax[state] -= rateParamsLowers[succ] * ratePopulations[succ] * vectMax[state] / q;
+				midSumNumeratorMin = vectMin[pred] * ratePopulations[succ] - vectMin[state] * ratePopulations[succ];
+				if (midSumNumeratorMin > 0) resultMin[state] += rateParamsLowers[succ] * midSumNumeratorMin / q;
+				else resultMin[state] += rateParamsUppers[succ] * midSumNumeratorMin / q;
 
-				resultMin[state] += rateParamsLowers[succ] * ratePopulations[succ] * vectMin[pred] / q;
-				resultMax[state] += rateParamsUppers[succ] * ratePopulations[succ] * vectMax[pred] / q;
+				midSumNumeratorMax = vectMax[pred] * ratePopulations[succ] - vectMax[state] * ratePopulations[succ];
+				if (midSumNumeratorMax > 0) resultMax[state] += rateParamsUppers[succ] * midSumNumeratorMax / q;
+				else resultMax[state] += rateParamsLowers[succ] * midSumNumeratorMax / q;
 			}
 
 			// Both incoming and outgoing
@@ -540,11 +542,13 @@ final class PSEModel extends ModelExplicit
 
 				if (!subset.get(currState(succ))) {
 					// Reduce to the case of an incoming reaction
-					resultMin[state] -= rateParamsUppers[predSucc] * ratePopulations[predSucc] * vectMin[state] / q;
-					resultMax[state] -= rateParamsLowers[predSucc] * ratePopulations[predSucc] * vectMax[state] / q;
+					midSumNumeratorMin = vectMin[pred] * ratePopulations[succ] - vectMin[state] * ratePopulations[succ];
+					if (midSumNumeratorMin > 0) resultMin[state] += rateParamsLowers[succ] * midSumNumeratorMin / q;
+					else resultMin[state] += rateParamsUppers[succ] * midSumNumeratorMin / q;
 
-					resultMin[state] += rateParamsLowers[predSucc] * ratePopulations[predSucc] * vectMin[pred] / q;
-					resultMax[state] += rateParamsUppers[predSucc] * ratePopulations[predSucc] * vectMax[pred] / q;
+					midSumNumeratorMax = vectMax[pred] * ratePopulations[succ] - vectMax[state] * ratePopulations[succ];
+					if (midSumNumeratorMax > 0)	resultMax[state] += rateParamsUppers[succ] * midSumNumeratorMax / q;
+					else resultMax[state] += rateParamsLowers[succ] * midSumNumeratorMax / q;
 
 					continue;
 				}
@@ -553,18 +557,12 @@ final class PSEModel extends ModelExplicit
 				assert rateParamsLowers[predSucc] == rateParamsLowers[succ] && rateParamsUppers[predSucc] == rateParamsUppers[succ];
 
 				midSumNumeratorMin = vectMin[pred] * ratePopulations[predSucc] - vectMin[state] * ratePopulations[predSucc];
-				if (midSumNumeratorMin > 0) {
-					resultMin[state] += rateParamsLowers[succ] * midSumNumeratorMin / q;
-				} else {
-					resultMin[state] += rateParamsUppers[succ] * midSumNumeratorMin / q;
-				}
+				if (midSumNumeratorMin > 0) resultMin[state] += rateParamsLowers[succ] * midSumNumeratorMin / q;
+				else resultMin[state] += rateParamsUppers[succ] * midSumNumeratorMin / q;
 
 				midSumNumeratorMax = vectMax[pred] * ratePopulations[predSucc] - vectMax[state] * ratePopulations[predSucc];
-				if (midSumNumeratorMax > 0) {
-					resultMax[state] += rateParamsUppers[succ] * midSumNumeratorMax / q;
-				} else {
-					resultMax[state] += rateParamsLowers[succ] * midSumNumeratorMax / q;
-				}
+				if (midSumNumeratorMax > 0) resultMax[state] += rateParamsUppers[succ] * midSumNumeratorMax / q;
+				else resultMax[state] += rateParamsLowers[succ] * midSumNumeratorMax / q;
 			}
 		}
 
@@ -581,12 +579,8 @@ final class PSEModel extends ModelExplicit
 				continue;
 
 			double rate = rateParamsLowers[succ] * ratePopulations[succ];
-
-			resultMin[state] -= rate * vectMin[state] / q;
-			resultMax[state] -= rate * vectMax[state] / q;
-
-			resultMin[state] += rate * vectMin[pred] / q;
-			resultMax[state] += rate * vectMax[pred] / q;
+			resultMin[state] += rate * (vectMin[pred] - vectMin[state]) / q;
+			resultMax[state] += rate * (vectMax[pred] - vectMax[state]) / q;
 		}
 	}
 
