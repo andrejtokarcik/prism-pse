@@ -42,21 +42,19 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 
 	public static class StateValuesPair extends Pair<StateValues, StateValues>
 	{
-		public StateValues min;
-		public StateValues max;
-
-		public StateValuesPair(StateValues min, StateValues max) {
+		public StateValuesPair(StateValues min, StateValues max)
+		{
 			super(min, max);
-			this.min = min;
-			this.max = max;
 		}
 
-		public StateValues getMin() {
-			return min;
+		public StateValues getMin()
+		{
+			return first;
 		}
 
-		public StateValues getMax() {
-			return max;
+		public StateValues getMax()
+		{
+			return second;
 		}
 	}
 

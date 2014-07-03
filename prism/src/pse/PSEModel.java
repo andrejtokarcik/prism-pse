@@ -129,7 +129,7 @@ final class PSEModel extends ModelExplicit
 	public boolean isSuccessor(int s1, int s2)
 	{
 		for (int trans = stateBegin(s1); trans < stateEnd(s1); trans++) {
-			if (succState(trans) == s2)
+			if (toState(trans) == s2)
 				return true;
 		}
 		return false;
@@ -325,18 +325,18 @@ final class PSEModel extends ModelExplicit
 	}
 
 	/**
-	 * Returns the successor state of the given transition.
 	 */
-	int succState(int trans)
-	{
-		return colsTo[trans];
-	}
-	
-	/**
-	 */
-	int currState(int trans)
+	int fromState(int trans)
 	{
 		return colsFrom[trans];
+	}
+
+	/**
+	 * Returns the successor state of the given transition.
+	 */
+	int toState(int trans)
+	{
+		return colsTo[trans];
 	}
 
 	/**
@@ -401,7 +401,7 @@ final class PSEModel extends ModelExplicit
 
 				boolean inout = false;
 				int predReaction = getReaction(predTrans);
-				int state = succState(predTrans);
+				int state = toState(predTrans);
 
 				for (int trans = stateBegin(state); trans < stateEnd(state); trans++) {
 					if (getReaction(trans) == predReaction) {
@@ -430,7 +430,7 @@ final class PSEModel extends ModelExplicit
 
 			// Incoming reactions
 			for (int trans : inReactions.get(state)) {
-				int pred = currState(trans);
+				int pred = fromState(trans);
 				resultMin[state] += rateParamsLowers[trans] * ratePopulations[trans] * vectMin[pred] / q;
 				resultMax[state] += rateParamsUppers[trans] * ratePopulations[trans] * vectMax[pred] / q;
 			}
@@ -446,8 +446,8 @@ final class PSEModel extends ModelExplicit
 				int predTrans = transs.first;
 				int trans = transs.second;
 
-				int pred = currState(predTrans);
-				assert currState(trans) == state;
+				int pred = fromState(predTrans);
+				assert fromState(trans) == state;
 
 				// The rate params of the two considered transitions must be identical
 				assert rateParamsLowers[predTrans] == rateParamsLowers[trans] && rateParamsUppers[predTrans] == rateParamsUppers[trans];
@@ -467,8 +467,8 @@ final class PSEModel extends ModelExplicit
 			if (parametrised(trans))
 				continue;
 
-			int pred = currState(trans);
-			int state = succState(trans);
+			int pred = fromState(trans);
+			int state = toState(trans);
 
 			double rate = rateParamsLowers[trans] * ratePopulations[trans];
 
@@ -493,7 +493,14 @@ final class PSEModel extends ModelExplicit
 		if (midSumNumeratorMin > 0.0) return rateParamsUppers[trans] * midSumNumeratorMin / q;
 		else return rateParamsLowers[trans] * midSumNumeratorMin / q;
 	}
-	
+
+	/**
+	 * Semantics of mvMult() is *not* analogical to that of vmMult(), the difference
+	 * is crucial:  result[k]_i in vmMult() is simply the probability of being in state k
+	 * in i steps starting from an initial state.  On the other hand, mvMult()'s
+	 * result[k]_i denotes the probability that a state distinct from k is reached
+	 * in i steps starting from k.
+	 */
 	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], BitSet subset, boolean complement, double q)
 			throws PrismException
 	{
@@ -512,28 +519,23 @@ final class PSEModel extends ModelExplicit
 			resultMin[state] = vectMin[state];
 			resultMax[state] = vectMax[state];
 
-			// Incoming reactions (NB propagating backwards!)
 			for (int trans : outReactions.get(state)) {
 				// Note the exchange: succState(trans) is stored as pred
-				int pred = succState(trans);
+				int pred = toState(trans);
 				resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[pred], vectMin[state], q);
 				resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[pred], vectMax[state], q);
 			}
-			
-			// Outgoing reactions (taken backwards) are not considered
-			// when computing backwards transient probabilities.
 
-			// Both incoming and outgoing
 			for (Pair<Integer, Integer> transs : inoutReactions.get(state)) {
 				// Note the exchange: transs.second is stored as predTrans
 				int predTrans = transs.second;
 				int trans = transs.first;
 
 				// Note the exchange: succState(predTrans) is stored as pred
-				int pred = succState(predTrans);
-				assert succState(trans) == state;
+				int pred = toState(predTrans);
+				assert toState(trans) == state;
 
-				if (!subset.get(currState(trans))) {
+				if (!subset.get(fromState(trans))) {
 					// Reduce to the case of an incoming reaction
 					resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[pred], vectMin[state], q);
 					resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[pred], vectMax[state], q);
@@ -554,8 +556,8 @@ final class PSEModel extends ModelExplicit
 				continue;
 
 			// Note the exchange: succState(trans) is stored as pred
-			int pred = succState(trans);
-			int state = currState(trans);
+			int pred = toState(trans);
+			int state = fromState(trans);
 
 			if (!subset.get(state))
 				continue;
@@ -572,7 +574,7 @@ final class PSEModel extends ModelExplicit
 	 * 
 	 * For instance, the method below would *not* properly scale
 	 * the _parameter_ space if a rate formula included k1 * k2 where
-	 * k1, k2 are parameters. If the parameters were each scaled
+	 * k1, k2 are parameters.  If the parameters were each scaled
 	 * by a factor F, the rate would in turn need to be scaled by F^2.
 	 * The method below, however, directly scales the induced _rate_
 	 * space -- always by F.
