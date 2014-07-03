@@ -449,14 +449,6 @@ final public class PSEModelChecker extends PrismComponent
 			throw new PrismException("Cannot model check " + expr + " for a " + modelType);
 		}
 
-		// Print out probabilities
-		/*
-		if (settings.getBoolean(PrismSettings.PRISM_VERBOSE)) {
-			mainLog.print("\nProbabilities (non-zero only) for all states:\n");
-			res.print(mainLog);
-		}
-		*/
-
 		// For =? properties, just return values
 		if (pb == null) {
 			return regionValues;

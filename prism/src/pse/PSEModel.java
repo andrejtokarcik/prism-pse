@@ -64,7 +64,7 @@ final class PSEModel extends ModelExplicit
 	/** */
 	private boolean[] parametrisedTransitions;
 	/** reactions - classes of transitions */
-	private int[] reactions;
+	private Integer[] reactions;
 	/** labels - per transition, <i>not</i> per action */
 	private String[] labels;
 	/** total sum of leaving rates for a state */
@@ -77,7 +77,7 @@ final class PSEModel extends ModelExplicit
 	private Map<Integer, List<Integer>> inReactions;
 	private Map<Integer, List<Pair<Integer, Integer>>> inoutReactions;
 	private Map<Integer, List<Integer>> outReactions;
-
+	
 	/**
 	 * Constructs a new parametric model.
 	 */
@@ -238,7 +238,7 @@ final class PSEModel extends ModelExplicit
 	{
 		rows = new int[numStates + 1];
 		labels = new String[numTotalTransitions];
-		reactions = new int[numTotalTransitions];
+		reactions = new Integer[numTotalTransitions];
 		basicRateParamsLowers = new double[numTotalTransitions];
 		basicRateParamsUppers = new double[numTotalTransitions];
 		rateParamsLowers = new double[numTotalTransitions];
@@ -268,7 +268,7 @@ final class PSEModel extends ModelExplicit
 	/**
 	 * Adds a probabilistic transition from the current state.
 	 */
-	void addTransition(int reaction, int fromState, int toState, double rateParamsLower, double rateParamsUpper, double ratePopulation, String action)
+	void addTransition(Integer reaction, int fromState, int toState, double rateParamsLower, double rateParamsUpper, double ratePopulation, String action)
 	{
 		reactions[numTotalTransitions] = reaction;
 		colsFrom[numTotalTransitions] = fromState;
@@ -319,7 +319,7 @@ final class PSEModel extends ModelExplicit
 
 	/**
 	 */
-	int getReaction(int trans)
+	Integer getReaction(int trans)
 	{
 		return reactions[trans];
 	}
@@ -453,11 +453,11 @@ final class PSEModel extends ModelExplicit
 				assert rateParamsLowers[predTrans] == rateParamsLowers[trans] && rateParamsUppers[predTrans] == rateParamsUppers[trans];
 
 				double midSumNumeratorMin = ratePopulations[predTrans] * vectMin[pred] - ratePopulations[trans] * vectMin[state];
-				if (midSumNumeratorMin > 0) resultMin[state] += rateParamsLowers[trans] * midSumNumeratorMin / q;
+				if (midSumNumeratorMin > 0.0) resultMin[state] += rateParamsLowers[trans] * midSumNumeratorMin / q;
 				else resultMin[state] += rateParamsUppers[trans] * midSumNumeratorMin / q;
 
 				double midSumNumeratorMax = ratePopulations[predTrans] * vectMax[pred] - ratePopulations[trans] * vectMax[state];
-				if (midSumNumeratorMax > 0) resultMax[state] += rateParamsUppers[trans] * midSumNumeratorMax / q;
+				if (midSumNumeratorMax > 0.0) resultMax[state] += rateParamsUppers[trans] * midSumNumeratorMax / q;
 				else resultMax[state] += rateParamsLowers[trans] * midSumNumeratorMax / q;
 			}
 		}
@@ -483,14 +483,14 @@ final class PSEModel extends ModelExplicit
 	private double mvMultMidSumEvalMin(int trans, double vectMinPred, double vectMinState, double q)
 	{
 		double midSumNumeratorMin = ratePopulations[trans] * vectMinPred - ratePopulations[trans] * vectMinState;
-		if (midSumNumeratorMin > 0) return rateParamsLowers[trans] * midSumNumeratorMin / q;
+		if (midSumNumeratorMin > 0.0) return rateParamsLowers[trans] * midSumNumeratorMin / q;
 		else return rateParamsUppers[trans] * midSumNumeratorMin / q;
 	}
 
 	private double mvMultMidSumEvalMax(int trans, double vectMaxPred, double vectMaxState, double q)
 	{
 		double midSumNumeratorMin = ratePopulations[trans] * vectMaxPred - ratePopulations[trans] * vectMaxState;
-		if (midSumNumeratorMin > 0) return rateParamsUppers[trans] * midSumNumeratorMin / q;
+		if (midSumNumeratorMin > 0.0) return rateParamsUppers[trans] * midSumNumeratorMin / q;
 		else return rateParamsLowers[trans] * midSumNumeratorMin / q;
 	}
 	

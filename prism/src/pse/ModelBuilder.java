@@ -294,8 +294,7 @@ public final class ModelBuilder extends PrismComponent
 			}
 			if (numChoices == 0) {
 				model.addDeadlockState(stateNr);
-				// TODO s/-1/null/
-				model.addTransition(-1, stateNr, stateNr, 1, 1, 1, null);
+				model.addTransition(null, stateNr, stateNr, 1, 1, 1, null);
 			}
 			model.setSumLeaving(sumOut.evaluateDouble(paramsUpper));
 			model.finishState();
