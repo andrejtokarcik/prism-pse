@@ -76,25 +76,42 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 		put(region, minValues, maxValues);
 	}
 
-	public void put(BoxRegion region, StateValues minValues, StateValues maxValues)
+	public StateValuesPair put(BoxRegion region, StateValues minValues, StateValues maxValues)
 	{
-		valuesPairs.put(region, new StateValuesPair(minValues, maxValues));
+		return put(region, new StateValuesPair(minValues, maxValues));
 	}
 
-	public void put(BoxRegion region, double[] min, double[] max)
+	public StateValuesPair put(BoxRegion region, StateValuesPair valuesPair)
+	{
+		return valuesPairs.put(region, valuesPair);
+	}
+
+	public StateValuesPair put(BoxRegion region, double[] min, double[] max)
 	{
 		StateValues minValues = StateValues.createFromDoubleArray(min, model);
 		StateValues maxValues = StateValues.createFromDoubleArray(max, model);
-		put(region, minValues, maxValues);
+		return put(region, minValues, maxValues);
 	}
 
-	public void put(BoxRegion region, BitSet min, BitSet max)
+	public StateValuesPair put(BoxRegion region, BitSet min, BitSet max)
 	{
 		StateValues minValues = StateValues.createFromBitSet(min, model);
 		StateValues maxValues = StateValues.createFromBitSet(max, model);
-		put(region, minValues, maxValues);
+		return put(region, minValues, maxValues);
 	}
 
+	public StateValuesPair remove(BoxRegion region)
+	{
+		return valuesPairs.remove(region);
+	}
+
+	public void divideRegion(BoxRegion region)
+	{
+		StateValuesPair oldValuesPair = remove(region);
+		put(region.lowerHalf(), oldValuesPair);
+		put(region.upperHalf(), oldValuesPair);
+	}
+	
 	public StateValues getMin(BoxRegion region)
 	{
 		return valuesPairs.get(region).getMin();

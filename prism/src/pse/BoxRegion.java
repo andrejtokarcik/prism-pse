@@ -30,7 +30,7 @@ import prism.Pair;
 
 public class BoxRegion extends Pair.ComparablePair<Double, Double>
 {
-	public static BoxRegion completeSpace = new BoxRegion(0, 1);
+	public static BoxRegion completeSpace = new BoxRegion(0.0, 1.0);
 
 	public BoxRegion(double min, double max)
 	{

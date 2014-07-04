@@ -110,7 +110,7 @@ final public class PSEModelChecker extends PrismComponent
 	 * Model check an expression, process and return the result.
 	 * Information about states and model constants should be attached to the model.
 	 */
-	public Result check(Model model, Expression expr) throws PrismException
+	public Result check(Model model, Expression expr, double accuracy) throws PrismException
 	{
 		//PSEModel paramModel = (PSEModel) model;
 
@@ -174,7 +174,7 @@ final public class PSEModelChecker extends PrismComponent
 
 		// Do model checking and store result vector
 		timer = System.currentTimeMillis();
-		BoxRegionValues regionValues = checkExpression(model, expr);
+		BoxRegionValues regionValues = checkExpression(model, expr, accuracy);
 		timer = System.currentTimeMillis() - timer;
 		mainLog.println("\nTime for model checking: " + timer / 1000.0 + " seconds.");
 
@@ -194,13 +194,13 @@ final public class PSEModelChecker extends PrismComponent
 		return result;
 	}
 
-	public BoxRegionValues checkExpression(Model model, Expression expr) throws PrismException
+	public BoxRegionValues checkExpression(Model model, Expression expr, double accuracy) throws PrismException
 	{
 		if (expr instanceof ExpressionFilter) {
-			return checkExpressionFilter(model, (ExpressionFilter) expr);
+			return checkExpressionFilter(model, (ExpressionFilter) expr, accuracy);
 		}
 		if (expr instanceof ExpressionProb) {
-			return checkExpressionProb(model, (ExpressionProb) expr);
+			return checkExpressionProb(model, (ExpressionProb) expr, accuracy);
 		}
 		// Let explicit.StateModelChecker take care of other expressions
 		StateValues vals = stateChecker.checkExpression(model, expr);
@@ -210,7 +210,7 @@ final public class PSEModelChecker extends PrismComponent
 	/**
 	 * Model check a filter.
 	 */
-	protected BoxRegionValues checkExpressionFilter(Model model, ExpressionFilter expr) throws PrismException
+	protected BoxRegionValues checkExpressionFilter(Model model, ExpressionFilter expr, double accuracy) throws PrismException
 	{
 		Object resObjMin, resObjMax;
 		StateValues resRgnValsMin, resRgnValsMax;
@@ -225,7 +225,7 @@ final public class PSEModelChecker extends PrismComponent
 		boolean filterTrue = Expression.isTrue(filter);
 		String filterStatesString = filterTrue ? "all states" : "states satisfying filter";
 
-		BoxRegionValues filterRgnVals = checkExpression(model, filter);
+		BoxRegionValues filterRgnVals = checkExpression(model, filter, accuracy);
 		assert filterRgnVals.getNumRegions() == 1;
 		BitSet bsFilterMin = filterRgnVals.getMin(BoxRegion.completeSpace).getBitSet();
 		BitSet bsFilterMax = filterRgnVals.getMax(BoxRegion.completeSpace).getBitSet();
@@ -240,7 +240,7 @@ final public class PSEModelChecker extends PrismComponent
 			mainLog.println("MAX = " + bsFilterMax.cardinality());
 		}
 
-		BoxRegionValues subRgnVals = checkExpression(model, expr.getOperand());
+		BoxRegionValues subRgnVals = checkExpression(model, expr.getOperand(), accuracy);
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : subRgnVals) {
 			BoxRegion region = entry.getKey();
 			StateValues subRgnValsMin = entry.getValue().getMin();
@@ -422,7 +422,7 @@ final public class PSEModelChecker extends PrismComponent
 	/**
 	 * Model check a P operator expression and return the values for all states.
 	 */
-	protected BoxRegionValues checkExpressionProb(Model model, ExpressionProb expr) throws PrismException
+	protected BoxRegionValues checkExpressionProb(Model model, ExpressionProb expr, double accuracy) throws PrismException
 	{
 		Expression pb; // Probability bound (expression)
 		double p = 0; // Probability bound (actual value)
@@ -443,7 +443,7 @@ final public class PSEModelChecker extends PrismComponent
 		// Compute probabilities
 		switch (modelType) {
 		case CTMC:
-			regionValues = checkProbPathFormula(model, expr.getExpression());
+			regionValues = checkProbPathFormula(model, expr.getExpression(), accuracy);
 			break;
 		default:
 			throw new PrismException("Cannot model check " + expr + " for a " + modelType);
@@ -467,12 +467,12 @@ final public class PSEModelChecker extends PrismComponent
 	/**
 	 * Compute probabilities for the contents of a P operator.
 	 */
-	protected BoxRegionValues checkProbPathFormula(Model model, Expression expr) throws PrismException
+	protected BoxRegionValues checkProbPathFormula(Model model, Expression expr, double accuracy) throws PrismException
 	{
 		// Test whether this is a simple path formula (i.e. PCTL)
 		// and then pass control to appropriate method.
 		if (expr.isSimplePathFormula()) {
-			return checkProbPathFormulaSimple(model, expr);
+			return checkProbPathFormulaSimple(model, expr, accuracy);
 		} else {
 			throw new PrismException("PSE supports unnested CSL formulae only");
 		}
@@ -481,7 +481,7 @@ final public class PSEModelChecker extends PrismComponent
 	/**
 	 * Compute probabilities for a simple, non-LTL path operator.
 	 */
-	protected BoxRegionValues checkProbPathFormulaSimple(Model model, Expression expr) throws PrismException
+	protected BoxRegionValues checkProbPathFormulaSimple(Model model, Expression expr, double accuracy) throws PrismException
 	{
 		BoxRegionValues regionValues = null;
 
@@ -491,12 +491,12 @@ final public class PSEModelChecker extends PrismComponent
 			// Parentheses
 			if (exprUnary.getOperator() == ExpressionUnaryOp.PARENTH) {
 				// Recurse
-				regionValues = checkProbPathFormulaSimple(model, exprUnary.getOperand());
+				regionValues = checkProbPathFormulaSimple(model, exprUnary.getOperand(), accuracy);
 			}
 			// Negation
 			else if (exprUnary.getOperator() == ExpressionUnaryOp.NOT) {
 				// Compute, then subtract from 1
-				regionValues = checkProbPathFormulaSimple(model, exprUnary.getOperand());
+				regionValues = checkProbPathFormulaSimple(model, exprUnary.getOperand(), accuracy);
 				for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
 					entry.getValue().getMin().timesConstant(-1.0);
 					entry.getValue().getMin().plusConstant(1.0);
@@ -515,14 +515,14 @@ final public class PSEModelChecker extends PrismComponent
 			// Until
 			else if (exprTemp.getOperator() == ExpressionTemporal.P_U) {
 				if (exprTemp.hasBounds()) {
-					regionValues = checkProbBoundedUntil(model, exprTemp);
+					regionValues = checkProbBoundedUntil(model, exprTemp, accuracy);
 				} else {
 					throw new PrismException("PSE supports bounded until only");
 				}
 			}
 			// Anything else - convert to until and recurse
 			else {
-				regionValues = checkProbPathFormulaSimple(model, exprTemp.convertToUntilForm());
+				regionValues = checkProbPathFormulaSimple(model, exprTemp.convertToUntilForm(), accuracy);
 			}
 		}
 
@@ -535,7 +535,7 @@ final public class PSEModelChecker extends PrismComponent
 	/**
 	 * Model check a time-bounded until operator; return vector of probabilities for all states.
 	 */
-	protected BoxRegionValues checkProbBoundedUntil(Model model, ExpressionTemporal expr) throws PrismException
+	protected BoxRegionValues checkProbBoundedUntil(Model model, ExpressionTemporal expr, double accuracy) throws PrismException
 	{
 		double lTime, uTime; // time bounds
 		Expression exprTmp;
@@ -573,8 +573,8 @@ final public class PSEModelChecker extends PrismComponent
 		}
 
 		// model check operands first
-		BoxRegionValues op1RgnVals = checkExpression(model, expr.getOperand1());
-		BoxRegionValues op2RgnVals = checkExpression(model, expr.getOperand2());
+		BoxRegionValues op1RgnVals = checkExpression(model, expr.getOperand1(), accuracy);
+		BoxRegionValues op2RgnVals = checkExpression(model, expr.getOperand2(), accuracy);
 		assert op1RgnVals.getNumRegions() == 1 && op2RgnVals.getNumRegions() == 1;
 		b1Min = op1RgnVals.getMin(BoxRegion.completeSpace).getBitSet();
 		b1Max = op1RgnVals.getMax(BoxRegion.completeSpace).getBitSet();
@@ -601,15 +601,17 @@ final public class PSEModelChecker extends PrismComponent
 				// nb: uTime != 0 since would be caught above (trivial case)
 				b1Min.andNot(b2Min);
 				b1Max.andNot(b2Max);
-				regionValues = computeTransientBackwardsProbs((PSEModel) model, b2Min, b1Min, b2Max, b1Max, uTime, null, null);
-				// set values to exactly 1 for target (b2) states
-				// (these are computed inexactly during uniformisation)
-				int n = model.getNumStates();
-				for (int i = 0; i < n; i++) {
-					if (b2Min.get(i))
-						regionValues.getMin(BoxRegion.completeSpace).setDoubleValue(i, 1);
-					if (b2Max.get(i))
-						regionValues.getMax(BoxRegion.completeSpace).setDoubleValue(i, 1);
+
+				StateValues ones = new StateValues(TypeDouble.getInstance(), new Double(1.0), model);
+				BoxRegionValues onesMultProbs = new BoxRegionValues(model, BoxRegion.completeSpace, ones, ones);
+
+				while (true) {
+					try {
+						regionValues = computeTransientBackwardsProbs((PSEModel) model, b2Min, b1Min, b2Max, b1Max, uTime, onesMultProbs, accuracy);
+						break;
+					} catch (SignificantInaccuracy e) {
+						onesMultProbs.divideRegion(e.getRegion());
+					}
 				}
 			}
 			// [lTime,uTime] (including where lTime == uTime)
@@ -618,22 +620,38 @@ final public class PSEModelChecker extends PrismComponent
 				tmpMin.andNot(b2Min);
 				tmpMax = (BitSet) b1Max.clone();
 				tmpMax.andNot(b2Max);
-				tmpRegionValues = computeTransientBackwardsProbs((PSEModel) model, b2Min, tmpMin, b2Max, tmpMax, uTime - lTime, null, null);
-				double[] multProbsMin = tmpRegionValues.getMin(BoxRegion.completeSpace).getDoubleArray();
-				double[] multProbsMax = tmpRegionValues.getMax(BoxRegion.completeSpace).getDoubleArray();
-				regionValues = computeTransientBackwardsProbs((PSEModel) model, b1Min, b1Min, b1Max, b1Max, lTime, multProbsMin, multProbsMax);
+
+				StateValues ones = new StateValues(TypeDouble.getInstance(), new Double(1.0), model);
+				BoxRegionValues onesMultProbs = new BoxRegionValues(model, BoxRegion.completeSpace, ones, ones);
+
+				while (true) {
+					try {
+						tmpRegionValues = computeTransientBackwardsProbs((PSEModel) model, b2Min, tmpMin, b2Max, tmpMax, uTime - lTime, onesMultProbs, Double.POSITIVE_INFINITY);
+						regionValues = computeTransientBackwardsProbs((PSEModel) model, b1Min, b1Min, b1Max, b1Max, lTime, tmpRegionValues, accuracy);
+						break;
+					} catch (SignificantInaccuracy e) {
+						onesMultProbs.divideRegion(e.getRegion());
+					}
+				}
 			}
 		}
 
+		mainLog.print("\nAltogether, the backwards transient probability computations produced ");
+		mainLog.println(regionValues.getNumRegions() + " final regions.");
 		return regionValues;
 	}
 
+	/**
+	 * NB: Decompositions of the parameter space must be performed explicitly,
+	 * SignificantInacurracy is not handled within the method.
+	 */
 	public BoxRegionValues computeTransientBackwardsProbs(PSEModel model,
 			BitSet targetMin, BitSet nonAbsMin, BitSet targetMax, BitSet nonAbsMax,
-			double t, double multProbsMin[], double multProbsMax[]) throws PrismException
+			double t, BoxRegionValues multProbs, double accuracy)
+					throws PrismException, SignificantInaccuracy
 	{
 		BoxRegionValues regionValues = new BoxRegionValues(model);
-		int i, n, iters;
+		int i, n, iters, totalIters;
 		double solnMin[], soln2Min[], sumMin[];
 		double solnMax[], soln2Max[], sumMax[];
 		double tmpsoln[];
@@ -650,8 +668,9 @@ final public class PSEModelChecker extends PrismComponent
 		n = model.getNumStates();
 
 		// Optimisations: If (nonAbs is empty or t = 0) and multProbs is null, this is easy.
-		if ((((nonAbsMin != null && nonAbsMin.isEmpty()) || (t == 0)) && multProbsMin == null) &&
-				(((nonAbsMax != null && nonAbsMax.isEmpty()) || (t == 0)) && multProbsMax == null)) {
+		if (((nonAbsMin != null && nonAbsMin.isEmpty()) || t == 0) &&
+				((nonAbsMax != null && nonAbsMax.isEmpty()) || t == 0) &&
+				multProbs == null) {
 			solnMin = Utils.bitsetToDoubleArray(targetMin, n);
 			solnMax = Utils.bitsetToDoubleArray(targetMax, n);
 			return new BoxRegionValues(model, BoxRegion.completeSpace, solnMin, solnMax);
@@ -683,72 +702,79 @@ final public class PSEModelChecker extends PrismComponent
 		}
 		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
 
-		// Create solution vector(s)
-		solnMin = new double[n];
-		soln2Min = new double[n];
-		sumMin = new double[n];
-		solnMax = new double[n];
-		soln2Max = new double[n];
-		sumMax = new double[n];
+		totalIters = 0;
+		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : multProbs) {
+			// Extract data from entry
+			BoxRegion region = entry.getKey();
+			double[] multProbsMin = entry.getValue().getMin().getDoubleArray();
+			double[] multProbsMax = entry.getValue().getMax().getDoubleArray();
 
-		// Initialise solution vectors.
-		// Vectors soln/soln2 are 1 for target states, or multProbs[i] if supplied.
-		// Vector sum is all zeros (done by array creation).
-		if (multProbsMin != null) {
-			for (i = 0; i < n; i++)
-				solnMin[i] = soln2Min[i] = targetMin.get(i) ? multProbsMin[i] : 0.0;
-		} else {
-			for (i = 0; i < n; i++)
-				solnMin[i] = soln2Min[i] = targetMin.get(i) ? 1.0 : 0.0;
-		}
-		if (multProbsMax != null) {
-			for (i = 0; i < n; i++)
-				solnMax[i] = soln2Max[i] = targetMax.get(i) ? multProbsMax[i] : 0.0;
-		} else {
-			for (i = 0; i < n; i++)
-				solnMax[i] = soln2Max[i] = targetMax.get(i) ? 1.0 : 0.0;
-		}
+			// Shrink the parameter space
+			model.scaleParameterSpace(region.getMinCoeff(), region.getMaxCoeff());
 
-		// If necessary, do 0th element of summation (doesn't require any matrix powers)
-		if (left == 0) {
+			// Create solution vectors
+			solnMin = new double[n];
+			soln2Min = new double[n];
+			sumMin = new double[n];
+			solnMax = new double[n];
+			soln2Max = new double[n];
+			sumMax = new double[n];
+
+			// Initialise solution vectors.
+			// Vectors soln/soln2 are multProbs[i] for target states.
+			// Vector sum is all zeros (done by array creation).
 			for (i = 0; i < n; i++) {
-				sumMin[i] += weights[0] * solnMin[i];
-				sumMax[i] += weights[0] * solnMax[i];
+				solnMin[i] = soln2Min[i] = targetMin.get(i) ? multProbsMin[i] : 0.0;
+				solnMax[i] = soln2Max[i] = targetMax.get(i) ? multProbsMax[i] : 0.0;
 			}
-		}
 
-		// Start iterations
-		iters = 1;
-		while (iters <= right) {
-			// Matrix-vector multiply
-			model.mvMult(solnMin, soln2Min, solnMax, soln2Max, nonAbs, false, q);
-
-			// Swap vectors for next iter
-			tmpsoln = solnMin;
-			solnMin = soln2Min;
-			soln2Min = tmpsoln;
-			tmpsoln = solnMax;
-			solnMax = soln2Max;
-			soln2Max = tmpsoln;
-
-			// Add to sum
-			if (iters >= left) {
+			// If necessary, do 0th element of summation (doesn't require any matrix powers)
+			if (left == 0) {
 				for (i = 0; i < n; i++) {
-					sumMin[i] += weights[iters - left] * solnMin[i];
-					sumMax[i] += weights[iters - left] * solnMax[i];
+					sumMin[i] += weights[0] * solnMin[i];
+					sumMax[i] += weights[0] * solnMax[i];
 				}
 			}
-			iters++;
-		}
 
-		// Store result
-		regionValues.put(BoxRegion.completeSpace, sumMin, sumMax);
+			// Start iterations
+			iters = 1;
+			while (iters <= right) {
+				// Matrix-vector multiply				
+				model.mvMult(solnMin, soln2Min, solnMax, soln2Max, nonAbs, false, q);
+
+				// Swap vectors for next iter
+				tmpsoln = solnMin;
+				solnMin = soln2Min;
+				soln2Min = tmpsoln;
+				tmpsoln = solnMax;
+				solnMax = soln2Max;
+				soln2Max = tmpsoln;
+
+				// Add to sum
+				if (iters >= left) {
+					for (i = 0; i < n; i++) {
+						sumMin[i] += weights[iters - left] * solnMin[i];
+						sumMax[i] += weights[iters - left] * solnMax[i];
+
+						// Check whether the minimised/maximised probs are accurate enough
+						if ((sumMax[i] - sumMin[i]) > accuracy)
+							throw new SignificantInaccuracy(region);
+					}
+				}
+
+				iters++;
+				totalIters++;
+			}
+
+			// Store result
+			regionValues.put(region, sumMin, sumMax);
+		}
 
 		// Finished bounded probabilistic reachability
 		timer = System.currentTimeMillis() - timer;
 		mainLog.print("Backwards transient probability computation");
-		mainLog.print(" took " + iters + " iters");
-		mainLog.print(" and " + timer / 1000.0 + " seconds in total.\n");
+		mainLog.print(" took " + totalIters + " iters");
+		mainLog.println(" and " + timer / 1000.0 + " seconds in total.");
 
 		return regionValues;
 	}

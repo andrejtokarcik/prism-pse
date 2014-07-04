@@ -26,6 +26,18 @@
 
 package pse;
 
+@SuppressWarnings("serial")
 public class SignificantInaccuracy extends Exception
 {
+	protected BoxRegion region;
+
+	public SignificantInaccuracy(BoxRegion region)
+	{
+		this.region = region;
+	}
+
+	public BoxRegion getRegion()
+	{
+		return region;
+	}
 }

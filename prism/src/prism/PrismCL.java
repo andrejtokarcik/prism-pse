@@ -359,7 +359,7 @@ public class PrismCL implements PrismModelListener
 								res = prism.modelCheckParametric(propertiesFile, propertiesToCheck.get(j), paramNames, paramLowerBounds, paramUpperBounds);
 							}
 							else if (pseCheck) {
-								res = prism.modelCheckPSE(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds);
+								res = prism.modelCheckPSE(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
 							}
 							// Approximate (simulation-based) model checking
 							else if (simulate) {
@@ -1094,13 +1094,13 @@ public class PrismCL implements PrismModelListener
 				}
 				else if (sw.equals("psecheck")) {
 					pseCheck = true;
-					if (i < args.length - 1) {
-						pseCheck = true;
-						// store argument for later use (append if already partially specified)
-						if ("".equals(pseSwitch))
-							pseSwitch = args[++i].trim();
-						else
-							pseSwitch += "," + args[++i].trim();
+					if (i < args.length - 2) {
+						pseSwitch = args[++i].trim();
+						try {
+							pseAccuracy = Double.parseDouble(args[++i]);
+						} catch (NumberFormatException e) {
+							errorAndExit("Invalid accuracy value for -" + sw + " switch");
+						}
 					} else {
 						errorAndExit("Incomplete -" + sw + " switch");
 					}

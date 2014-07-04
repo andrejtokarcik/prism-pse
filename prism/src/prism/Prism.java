@@ -2972,7 +2972,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 	/**
 	 */
-	public Result modelCheckPSE(PropertiesFile propertiesFile, Property prop, String[] pseNames, double[] pseLowerBounds, double[] pseUpperBounds)
+	public Result modelCheckPSE(PropertiesFile propertiesFile, Property prop, String[] pseNames, double[] pseLowerBounds, double[] pseUpperBounds, double accuracy)
 			throws PrismException
 	{
 		// Some checks
@@ -3009,7 +3009,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		//mc.setModelBuilder(builder);
 		//mc.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
 		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
-		return mc.check(modelExpl, prop.getExpression());
+		return mc.check(modelExpl, prop.getExpression(), accuracy);
 	}
 
 	/**
