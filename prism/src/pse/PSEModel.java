@@ -489,17 +489,17 @@ final class PSEModel extends ModelExplicit
 
 	private double mvMultMidSumEvalMax(int trans, double vectMaxPred, double vectMaxState, double q)
 	{
-		double midSumNumeratorMin = ratePopulations[trans] * vectMaxPred - ratePopulations[trans] * vectMaxState;
-		if (midSumNumeratorMin > 0.0) return rateParamsUppers[trans] * midSumNumeratorMin / q;
-		else return rateParamsLowers[trans] * midSumNumeratorMin / q;
+		double midSumNumeratorMax = ratePopulations[trans] * vectMaxPred - ratePopulations[trans] * vectMaxState;
+		if (midSumNumeratorMax > 0.0) return rateParamsUppers[trans] * midSumNumeratorMax / q;
+		else return rateParamsLowers[trans] * midSumNumeratorMax / q;
 	}
 
 	/**
-	 * Semantics of mvMult() is *not* analogical to that of vmMult(), the difference
+	 * NB: Semantics of mvMult() is *not* analogical to that of vmMult(), the difference
 	 * is crucial:  result[k]_i in vmMult() is simply the probability of being in state k
-	 * in i steps starting from an initial state.  On the other hand, mvMult()'s
-	 * result[k]_i denotes the probability that a state distinct from k is reached
-	 * in i steps starting from k.
+	 * after i iterations starting from an initial state.  On the other hand, mvMult()'s
+	 * result[k]_i denotes the probability that an absorbing state (i.e., a state
+	 * in the complement of subset) is reached after i iterations starting from k.
 	 */
 	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], BitSet subset, boolean complement, double q)
 			throws PrismException
@@ -520,33 +520,30 @@ final class PSEModel extends ModelExplicit
 			resultMax[state] = vectMax[state];
 
 			for (int trans : outReactions.get(state)) {
-				// Note the exchange: succState(trans) is stored as pred
-				int pred = toState(trans);
-				resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[pred], vectMin[state], q);
-				resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[pred], vectMax[state], q);
+				int succ = toState(trans);
+				resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[succ], vectMin[state], q);
+				resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[succ], vectMax[state], q);
 			}
 
 			for (Pair<Integer, Integer> transs : inoutReactions.get(state)) {
-				// Note the exchange: transs.second is stored as predTrans
-				int predTrans = transs.second;
 				int trans = transs.first;
+				int succTrans = transs.second;
 
-				// Note the exchange: succState(predTrans) is stored as pred
-				int pred = toState(predTrans);
 				assert toState(trans) == state;
+				int succ = toState(succTrans);
 
 				if (!subset.get(fromState(trans))) {
 					// Reduce to the case of an incoming reaction
-					resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[pred], vectMin[state], q);
-					resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[pred], vectMax[state], q);
+					resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[succ], vectMin[state], q);
+					resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[succ], vectMax[state], q);
 					continue;
 				}
 
 				// The rate params of the two considered transitions must be identical
-				assert rateParamsLowers[predTrans] == rateParamsLowers[trans] && rateParamsUppers[predTrans] == rateParamsUppers[trans];
+				assert rateParamsLowers[succTrans] == rateParamsLowers[trans] && rateParamsUppers[succTrans] == rateParamsUppers[trans];
 
-				resultMin[state] += mvMultMidSumEvalMin(predTrans, vectMin[pred], vectMin[state], q);
-				resultMax[state] += mvMultMidSumEvalMax(predTrans, vectMax[pred], vectMax[state], q);
+				resultMin[state] += mvMultMidSumEvalMin(succTrans, vectMin[succ], vectMin[state], q);
+				resultMax[state] += mvMultMidSumEvalMax(succTrans, vectMax[succ], vectMax[state], q);
 			}
 		}
 
@@ -555,21 +552,21 @@ final class PSEModel extends ModelExplicit
 			if (parametrised(trans))
 				continue;
 
-			// Note the exchange: succState(trans) is stored as pred
-			int pred = toState(trans);
+			// Note the exchange: toState(trans) is stored as succ
 			int state = fromState(trans);
+			int succ = toState(trans);
 
 			if (!subset.get(state))
 				continue;
 
 			double rate = rateParamsLowers[trans] * ratePopulations[trans];
-			resultMin[state] += rate * (vectMin[pred] - vectMin[state]) / q;
-			resultMax[state] += rate * (vectMax[pred] - vectMax[state]) / q;
+			resultMin[state] += rate * (vectMin[succ] - vectMin[state]) / q;
+			resultMax[state] += rate * (vectMax[succ] - vectMax[state]) / q;
 		}
 	}
 
 	/**
-	 * Assumption: Transition rates involve at most one parameter
+	 * ASSUMPTION: Transition rates involve at most one parameter
 	 * (cf. the CAV 2013 article, p. 4).
 	 * 
 	 * For instance, the method below would *not* properly scale
