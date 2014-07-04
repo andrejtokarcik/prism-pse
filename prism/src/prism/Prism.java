@@ -3454,7 +3454,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 				initTimeDouble = 0;
 			}
 			*/
-			regionValues = mc.doTransient(modelExpl, timeDouble - initTimeDouble, pseAccuracy, initDistExplMin, initDistExplMax);
+			regionValues = mc.doTransient(modelExpl, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax, pseAccuracy);
 
 			// Results report
 			mainLog.println("\nPrinting transient probabilities w.r.t. the given parameter space:");

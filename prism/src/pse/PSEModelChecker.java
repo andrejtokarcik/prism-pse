@@ -680,7 +680,7 @@ final public class PSEModelChecker extends PrismComponent
 		timer = System.currentTimeMillis();
 		mainLog.println("\nStarting backwards transient probability computation...");
 
-		mainLog.println("\nComputing in, out, inout reactions...");
+		// Compute the in, out, inout sets of reactions
 		model.computeInOutReactions();
 
 		// Get uniformisation rate; do Fox-Glynn
@@ -692,14 +692,12 @@ final public class PSEModelChecker extends PrismComponent
 		fg = new FoxGlynn(qt, 1e-300, 1e+300, acc);
 		left = fg.getLeftTruncationPoint();
 		right = fg.getRightTruncationPoint();
-		if (right < 0) {
+		if (right < 0)
 			throw new PrismException("Overflow in Fox-Glynn computation (time bound too big?)");
-		}
 		weights = fg.getWeights();
 		totalWeight = fg.getTotalWeight();
-		for (i = left; i <= right; i++) {
+		for (i = left; i <= right; i++)
 			weights[i - left] /= totalWeight;
-		}
 		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
 
 		totalIters = 0;
@@ -781,15 +779,15 @@ final public class PSEModelChecker extends PrismComponent
 
 	// Transient analysis
 
-	public BoxRegionValues doTransient(Model modelExpl, double t, double accuracy, explicit.StateValues initDistMin, explicit.StateValues initDistMax) throws PrismException
+	public BoxRegionValues doTransient(Model modelExpl, double t, StateValues initDistMin, StateValues initDistMax, double accuracy) throws PrismException
 	{
 		PSEModel model = (PSEModel) modelExpl;
 		BoxRegionValues res = null;
-		explicit.StateValues initDistMinNew = null, initDistMaxNew = null;
+		StateValues initDistMinNew = null, initDistMaxNew = null;
 
 		// Build initial distribution (if not specified)
 		if (initDistMin == null) {
-			initDistMinNew = new explicit.StateValues(TypeDouble.getInstance(), new Double(0.0), model);
+			initDistMinNew = new StateValues(TypeDouble.getInstance(), new Double(0.0), model);
 			double initVal = 1.0 / model.getNumInitialStates();
 			for (int in : model.getInitialStates()) {
 				initDistMinNew.setDoubleValue(in, initVal);
@@ -798,7 +796,7 @@ final public class PSEModelChecker extends PrismComponent
 			initDistMinNew = initDistMin;
 		}
 		if (initDistMax == null) {
-			initDistMaxNew = new explicit.StateValues(TypeDouble.getInstance(), new Double(0.0), model);
+			initDistMaxNew = new StateValues(TypeDouble.getInstance(), new Double(0.0), model);
 			double initVal = 1.0 / model.getNumInitialStates();
 			for (int in : model.getInitialStates()) {
 				initDistMaxNew.setDoubleValue(in, initVal);
@@ -808,12 +806,15 @@ final public class PSEModelChecker extends PrismComponent
 		}
 		
 		// Compute transient probabilities
-		res = computeTransientProbs(model, t, accuracy, initDistMinNew.getDoubleArray(), initDistMaxNew.getDoubleArray());
+		res = computeTransientProbs(model, t, initDistMinNew.getDoubleArray(), initDistMaxNew.getDoubleArray(), accuracy);
 
 		return res;
 	}
 
-	public BoxRegionValues computeTransientProbs(PSEModel model, double t, double accuracy, double initDistMin[], double initDistMax[]) throws PrismException
+	/**
+	 * NB: Decompositions of the parameter space are performed implicitly.
+	 */
+	public BoxRegionValues computeTransientProbs(PSEModel model, double t, double initDistMin[], double initDistMax[], double accuracy) throws PrismException
 	{
 		BoxRegionValues regionValues = new BoxRegionValues(model);
 		int i, n, iters, totalIters;
@@ -829,14 +830,12 @@ final public class PSEModelChecker extends PrismComponent
 		// For decomposing the parameter space
 		LinkedList<BoxRegion> regions = new LinkedList<BoxRegion>();
 		regions.add(new BoxRegion(0.0, 1.0));
-		int numDecompositions = 0;
 
 		// Start bounded probabilistic reachability
 		timer = System.currentTimeMillis();
 		mainLog.println("\nStarting transient probability computation...");
-		totalIters = 0;
 
-		mainLog.println("\nComputing in, out, inout reactions...");
+		// Compute the in, out, inout sets of reactions
 		model.computeInOutReactions();
 
 		// Store num states
@@ -851,18 +850,17 @@ final public class PSEModelChecker extends PrismComponent
 		fg = new FoxGlynn(qt, 1e-300, 1e+300, acc);
 		left = fg.getLeftTruncationPoint();
 		right = fg.getRightTruncationPoint();
-		if (right < 0) {
+		if (right < 0)
 			throw new PrismException("Overflow in Fox-Glynn computation (time bound too big?)");
-		}
 		weights = fg.getWeights();
 		totalWeight = fg.getTotalWeight();
-		for (i = left; i <= right; i++) {
+		for (i = left; i <= right; i++)
 			weights[i - left] /= totalWeight;
-		}
 		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
 
+		totalIters = 0;
 		while (regions.size() != 0) {
-			// Create solution vector(s)
+			// Create solution vectors
 			solnMin = new double[n];
 			soln2Min = new double[n];
 			sumMin = new double[n];
@@ -870,17 +868,11 @@ final public class PSEModelChecker extends PrismComponent
 			soln2Max = new double[n];
 			sumMax = new double[n];
 
-			// Initialise solution vectors
-			// (don't need to do soln2 since will be immediately overwritten)
+			// Initialise solution vectors.
+			// Don't need to do soln2 since will be immediately overwritten.
+			// Vector sum is all zeros (done by array creation).
 			solnMin = initDistMin.clone();
 			solnMax = initDistMax.clone();
-			/*
-			// Done by array creation...?
-			for (i = 0; i < n; i++) {
-				sumMin[i] = 0.0;
-				sumMax[i] = 0.0;
-			}
-			*/
 
 			// If necessary, do 0th element of summation (doesn't require any matrix powers)
 			if (left == 0) {
@@ -893,7 +885,6 @@ final public class PSEModelChecker extends PrismComponent
 			// Shrink the parameter space
 			BoxRegion region = regions.remove();
 			model.scaleParameterSpace(region.getMinCoeff(), region.getMaxCoeff());
-			numDecompositions++;
 
 			try {
 				// Start iterations
@@ -918,9 +909,8 @@ final public class PSEModelChecker extends PrismComponent
 							sumMax[i] += weights[iters - left] * solnMax[i];
 
 							// Check whether the minimised/maximised probs are accurate enough
-							if ((sumMax[i] - sumMin[i]) > accuracy) {
-								throw new SignificantInaccuracy();
-							}
+							if ((sumMax[i] - sumMin[i]) > accuracy)
+								throw new SignificantInaccuracy(region);
 						}
 					}
 
@@ -931,18 +921,18 @@ final public class PSEModelChecker extends PrismComponent
 				// Store result
 				regionValues.put(region, sumMin, sumMax);
 			} catch (SignificantInaccuracy e) {
-				// Decompose the current region!
-				regions.add(region.lowerHalf());
-				regions.add(region.upperHalf());
+				// Decompose the region giving inaccurate results
+				regions.add(e.getRegion().lowerHalf());
+				regions.add(e.getRegion().upperHalf());
 			}
 		}
 
 		// Finished bounded probabilistic reachability
 		timer = System.currentTimeMillis() - timer;
 		mainLog.print("Transient probability computation");
-		mainLog.print(" took " + totalIters + " iters, " + numDecompositions + " decompositions");
-		mainLog.print(" (resulting in " + regionValues.getNumRegions() + " final regions)");
-		mainLog.print(" and " + timer / 1000.0 + " seconds in total.\n");
+		mainLog.print(" took " + totalIters + " iters");
+		mainLog.print(" and " + timer / 1000.0 + " seconds in total");
+		mainLog.println(" (producing " + regionValues.getNumRegions() + " final regions).");
 
 		return regionValues;
 	}
