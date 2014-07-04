@@ -224,8 +224,10 @@ public final class ModelBuilder extends PrismComponent
 			return ratePopulationsCache.get(rate);
 		}
 		Expression rateParams = getRateParams(rate);
-		// Could call with paramsUpper as well
-		double ratePopulation = Expression.Divide(rate, rateParams).evaluateDouble(paramsLower);
+		// It is less safe to evaluate the rate population with paramsLower
+		// since a lower bound may be reasonably set to zero, which could in turn
+		// result in lots of NaNs due to division by zero.
+		double ratePopulation = Expression.Divide(rate, rateParams).evaluateDouble(paramsUpper);
 		ratePopulationsCache.put(rate, ratePopulation);
 		return ratePopulation;
 	}
