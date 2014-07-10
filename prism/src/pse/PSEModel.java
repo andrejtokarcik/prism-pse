@@ -208,6 +208,12 @@ final class PSEModel extends ModelExplicit
 	}
 
 	@Override
+	public void exportTransitionsToDotFile(int i, PrismLog out)
+	{
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public void exportToPrismLanguage(String filename) throws PrismException
 	{
 		throw new UnsupportedOperationException();
