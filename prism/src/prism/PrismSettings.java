@@ -119,7 +119,7 @@ public class PrismSettings implements Observer
 	public static final	String PRISM_PARAM_SUBSUME_REGIONS			= "prism.param.subsumeRegions";
 	public static final String PRISM_PARAM_DAG_MAX_ERROR			= "prism.param.functionDagMaxError";
 
-	public static final	String PRISM_PSE_ENABLED				= "prism.pse.enabled";
+	public static final	String PRISM_PSE_ENABLED					= "prism.pse.enabled";
 
 	public static final String PRISM_FAU_EPSILON					= "prism.fau.epsilon";
 	public static final String PRISM_FAU_DELTA						= "prism.fau.delta";
@@ -1509,7 +1509,7 @@ public class PrismSettings implements Observer
 		mainLog.println("-paramdagmaxerror <b> .......... Maximal error probability allowed for DAG function representation [default: 1E-100]");
 		mainLog.println();
 		mainLog.println("PARAMETER SPACE EXPLORATION OPTIONS:");
-		mainLog.println("-pse <time> <vals> ............. Perform parameter space exploration with parameter ranges <vals>");
+		mainLog.println("-pse <time> <vals> <acc> ....... Perform parameter space exploration with parameter ranges <vals> and accuracy <acc>");
 		mainLog.println();
 		mainLog.println("FAST ADAPTIVE UNIFORMISATION (FAU) OPTIONS:");
 		mainLog.println("-faudelta <x> .................. Set probability threshold for irrelevant states in FAU [default: 1e-12]");

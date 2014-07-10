@@ -1,8 +1,8 @@
 //==============================================================================
 //	
-//	Copyright (c) 2002-
+//	Copyright (c) 2014-
 //	Authors:
-//	* Dave Parker <david.parker@comlab.ox.ac.uk> (University of Oxford)
+//	* Andrej Tokarcik <andrejtokarcik@gmail.com> (Masaryk University)
 //	
 //------------------------------------------------------------------------------
 //	
@@ -24,27 +24,20 @@
 //	
 //==============================================================================
 
-package explicit.ranged;
+package pse;
 
-import explicit.ModelCheckerResult;
+@SuppressWarnings("serial")
+public class SignificantInaccuracy extends Exception
+{
+	protected BoxRegion region;
 
-public class ModelCheckerResultRanged {
-    private ModelCheckerResult min;
-    private ModelCheckerResult max;
-    
-    public ModelCheckerResultRanged(ModelCheckerResult min, ModelCheckerResult max)
-    {
-        this.min = min;
-        this.max = max;
-    }
-    
-    public ModelCheckerResult getMin()
-    {
-    	return min;
-    }
-    
-    public ModelCheckerResult getMax()
-    {
-    	return max;
-    }
+	public SignificantInaccuracy(BoxRegion region)
+	{
+		this.region = region;
+	}
+
+	public BoxRegion getRegion()
+	{
+		return region;
+	}
 }

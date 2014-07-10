@@ -24,10 +24,45 @@
 //	
 //==============================================================================
 
-package explicit.ranged;
+package pse;
 
-public interface DTMCRanged extends ModelRanged
+import prism.Pair;
+
+public class BoxRegion extends Pair.ComparablePair<Double, Double>
 {
-	public void vmMultMin(double vect[], double result[]);
-	public void vmMultMax(double vect[], double result[]);
+	public static BoxRegion completeSpace = new BoxRegion(0.0, 1.0);
+
+	public BoxRegion(double min, double max)
+	{
+		super(min, max);
+		assert 0 <= min && min <= 1;
+		assert 0 <= max && max <= 1;
+		assert min <= max;
+	}
+
+	public double getMinCoeff()
+	{
+		return first;
+	}
+
+	public double getMaxCoeff()
+	{
+		return second;
+	}
+	
+	public BoxRegion lowerHalf()
+	{
+		return new BoxRegion(first, first + 0.5 * (second - first));
+	}
+	
+	public BoxRegion upperHalf()
+	{
+		return new BoxRegion(first + 0.5 * (second - first), second);
+	}
+	
+	@Override
+	public String toString() {
+		// TODO: Multiply by actual param bounds (e.g. supplied via BoxRegionFactory as in param?)
+		return "Region [" + first + ", " + second + "]";
+	}
 }

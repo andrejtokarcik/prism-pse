@@ -36,6 +36,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map.Entry;
 
 import jdd.JDD;
 import jdd.JDDNode;
@@ -66,9 +67,7 @@ import sparse.PrismSparse;
 import strat.Strategy;
 import dv.DoubleVector;
 import explicit.ConstructModel;
-import explicit.ranged.ModelCheckerResultRanged;
 import explicit.CTMC;
-import explicit.ranged.CTMCRanged;
 import explicit.CTMCModelChecker;
 import explicit.DTMC;
 import explicit.DTMCModelChecker;
@@ -2970,7 +2969,49 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
 		return mc.check(modelExpl, prop.getExpression());
 	}
-	
+
+	/**
+	 */
+	public Result modelCheckPSE(PropertiesFile propertiesFile, Property prop, String[] pseNames, double[] pseLowerBounds, double[] pseUpperBounds, double accuracy)
+			throws PrismException
+	{
+		// Some checks
+		if (pseNames == null) {
+			throw new PrismException("Must specify some parameters in order to perform PSE model checking");
+		}
+		if (!(currentModelType == ModelType.CTMC))
+			throw new PrismException("PSE model checking supported for CTMCs only");
+		/*
+		if (!getExplicit())
+			throw new PrismException("Parameter space exploration supported for the explicit engine only");
+		*/
+
+		Values definedPFConstants = propertiesFile.getConstantValues();
+		Values constlist = currentModulesFile.getConstantValues();
+		for (int pnr = 0; pnr < pseNames.length; pnr++) {
+			constlist.removeValue(pseNames[pnr]);
+		}
+
+		// Print info
+		mainLog.printSeparator();
+		mainLog.println("\nPSE model checking: " + prop);
+		if (currentDefinedMFConstants != null && currentDefinedMFConstants.getNumValues() > 0)
+			mainLog.println("Model constants: " + currentDefinedMFConstants);
+		if (definedPFConstants != null && definedPFConstants.getNumValues() > 0)
+			mainLog.println("Property constants: " + definedPFConstants);
+
+		pse.ModelBuilder builder = new pse.ModelBuilder(this);
+		builder.setModulesFile(currentModulesFile);
+		builder.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
+		builder.build();
+		explicit.Model modelExpl = builder.getModel();
+		pse.PSEModelChecker mc = new pse.PSEModelChecker(this);
+		//mc.setModelBuilder(builder);
+		//mc.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
+		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
+		return mc.check(modelExpl, prop.getExpression(), accuracy);
+	}
+
 	/**
 	 * Export a strategy. The associated model should be attached to the strategy.
 	 * Strictly, speaking that does not need to be the currently loaded model,
@@ -3348,15 +3389,14 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 	/**
 	 */
-	public void doParamSpaceExplore(UndefinedConstants times, String[] pseNames, String[] pseLowerBounds, String[] pseUpperBounds, File fileIn) throws PrismException
+	public void doParamSpaceExplore(UndefinedConstants times, String[] pseNames, double[] pseLowerBounds, double[] pseUpperBounds, double pseAccuracy, File fileIn) throws PrismException
 	{
 		int i;
 		double timeDouble = 0, initTimeDouble = 0;
 		Object time;
 		long l = 0; // timer
-		ModelCheckerResultRanged mcRes;
-		explicit.StateValues probsExplMin = null, probsExplMax = null, initDistExplMin = null, initDistExplMax = null;
-		String oldParamFunction;
+		pse.BoxRegionValues regionValues;
+		explicit.StateValues initDistExplMin = null, initDistExplMax = null;
 
 		// Some checks
 		if (pseNames == null)
@@ -3367,23 +3407,21 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		if (!getExplicit())
 			throw new PrismException("Parameter space exploration supported for the explicit engine only");
 		*/
-		
-		// Simulate `-paramfunction expr` was given on command line
-		oldParamFunction = settings.getString(PrismSettings.PRISM_PARAM_FUNCTION);
-		settings.set(PrismSettings.PRISM_PARAM_FUNCTION, "expr");
-		
+
 		Values constlist = currentModulesFile.getConstantValues();
 		for (int pnr = 0; pnr < pseNames.length; pnr++) {
 			constlist.removeValue(pseNames[pnr]);
 		}
 
 		// Build model
-		param.ModelBuilder builder = new ModelBuilder(this);
+		pse.ModelBuilder builder = new pse.ModelBuilder(this);
 		builder.setModulesFile(currentModulesFile);
 		builder.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
 		builder.build();
 		explicit.Model modelExpl = builder.getModel();
-		
+		// Allow the builder to be garbage-collected
+		builder = null;
+
 		// Step through required time points
 		for (i = 0; i < times.getNumPropertyIterations(); i++) {
 			// Get time, check non-negative
@@ -3407,7 +3445,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			
 			l = System.currentTimeMillis();
 
-			ParamModelChecker mc = new ParamModelChecker(this);
+			pse.PSEModelChecker mc = new pse.PSEModelChecker(this);
 			/*
 			// TODO
 			if (i == 0) {
@@ -3416,39 +3454,43 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 				initTimeDouble = 0;
 			}
 			*/
-			mcRes = mc.doTransientRanged(modelExpl, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax);
-			probsExplMin = explicit.StateValues.createFromDoubleArray(mcRes.getMin().soln, modelExpl);
-			probsExplMax = explicit.StateValues.createFromDoubleArray(mcRes.getMax().soln, modelExpl);
-
-			l = System.currentTimeMillis() - l;
+			regionValues = mc.doTransient(modelExpl, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax, pseAccuracy);
 
 			// Results report
 			mainLog.println("\nPrinting transient probabilities w.r.t. the given parameter space:");
 			// TODO: printing to other log files (search for tmpLog used elsewhere)
 
-			mainLog.println("\n== Minimised probabilities ==\n");
 			// print out or export probabilities
-			probsExplMin.print(mainLog, true, false, true, true);
-			
-			mainLog.println("\n== Maximised probabilities ==\n");
-			probsExplMax.print(mainLog, true, false, true, true);
+			for (Entry<pse.BoxRegion, pse.BoxRegionValues.StateValuesPair> entry : regionValues) {
+				// TODO: merge with BoxRegionValues.toString()
+				mainLog.print("\n== Region ");
+				pse.BoxRegion region = entry.getKey();
+				for (int pnr = 0; pnr < pseNames.length; pnr++) {
+					if (pnr != 0) mainLog.print(", ");
+					mainLog.print(pseNames[pnr] + "=");
+					mainLog.print(pseLowerBounds[pnr] + region.getMinCoeff() * (pseUpperBounds[pnr] - pseLowerBounds[pnr]));
+					mainLog.print(":");
+					mainLog.print(pseLowerBounds[pnr] + region.getMaxCoeff() * (pseUpperBounds[pnr] - pseLowerBounds[pnr]));
+				}
+				mainLog.print(" ==\n");
+
+				mainLog.println("\n=== Minimised probabilities ===\n");
+				entry.getValue().getMin().print(mainLog);
+
+				mainLog.println("\n=== Maximised probabilities ===\n");
+				entry.getValue().getMax().print(mainLog);
+			}
 
 			// print out computation time
+			l = System.currentTimeMillis() - l;
 			mainLog.println("\nTime for parameter space exploration: " + l / 1000.0 + " seconds.");
 
 			// Prepare for next iteration
-			initDistExplMin = probsExplMin;
-			initDistExplMax = probsExplMax;
+			initDistExplMin = null;
+			initDistExplMax = null;
 			initTimeDouble = timeDouble;
 			times.iterateProperty();
 		}
-
-		// tidy up
-		if (probsExplMin != null)
-			probsExplMin.clear();
-		if (probsExplMax != null)
-			probsExplMax.clear();
-		settings.set(PrismSettings.PRISM_PARAM_FUNCTION, oldParamFunction);
 	}
 
 
