@@ -96,26 +96,13 @@ public abstract class DTMCExplicit extends ModelExplicit implements DTMC
 	}
 
 	@Override
-	public void exportToDotFile(String filename, BitSet mark) throws PrismException
+	public void exportTransitionsToDotFile(int i, PrismLog out)
 	{
-		int i;
-		try {
-			FileWriter out = new FileWriter(filename);
-			out.write("digraph " + getModelType() + " {\nsize=\"8,5\"\nnode [shape=box];\n");
-			for (i = 0; i < numStates; i++) {
-				if (mark != null && mark.get(i))
-					out.write(i + " [style=filled  fillcolor=\"#cccccc\"]\n");
-				Iterator<Map.Entry<Integer, Double>> iter = getTransitionsIterator(i);
-				while (iter.hasNext()) {
-					Map.Entry<Integer, Double> e = iter.next();
-					out.write(i + " -> " + e.getKey() + " [ label=\"");
-					out.write(e.getValue() + "\" ];\n");
-				}
-			}
-			out.write("}\n");
-			out.close();
-		} catch (IOException e) {
-			throw new PrismException("Could not write " + getModelType() + " to file \"" + filename + "\"" + e);
+		Iterator<Map.Entry<Integer, Double>> iter = getTransitionsIterator(i);
+		while (iter.hasNext()) {
+			Map.Entry<Integer, Double> e = iter.next();
+			out.print(i + " -> " + e.getKey() + " [ label=\"");
+			out.print(e.getValue() + "\" ];\n");
 		}
 	}
 

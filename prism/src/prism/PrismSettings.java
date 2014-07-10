@@ -324,7 +324,7 @@ public class PrismSettings implements Observer
 			
 			// FAST ADAPTIVE UNIFORMISATION																
 			{ DOUBLE_TYPE,      PRISM_FAU_EPSILON,						"FAU epsilon",		 					"4.1",   	 	new Double(1E-6),     													"",
-																			"For fast adaptive uniformisation (FAU), states whose probability is below this value will be removed." },
+																			"For fast adaptive uniformisation (FAU), decides how much probability may be lost due to truncation of birth process." },
 			{ DOUBLE_TYPE,      PRISM_FAU_DELTA,						"FAU cut off delta", 					"4.1",   	 	new Double(1E-12),     													"",
 																			"For fast adaptive uniformisation (FAU), states whose probability is below this value will be removed." },
 			{ INTEGER_TYPE,     PRISM_FAU_ARRAYTHRESHOLD,				"FAU array threshold", 					"4.1",   	 	new Integer(100),    	 													"",
@@ -1512,6 +1512,7 @@ public class PrismSettings implements Observer
 		mainLog.println("-pse <time> <vals> <acc> ....... Perform parameter space exploration with parameter ranges <vals> and accuracy <acc>");
 		mainLog.println();
 		mainLog.println("FAST ADAPTIVE UNIFORMISATION (FAU) OPTIONS:");
+		mainLog.println("-fauepsilon <x> ................ Set probability threshold of birth process in FAU [default: 1e-6]");
 		mainLog.println("-faudelta <x> .................. Set probability threshold for irrelevant states in FAU [default: 1e-12]");
 		mainLog.println("-fauarraythreshold <x> ......... Set threshold when to switch to sparse matrix in FAU [default: 100]");
 		mainLog.println("-fauintervals <x> .............. Set number of intervals to divide time intervals into for FAU [default: 1]");

@@ -170,7 +170,7 @@ public class NondetModelChecker extends NonProbModelChecker
 			if (p < 0 || p > 1)
 				throw new PrismException("Invalid probability bound " + p + " in P operator");
 		}
-		min = relOp.isLowerBound();
+		min = relOp.isLowerBound() || relOp.isMin();
 
 		// Check for trivial (i.e. stupid) cases
 		if (pb != null) {
@@ -235,7 +235,7 @@ public class NondetModelChecker extends NonProbModelChecker
 			if (r < 0)
 				throw new PrismException("Invalid reward bound " + r + " in R operator");
 		}
-		min = relOp.isLowerBound();
+		min = relOp.isLowerBound() || relOp.isMin();
 
 		// get reward info
 		if (model.getNumRewardStructs() == 0)
@@ -1495,7 +1495,9 @@ public class NondetModelChecker extends NonProbModelChecker
 		}
 		if (prism.getExportProductStates()) {
 			mainLog.println("\nExporting product state space to file \"" + prism.getExportProductStatesFilename() + "\"...");
-			modelProduct.exportStates(Prism.EXPORT_PLAIN, new PrismFileLog(prism.getExportProductStatesFilename()));
+			PrismFileLog out = new PrismFileLog(prism.getExportProductStatesFilename());
+			modelProduct.exportStates(Prism.EXPORT_PLAIN, out);
+			out.close();
 		}
 
 		// Find accepting MECs + compute reachability probabilities
