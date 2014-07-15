@@ -1,8 +1,7 @@
 //==============================================================================
 //	
-//	Copyright (c) 2013-
+//	Copyright (c) 2014-
 //	Authors:
-//	* Ernst Moritz Hahn <emhahn@cs.ox.ac.uk> (University of Oxford)
 //	* Andrej Tokarcik <andrejtokarcik@gmail.com> (Masaryk University)
 //	
 //------------------------------------------------------------------------------
@@ -40,6 +39,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import parser.Values;
+import parser.ast.Expression;
 import prism.ModelType;
 import prism.Pair;
 import prism.PrismException;
@@ -56,10 +56,10 @@ final class PSEModel extends ModelExplicit
 	private int[] colsFrom;
 	private int[] colsTo;
 	/** */
-	private double[] basicRateParamsLowers;
-	private double[] basicRateParamsUppers;
+	private Expression[] rateParams;
 	private double[] rateParamsLowers;
 	private double[] rateParamsUppers;
+	/** */
 	private double[] ratePopulations;
 	/** */
 	private boolean[] parametrisedTransitions;
@@ -245,12 +245,11 @@ final class PSEModel extends ModelExplicit
 		rows = new int[numStates + 1];
 		labels = new String[numTotalTransitions];
 		reactions = new Integer[numTotalTransitions];
-		basicRateParamsLowers = new double[numTotalTransitions];
-		basicRateParamsUppers = new double[numTotalTransitions];
+		rateParams = new Expression[numTotalTransitions];
 		rateParamsLowers = new double[numTotalTransitions];
 		rateParamsUppers = new double[numTotalTransitions];
-		ratePopulations = new double[numTotalTransitions];
 		parametrisedTransitions = new boolean[numTotalTransitions];
+		ratePopulations = new double[numTotalTransitions];
 		colsTo = new int[numTotalTransitions];
 		colsFrom = new int[numTotalTransitions];
 		exitRates = new double[numStates];
@@ -274,18 +273,14 @@ final class PSEModel extends ModelExplicit
 	/**
 	 * Adds a probabilistic transition from the current state.
 	 */
-	void addTransition(Integer reaction, int fromState, int toState, double rateParamsLower, double rateParamsUpper, double ratePopulation, String action)
+	void addTransition(Integer reaction, int fromState, int toState, Expression rateParamsExpr, double ratePopulation, String action)
 	{
 		reactions[numTotalTransitions] = reaction;
 		colsFrom[numTotalTransitions] = fromState;
 		colsTo[numTotalTransitions] = toState;
-		basicRateParamsLowers[numTotalTransitions] = rateParamsLower;
-		basicRateParamsUppers[numTotalTransitions] = rateParamsUpper;
-		rateParamsLowers[numTotalTransitions] = rateParamsLower;
-		rateParamsUppers[numTotalTransitions] = rateParamsUpper;
+		rateParams[numTotalTransitions] = rateParamsExpr;
 		ratePopulations[numTotalTransitions] = ratePopulation;
 		labels[numTotalTransitions] = action;
-		parametrisedTransitions[numTotalTransitions] = rateParamsLower != rateParamsUpper;
 
 		predecessorsViaReaction.add(toState ^ reaction);
 
@@ -558,7 +553,6 @@ final class PSEModel extends ModelExplicit
 			if (parametrised(trans))
 				continue;
 
-			// Note the exchange: toState(trans) is stored as succ
 			int state = fromState(trans);
 			int succ = toState(trans);
 
@@ -571,26 +565,13 @@ final class PSEModel extends ModelExplicit
 		}
 	}
 
-	/**
-	 * ASSUMPTION: Transition rates involve at most one parameter
-	 * (cf. the CAV 2013 article, p. 4).
-	 * 
-	 * For instance, the method below would *not* properly scale
-	 * the _parameter_ space if a rate formula included k1 * k2 where
-	 * k1, k2 are parameters.  If the parameters were each scaled
-	 * by a factor F, the rate would in turn need to be scaled by F^2.
-	 * The method below, however, directly scales the induced _rate_
-	 * space -- always by F.
-	 * 
-	 * It works correctly with at most one parameter because in that case
-	 * scaling of the rate space corresponds to scaling of the parameter
-	 * space.
-	 */
-	public void scaleParameterSpace(double scaleLower, double scaleUpper)
+	public void scaleParameterSpace(BoxRegion region) throws PrismException
 	{
 		for (int trans = 0; trans < numTotalTransitions; trans++) {
-			rateParamsLowers[trans] = basicRateParamsLowers[trans] + scaleLower * (basicRateParamsUppers[trans] - basicRateParamsLowers[trans]);
-			rateParamsUppers[trans] = basicRateParamsLowers[trans] + scaleUpper * (basicRateParamsUppers[trans] - basicRateParamsLowers[trans]);
+			rateParamsLowers[trans] = rateParams[trans].evaluateDouble(region.getLowerBounds());
+			rateParamsUppers[trans] = rateParams[trans].evaluateDouble(region.getUpperBounds());
+			parametrisedTransitions[trans] = rateParamsLowers[trans] != rateParamsUppers[trans];
+
 		}
 	}
 }

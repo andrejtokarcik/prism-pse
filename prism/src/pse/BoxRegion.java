@@ -26,43 +26,71 @@
 
 package pse;
 
-import prism.Pair;
+import parser.Values;
 
-public class BoxRegion extends Pair.ComparablePair<Double, Double>
+final class BoxRegion implements Comparable<BoxRegion>
 {
-	public static BoxRegion completeSpace = new BoxRegion(0.0, 1.0);
+	private Values boundsLower;
+	private Values boundsUpper;
 
-	public BoxRegion(double min, double max)
+	public BoxRegion(Values boundsLower, Values boundsUpper)
 	{
-		super(min, max);
-		assert 0 <= min && min <= 1;
-		assert 0 <= max && max <= 1;
-		assert min <= max;
+		assert boundsLower.compareTo(boundsUpper) <= 0;
+
+		this.boundsLower = boundsLower;
+		this.boundsUpper = boundsUpper;
 	}
 
-	public double getMinCoeff()
+	public Values getLowerBounds()
 	{
-		return first;
+		return boundsLower;
 	}
 
-	public double getMaxCoeff()
+	public Values getUpperBounds()
 	{
-		return second;
+		return boundsUpper;
 	}
-	
+
 	public BoxRegion lowerHalf()
 	{
-		return new BoxRegion(first, first + 0.5 * (second - first));
+		Values newUpper = new Values();
+		for (int i = 0; i < boundsLower.getNumValues(); i++) {
+			double lowerValue = (Double) boundsLower.getValue(i);
+			double upperValue = (Double) boundsUpper.getValue(i);
+			newUpper.addValue(boundsLower.getName(i),
+					lowerValue + 0.5 * (upperValue - lowerValue));
+		}
+		return new BoxRegion(boundsLower, newUpper);
 	}
-	
+
 	public BoxRegion upperHalf()
 	{
-		return new BoxRegion(first + 0.5 * (second - first), second);
+		Values newLower = new Values();
+		for (int i = 0; i < boundsLower.getNumValues(); i++) {
+			double lowerParamValue = (Double) boundsLower.getValue(i);
+			double upperParamValue = (Double) boundsUpper.getValue(i);
+			newLower.addValue(boundsLower.getName(i),
+					lowerParamValue + 0.5 * (upperParamValue - lowerParamValue));
+		}
+		return new BoxRegion(newLower, boundsUpper);
 	}
-	
+
+	public int compareTo(BoxRegion r)
+	{
+		return boundsLower.compareTo(r.boundsLower);
+	}
+
 	@Override
 	public String toString() {
-		// TODO: Multiply by actual param bounds (e.g. supplied via BoxRegionFactory as in param?)
-		return "Region [" + first + ", " + second + "]";
+		StringBuilder builder = new StringBuilder("Region ");
+		for (int i = 0; i < boundsLower.getNumValues(); i++) {
+			if (i != 0) builder.append(",");
+			builder.append(boundsLower.getName(i));
+			builder.append("=");
+			builder.append((Double) boundsLower.getValue(i));
+			builder.append(":");
+			builder.append((Double) boundsUpper.getValue(i));
+		}
+		return builder.toString();
 	}
 }

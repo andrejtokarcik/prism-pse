@@ -3031,7 +3031,11 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		builder.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
 		builder.build();
 		explicit.Model modelExpl = builder.getModel();
-		pse.PSEModelChecker mc = new pse.PSEModelChecker(this);
+		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
+		// Allow the builder to be garbage-collected
+		builder = null;
+
+		pse.PSEModelChecker mc = new pse.PSEModelChecker(this, regionFactory);
 		//mc.setModelBuilder(builder);
 		//mc.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
 		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
@@ -3478,6 +3482,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		builder.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
 		builder.build();
 		explicit.Model modelExpl = builder.getModel();
+		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
 		// Allow the builder to be garbage-collected
 		builder = null;
 
@@ -3504,7 +3509,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			
 			l = System.currentTimeMillis();
 
-			pse.PSEModelChecker mc = new pse.PSEModelChecker(this);
+			pse.PSEModelChecker mc = new pse.PSEModelChecker(this, regionFactory);
 			/*
 			// TODO
 			if (i == 0) {

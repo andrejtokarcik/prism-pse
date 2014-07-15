@@ -49,22 +49,17 @@ import prism.PrismLangException;
 import explicit.IndexedSet;
 import explicit.StateStorage;
 
-/**
- * Class to construct a parametric Markov model.
- * 
- * @author Ernst Moritz Hahn <emhahn@cs.ox.ac.uk> (University of Oxford)
- * @see PSEModel
- */
 public final class ModelBuilder extends PrismComponent
 {
 	/** {@code ModulesFile} to be transformed to a {@code ParamModel} */
 	private ModulesFile modulesFile;
 	/** parametric model constructed from {@code modulesFile} */
 	private PSEModel model;
-	/** lower bounds of parameters */
+	/** bounds of parameters */
 	private Values paramsLower;
-	/** upper bounds of parameters */
 	private Values paramsUpper;
+	/** */
+	private BoxRegionFactory regionFactory;
 	/** */
 	private Map<State, TransitionList> transitionsCache = new HashMap<State, TransitionList>();
 	private Map<Expression, Double> ratePopulationsCache = new HashMap<Expression, Double>();
@@ -108,6 +103,8 @@ public final class ModelBuilder extends PrismComponent
 			paramsLower.addValue(paramNames[i], lower[i]);
 			paramsUpper.addValue(paramNames[i], upper[i]);
 		}
+
+		regionFactory = new BoxRegionFactory(paramsLower, paramsUpper);
 	}
 
 	/**
@@ -127,6 +124,7 @@ public final class ModelBuilder extends PrismComponent
 		time = System.currentTimeMillis();
 		modulesFile = (ModulesFile) modulesFile.deepCopy().replaceConstants(modulesFile.getConstantValues()).simplify();
 		PSEModel modelExpl = constructModel(modulesFile);
+		modelExpl.scaleParameterSpace(regionFactory.completeSpace());
 		time = System.currentTimeMillis() - time;
 
 		mainLog.println("\nTime for model construction: " + time / 1000.0 + " seconds.");
@@ -141,6 +139,13 @@ public final class ModelBuilder extends PrismComponent
 	public explicit.Model getModel()
 	{
 		return model;
+	}
+
+	/**
+	 */
+	public BoxRegionFactory getRegionFactory()
+	{
+		return regionFactory;
 	}
 
 	/**
@@ -287,16 +292,12 @@ public final class ModelBuilder extends PrismComponent
 
 				State stateNew = choice.computeTarget(0, state);
 				Expression rateExpr = choice.getProbability(0);
-				Expression rateParams = getRateParams(rateExpr);
-				double rateParamsLower = rateParams.evaluateDouble(paramsLower);
-				double rateParamsUpper = rateParams.evaluateDouble(paramsUpper);
-				double ratePopulation = getRatePopulation(rateExpr);
-				model.addTransition(choice.hashCode(), permut[states.get(state)], permut[states.get(stateNew)], rateParamsLower, rateParamsUpper, ratePopulation, action);
+				model.addTransition(choice.hashCode(), permut[states.get(state)], permut[states.get(stateNew)], getRateParams(rateExpr), getRatePopulation(rateExpr), action);
 				sumOut = Expression.Plus(sumOut, rateExpr);
 			}
 			if (numChoices == 0) {
 				model.addDeadlockState(stateNr);
-				model.addTransition(null, stateNr, stateNr, 1, 1, 1, null);
+				model.addTransition(null, stateNr, stateNr, Expression.Double(1.0), 1.0, null);
 			}
 			model.setSumLeaving(sumOut.evaluateDouble(paramsUpper));
 			model.finishState();

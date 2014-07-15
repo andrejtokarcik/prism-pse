@@ -57,7 +57,7 @@ import explicit.StateModelChecker;
 import explicit.StateValues;
 import explicit.Utils;
 
-final public class PSEModelChecker extends PrismComponent
+public final class PSEModelChecker extends PrismComponent
 {
 	// Log for output (default to System.out)
 	private PrismLog mainLog = new PrismPrintStreamLog(System.out);
@@ -71,18 +71,18 @@ final public class PSEModelChecker extends PrismComponent
 	// Constants (extracted from model/properties)
 	private Values constantValues;
 
-	// The result of model checking will be stored here
-	//private Result result;
-
 	private StateModelChecker stateChecker;
+
+	private BoxRegionFactory regionFactory;
 
 	/**
 	 * Constructor
 	 */
-	public PSEModelChecker(PrismComponent parent) throws PrismException
+	public PSEModelChecker(PrismComponent parent, BoxRegionFactory regionFactory) throws PrismException
 	{
 		super(parent);
-		stateChecker = new StateModelChecker(this);
+		this.regionFactory = regionFactory;
+		this.stateChecker = new StateModelChecker(this);
 	}
 	
 	// Setters/getters
@@ -160,7 +160,7 @@ final public class PSEModelChecker extends PrismComponent
 		}
 		// Let explicit.StateModelChecker take care of other expressions
 		StateValues vals = stateChecker.checkExpression(model, expr);
-		return new BoxRegionValues(model, BoxRegion.completeSpace, vals, vals);
+		return new BoxRegionValues(model, regionFactory.completeSpace(), vals, vals);
 	}
 
 	/**
@@ -544,7 +544,7 @@ final public class PSEModelChecker extends PrismComponent
 			// prob is 1 in b2 states, 0 otherwise
 			probsMin = StateValues.createFromBitSetAsDoubles(b2Min, model);
 			probsMax = StateValues.createFromBitSetAsDoubles(b2Max, model);
-			regionValues = new BoxRegionValues(model, BoxRegion.completeSpace, probsMin, probsMax);
+			regionValues = new BoxRegionValues(model, regionFactory.completeSpace(), probsMin, probsMax);
 		} else {
 			// break down into different cases to compute probabilities
 
@@ -559,7 +559,7 @@ final public class PSEModelChecker extends PrismComponent
 				b1Max.andNot(b2Max);
 
 				StateValues ones = new StateValues(TypeDouble.getInstance(), new Double(1.0), model);
-				BoxRegionValues onesMultProbs = new BoxRegionValues(model, BoxRegion.completeSpace, ones, ones);
+				BoxRegionValues onesMultProbs = new BoxRegionValues(model, regionFactory.completeSpace(), ones, ones);
 
 				while (true) {
 					try {
@@ -578,7 +578,7 @@ final public class PSEModelChecker extends PrismComponent
 				tmpMax.andNot(b2Max);
 
 				StateValues ones = new StateValues(TypeDouble.getInstance(), new Double(1.0), model);
-				BoxRegionValues onesMultProbs = new BoxRegionValues(model, BoxRegion.completeSpace, ones, ones);
+				BoxRegionValues onesMultProbs = new BoxRegionValues(model, regionFactory.completeSpace(), ones, ones);
 
 				while (true) {
 					try {
@@ -629,7 +629,7 @@ final public class PSEModelChecker extends PrismComponent
 				multProbs == null) {
 			solnMin = Utils.bitsetToDoubleArray(targetMin, n);
 			solnMax = Utils.bitsetToDoubleArray(targetMax, n);
-			return new BoxRegionValues(model, BoxRegion.completeSpace, solnMin, solnMax);
+			return new BoxRegionValues(model, regionFactory.completeSpace(), solnMin, solnMax);
 		}
 
 		// Start backwards transient computation
@@ -664,7 +664,7 @@ final public class PSEModelChecker extends PrismComponent
 			double[] multProbsMax = entry.getValue().getMax().getDoubleArray();
 
 			// Shrink the parameter space
-			model.scaleParameterSpace(region.getMinCoeff(), region.getMaxCoeff());
+			model.scaleParameterSpace(region);
 
 			// Create solution vectors
 			solnMin = new double[n];
@@ -785,7 +785,7 @@ final public class PSEModelChecker extends PrismComponent
 
 		// For decomposing the parameter space
 		LinkedList<BoxRegion> regions = new LinkedList<BoxRegion>();
-		regions.add(new BoxRegion(0.0, 1.0));
+		regions.add(regionFactory.completeSpace());
 
 		// Start bounded probabilistic reachability
 		timer = System.currentTimeMillis();
@@ -840,7 +840,7 @@ final public class PSEModelChecker extends PrismComponent
 
 			// Shrink the parameter space
 			BoxRegion region = regions.remove();
-			model.scaleParameterSpace(region.getMinCoeff(), region.getMaxCoeff());
+			model.scaleParameterSpace(region);
 
 			try {
 				// Start iterations
