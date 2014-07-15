@@ -183,8 +183,8 @@ public final class PSEModelChecker extends PrismComponent
 
 		BoxRegionValues filterRgnVals = checkExpression(model, filter, accuracy);
 		assert filterRgnVals.getNumRegions() == 1;
-		BitSet bsFilterMin = filterRgnVals.getMin(BoxRegion.completeSpace).getBitSet();
-		BitSet bsFilterMax = filterRgnVals.getMax(BoxRegion.completeSpace).getBitSet();
+		BitSet bsFilterMin = filterRgnVals.getMin(regionFactory.completeSpace()).getBitSet();
+		BitSet bsFilterMax = filterRgnVals.getMax(regionFactory.completeSpace()).getBitSet();
 		boolean filterInit = (filter instanceof ExpressionLabel && ((ExpressionLabel) filter).getName().equals("init"));
 		boolean filterInitSingle = filterInit & model.getNumInitialStates() == 1;
 		if (bsFilterMin.isEmpty()) {
@@ -318,25 +318,24 @@ public final class PSEModelChecker extends PrismComponent
 			case EXISTS:
 				bsMin = subRgnValsMin.getBitSet();
 				bsMax = subRgnValsMax.getBitSet();
-				// XXX: an attempt to fix Milan's compilation error 2014-06-24
-				boolean bObjMin = subRgnValsMin.existsOverBitSet(bsFilterMin);
-				boolean bObjMax = subRgnValsMax.existsOverBitSet(bsFilterMax);
-				resRgnValsMin = new StateValues(expr.getType(), bObjMin, model);
-				resRgnValsMax = new StateValues(expr.getType(), bObjMax, model);
+				resObjMin = subRgnValsMin.existsOverBitSet(bsFilterMin);
+				resObjMax = subRgnValsMax.existsOverBitSet(bsFilterMax);
+				resRgnValsMin = new StateValues(expr.getType(), resObjMin, model);
+				resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
 				resRgnVals = new BoxRegionValues(model, region, resRgnValsMin, resRgnValsMax);
 
 				// Create explanation of result and print some details to log
 				resultExpl += "MIN = Property satisfied in ";
 				if (filterTrue) {
-					resultExpl += bObjMin ? "at least one state" : "no states";
+					resultExpl += ((Boolean) resObjMin).booleanValue() ? "at least one state" : "no states";
 				} else {
-					resultExpl += bObjMin ? "at least one filter state" : "no filter states";
+					resultExpl += ((Boolean) resObjMin).booleanValue() ? "at least one filter state" : "no filter states";
 				}
 				resultExpl += "\nMAX = Property satisfied in ";
 				if (filterTrue) {
-					resultExpl += bObjMax ? "at least one state" : "no states";
+					resultExpl += ((Boolean) resObjMax).booleanValue() ? "at least one state" : "no states";
 				} else {
-					resultExpl += bObjMax ? "at least one filter state" : "no filter states";
+					resultExpl += ((Boolean) resObjMax).booleanValue() ? "at least one filter state" : "no filter states";
 				}
 				mainLog.println("\n" + resultExpl);
 				break;
@@ -532,10 +531,10 @@ public final class PSEModelChecker extends PrismComponent
 		BoxRegionValues op1RgnVals = checkExpression(model, expr.getOperand1(), accuracy);
 		BoxRegionValues op2RgnVals = checkExpression(model, expr.getOperand2(), accuracy);
 		assert op1RgnVals.getNumRegions() == 1 && op2RgnVals.getNumRegions() == 1;
-		b1Min = op1RgnVals.getMin(BoxRegion.completeSpace).getBitSet();
-		b1Max = op1RgnVals.getMax(BoxRegion.completeSpace).getBitSet();
-		b2Min = op2RgnVals.getMin(BoxRegion.completeSpace).getBitSet();
-		b2Max = op2RgnVals.getMax(BoxRegion.completeSpace).getBitSet();
+		b1Min = op1RgnVals.getMin(regionFactory.completeSpace()).getBitSet();
+		b1Max = op1RgnVals.getMax(regionFactory.completeSpace()).getBitSet();
+		b2Min = op2RgnVals.getMin(regionFactory.completeSpace()).getBitSet();
+		b2Max = op2RgnVals.getMax(regionFactory.completeSpace()).getBitSet();
 
 		// compute probabilities
 
