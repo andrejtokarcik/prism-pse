@@ -27,11 +27,9 @@
 package explicit;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.util.BitSet;
 import java.util.List;
 
@@ -47,7 +45,6 @@ import parser.type.TypeInt;
 import prism.PrismException;
 import prism.PrismLangException;
 import prism.PrismLog;
-import prism.PrismPrintStreamLog;
 import prism.PrismUtils;
 import prism.StateVector;
 
@@ -1634,17 +1631,6 @@ public class StateValues implements StateVector
 		} else {
 			return false;
 		}
-	}
-
-	@Override
-	public String toString() {
-		// FIXME: print() hack
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		PrismPrintStreamLog dump = new PrismPrintStreamLog(new PrintStream(baos));
-		print(dump);
-		String result = baos.toString();
-		dump.close();
-		return result;
 	}
 
 	/**

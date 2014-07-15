@@ -36,7 +36,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map.Entry;
 
 import jdd.JDD;
 import jdd.JDDNode;
@@ -3525,25 +3524,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			// TODO: printing to other log files (search for tmpLog used elsewhere)
 
 			// print out or export probabilities
-			for (Entry<pse.BoxRegion, pse.BoxRegionValues.StateValuesPair> entry : regionValues) {
-				// TODO: merge with BoxRegionValues.toString()
-				mainLog.print("\n== Region ");
-				pse.BoxRegion region = entry.getKey();
-				for (int pnr = 0; pnr < pseNames.length; pnr++) {
-					if (pnr != 0) mainLog.print(", ");
-					mainLog.print(pseNames[pnr] + "=");
-					mainLog.print(pseLowerBounds[pnr] + region.getMinCoeff() * (pseUpperBounds[pnr] - pseLowerBounds[pnr]));
-					mainLog.print(":");
-					mainLog.print(pseLowerBounds[pnr] + region.getMaxCoeff() * (pseUpperBounds[pnr] - pseLowerBounds[pnr]));
-				}
-				mainLog.print(" ==\n");
-
-				mainLog.println("\n=== Minimised probabilities ===\n");
-				entry.getValue().getMin().print(mainLog);
-
-				mainLog.println("\n=== Maximised probabilities ===\n");
-				entry.getValue().getMax().print(mainLog);
-			}
+			regionValues.print(mainLog);
 
 			// print out computation time
 			l = System.currentTimeMillis() - l;

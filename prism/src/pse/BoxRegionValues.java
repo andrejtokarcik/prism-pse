@@ -34,6 +34,7 @@ import java.util.Map.Entry;
 import explicit.Model;
 import explicit.StateValues;
 import prism.Pair;
+import prism.PrismLog;
 
 public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValues.StateValuesPair>>
 {
@@ -133,20 +134,17 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 		return valuesPairs.entrySet().iterator();
 	}
 
-	@Override
-	public String toString()
+	public void print(PrismLog log)
 	{
-		StringBuilder builder = new StringBuilder();
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : valuesPairs.entrySet()) {
-			builder.append("== " + entry.getKey().toString() + " ==\n");
-			builder.append("=== Minimised state values ===\n");
-			builder.append(entry.getValue().getMin().toString());
-			builder.append("\n");
-			builder.append("=== Maximised state values ===\n");
-			builder.append(entry.getValue().getMax().toString());
-			builder.append("\n");
+			log.println("== " + entry.getKey().toString() + " ==");
+			log.println("=== Minimised state values ===");
+			entry.getValue().getMin().print(log);
+			log.println();
+			log.println("=== Maximised state values ===");
+			entry.getValue().getMax().print(log);
+			log.println();
 		}
-		return builder.toString();
 	}
 
 	// TODO to facilitate garbage-collecting
