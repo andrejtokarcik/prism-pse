@@ -64,7 +64,7 @@ final class PSEModel extends ModelExplicit
 	/** */
 	private boolean[] parametrisedTransitions;
 	/** reactions - classes of transitions */
-	private Integer[] reactions;
+	private int[] reactions;
 	/** labels - per transition, <i>not</i> per action */
 	private String[] labels;
 	/** total sum of leaving rates for a state */
@@ -244,7 +244,7 @@ final class PSEModel extends ModelExplicit
 	{
 		rows = new int[numStates + 1];
 		labels = new String[numTotalTransitions];
-		reactions = new Integer[numTotalTransitions];
+		reactions = new int[numTotalTransitions];
 		rateParams = new Expression[numTotalTransitions];
 		rateParamsLowers = new double[numTotalTransitions];
 		rateParamsUppers = new double[numTotalTransitions];
@@ -273,7 +273,7 @@ final class PSEModel extends ModelExplicit
 	/**
 	 * Adds a probabilistic transition from the current state.
 	 */
-	void addTransition(Integer reaction, int fromState, int toState, Expression rateParamsExpr, double ratePopulation, String action)
+	void addTransition(int reaction, int fromState, int toState, Expression rateParamsExpr, double ratePopulation, String action)
 	{
 		reactions[numTotalTransitions] = reaction;
 		colsFrom[numTotalTransitions] = fromState;
@@ -320,7 +320,7 @@ final class PSEModel extends ModelExplicit
 
 	/**
 	 */
-	Integer getReaction(int trans)
+	int getReaction(int trans)
 	{
 		return reactions[trans];
 	}

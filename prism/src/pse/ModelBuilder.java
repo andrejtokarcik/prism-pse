@@ -295,10 +295,6 @@ public final class ModelBuilder extends PrismComponent
 				model.addTransition(choice.hashCode(), permut[states.get(state)], permut[states.get(stateNew)], getRateParams(rateExpr), getRatePopulation(rateExpr), action);
 				sumOut = Expression.Plus(sumOut, rateExpr);
 			}
-			if (numChoices == 0) {
-				model.addDeadlockState(stateNr);
-				model.addTransition(null, stateNr, stateNr, Expression.Double(1.0), 1.0, null);
-			}
 			model.setSumLeaving(sumOut.evaluateDouble(paramsUpper));
 			model.finishState();
 			stateNr++;
