@@ -109,10 +109,10 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 	public void divideRegion(BoxRegion region)
 	{
 		StateValuesPair oldValuesPair = remove(region);
-		put(region.lowerHalf(), oldValuesPair);
-		put(region.upperHalf(), oldValuesPair);
+		put(region.getLowerHalf(), oldValuesPair);
+		put(region.getUpperHalf(), oldValuesPair);
 	}
-	
+
 	public StateValues getMin(BoxRegion region)
 	{
 		return valuesPairs.get(region).getMin();

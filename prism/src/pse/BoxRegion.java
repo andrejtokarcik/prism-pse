@@ -32,6 +32,7 @@ final class BoxRegion implements Comparable<BoxRegion>
 {
 	private Values boundsLower;
 	private Values boundsUpper;
+	private Values boundsMid;
 
 	public BoxRegion(Values boundsLower, Values boundsUpper)
 	{
@@ -39,6 +40,17 @@ final class BoxRegion implements Comparable<BoxRegion>
 
 		this.boundsLower = boundsLower;
 		this.boundsUpper = boundsUpper;
+		computeMidBounds();
+	}
+
+	private void computeMidBounds()
+	{
+		boundsMid = new Values();
+		for (int i = 0; i < boundsLower.getNumValues(); i++) {
+			double lowerValue = (Double) boundsLower.getValue(i);
+			double upperValue = (Double) boundsUpper.getValue(i);
+			boundsMid.addValue(boundsLower.getName(i), lowerValue + 0.5 * (upperValue - lowerValue));
+		}
 	}
 
 	public Values getLowerBounds()
@@ -51,28 +63,14 @@ final class BoxRegion implements Comparable<BoxRegion>
 		return boundsUpper;
 	}
 
-	public BoxRegion lowerHalf()
+	public BoxRegion getLowerHalf()
 	{
-		Values newUpper = new Values();
-		for (int i = 0; i < boundsLower.getNumValues(); i++) {
-			double lowerValue = (Double) boundsLower.getValue(i);
-			double upperValue = (Double) boundsUpper.getValue(i);
-			newUpper.addValue(boundsLower.getName(i),
-					lowerValue + 0.5 * (upperValue - lowerValue));
-		}
-		return new BoxRegion(boundsLower, newUpper);
+		return new BoxRegion(boundsLower, boundsMid);
 	}
 
-	public BoxRegion upperHalf()
+	public BoxRegion getUpperHalf()
 	{
-		Values newLower = new Values();
-		for (int i = 0; i < boundsLower.getNumValues(); i++) {
-			double lowerParamValue = (Double) boundsLower.getValue(i);
-			double upperParamValue = (Double) boundsUpper.getValue(i);
-			newLower.addValue(boundsLower.getName(i),
-					lowerParamValue + 0.5 * (upperParamValue - lowerParamValue));
-		}
-		return new BoxRegion(newLower, boundsUpper);
+		return new BoxRegion(boundsMid, boundsUpper);
 	}
 
 	public int compareTo(BoxRegion r)

@@ -877,8 +877,8 @@ public final class PSEModelChecker extends PrismComponent
 				regionValues.put(region, sumMin, sumMax);
 			} catch (SignificantInaccuracy e) {
 				// Decompose the region giving inaccurate results
-				regions.add(e.getRegion().lowerHalf());
-				regions.add(e.getRegion().upperHalf());
+				regions.add(e.getRegion().getLowerHalf());
+				regions.add(e.getRegion().getUpperHalf());
 			}
 		}
 
