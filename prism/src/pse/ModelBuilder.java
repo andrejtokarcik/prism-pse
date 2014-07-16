@@ -277,7 +277,6 @@ public final class ModelBuilder extends PrismComponent
 		List<State> statesList = states.toPermutedArrayList(permut);
 		model.setStatesList(statesList);
 		model.addInitialState(permut[0]);
-		int stateNr = 0;
 		for (State state : statesList) {
 			TransitionList tranlist = transitionsCache.get(state);
 			int numChoices = tranlist.getNumChoices();
@@ -297,7 +296,6 @@ public final class ModelBuilder extends PrismComponent
 			}
 			model.setSumLeaving(sumOut.evaluateDouble(paramsUpper));
 			model.finishState();
-			stateNr++;
 		}
 
 		mainLog.println();

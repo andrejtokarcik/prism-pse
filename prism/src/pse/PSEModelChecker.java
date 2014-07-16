@@ -62,9 +62,6 @@ public final class PSEModelChecker extends PrismComponent
 	// Log for output (default to System.out)
 	private PrismLog mainLog = new PrismPrintStreamLog(System.out);
 
-	// Model file (for reward structures, etc.)
-	private ModulesFile modulesFile = null;
-
 	// Properties file (for labels, constants, etc.)
 	private PropertiesFile propertiesFile = null;
 
@@ -93,7 +90,6 @@ public final class PSEModelChecker extends PrismComponent
 	 */
 	public void setModulesFileAndPropertiesFile(ModulesFile modulesFile, PropertiesFile propertiesFile)
 	{
-		this.modulesFile = modulesFile;
 		this.propertiesFile = propertiesFile;
 		// Get combined constant values from model/properties
 		constantValues = new Values();
@@ -110,9 +106,9 @@ public final class PSEModelChecker extends PrismComponent
 	 * Model check an expression, process and return the result.
 	 * Information about states and model constants should be attached to the model.
 	 */
-	public Result check(Model model, Expression expr, double accuracy) throws PrismException
+	public Result check(Model explModel, Expression expr, double accuracy) throws PrismException
 	{
-		//PSEModel paramModel = (PSEModel) model;
+		PSEModel model = (PSEModel) explModel;
 
 		long timer = 0;
 
@@ -150,7 +146,7 @@ public final class PSEModelChecker extends PrismComponent
 		return result;
 	}
 
-	public BoxRegionValues checkExpression(Model model, Expression expr, double accuracy) throws PrismException
+	public BoxRegionValues checkExpression(PSEModel model, Expression expr, double accuracy) throws PrismException
 	{
 		if (expr instanceof ExpressionFilter) {
 			return checkExpressionFilter(model, (ExpressionFilter) expr, accuracy);
@@ -166,7 +162,7 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Model check a filter.
 	 */
-	protected BoxRegionValues checkExpressionFilter(Model model, ExpressionFilter expr, double accuracy) throws PrismException
+	protected BoxRegionValues checkExpressionFilter(PSEModel model, ExpressionFilter expr, double accuracy) throws PrismException
 	{
 		Object resObjMin, resObjMax;
 		StateValues resRgnValsMin, resRgnValsMax;
@@ -203,7 +199,7 @@ public final class PSEModelChecker extends PrismComponent
 			StateValues subRgnValsMax = entry.getValue().getMax();
 
 			// Prepend all result strings with info about current region
-			resultExpl = "== " + region.toString() + " ==\n";
+			resultExpl = "== " + region + " ==\n";
 
 			// Compute result according to filter type
 			FilterOperator op = expr.getOperatorType();
@@ -377,7 +373,7 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Model check a P operator expression and return the values for all states.
 	 */
-	protected BoxRegionValues checkExpressionProb(Model model, ExpressionProb expr, double accuracy) throws PrismException
+	protected BoxRegionValues checkExpressionProb(PSEModel model, ExpressionProb expr, double accuracy) throws PrismException
 	{
 		Expression pb; // Probability bound (expression)
 		double p = 0; // Probability bound (actual value)
@@ -422,7 +418,7 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Compute probabilities for the contents of a P operator.
 	 */
-	protected BoxRegionValues checkProbPathFormula(Model model, Expression expr, double accuracy) throws PrismException
+	protected BoxRegionValues checkProbPathFormula(PSEModel model, Expression expr, double accuracy) throws PrismException
 	{
 		// Test whether this is a simple path formula (i.e. PCTL)
 		// and then pass control to appropriate method.
@@ -436,7 +432,7 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Compute probabilities for a simple, non-LTL path operator.
 	 */
-	protected BoxRegionValues checkProbPathFormulaSimple(Model model, Expression expr, double accuracy) throws PrismException
+	protected BoxRegionValues checkProbPathFormulaSimple(PSEModel model, Expression expr, double accuracy) throws PrismException
 	{
 		BoxRegionValues regionValues = null;
 
@@ -490,7 +486,7 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Model check a time-bounded until operator; return vector of probabilities for all states.
 	 */
-	protected BoxRegionValues checkProbBoundedUntil(Model model, ExpressionTemporal expr, double accuracy) throws PrismException
+	protected BoxRegionValues checkProbBoundedUntil(PSEModel model, ExpressionTemporal expr, double accuracy) throws PrismException
 	{
 		double lTime, uTime; // time bounds
 		Expression exprTmp;
@@ -562,7 +558,7 @@ public final class PSEModelChecker extends PrismComponent
 
 				while (true) {
 					try {
-						regionValues = computeTransientBackwardsProbs((PSEModel) model, b2Min, b1Min, b2Max, b1Max, uTime, onesMultProbs, accuracy);
+						regionValues = computeTransientBackwardsProbs(model, b2Min, b1Min, b2Max, b1Max, uTime, onesMultProbs, accuracy);
 						break;
 					} catch (SignificantInaccuracy e) {
 						onesMultProbs.divideRegion(e.getRegion());
@@ -581,8 +577,8 @@ public final class PSEModelChecker extends PrismComponent
 
 				while (true) {
 					try {
-						tmpRegionValues = computeTransientBackwardsProbs((PSEModel) model, b2Min, tmpMin, b2Max, tmpMax, uTime - lTime, onesMultProbs, Double.POSITIVE_INFINITY);
-						regionValues = computeTransientBackwardsProbs((PSEModel) model, b1Min, b1Min, b1Max, b1Max, lTime, tmpRegionValues, accuracy);
+						tmpRegionValues = computeTransientBackwardsProbs(model, b2Min, tmpMin, b2Max, tmpMax, uTime - lTime, onesMultProbs, Double.POSITIVE_INFINITY);
+						regionValues = computeTransientBackwardsProbs(model, b1Min, b1Min, b1Max, b1Max, lTime, tmpRegionValues, accuracy);
 						break;
 					} catch (SignificantInaccuracy e) {
 						onesMultProbs.divideRegion(e.getRegion());

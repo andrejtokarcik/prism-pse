@@ -137,7 +137,7 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 	public void print(PrismLog log)
 	{
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : valuesPairs.entrySet()) {
-			log.println("== " + entry.getKey().toString() + " ==");
+			log.println("== " + entry.getKey() + " ==");
 			log.println("=== Minimised state values ===");
 			entry.getValue().getMin().print(log);
 			log.println();
