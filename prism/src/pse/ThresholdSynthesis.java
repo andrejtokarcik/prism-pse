@@ -90,12 +90,14 @@ public final class ThresholdSynthesis extends DecompositionProcedure {
 	@Override
 	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded
 	{
+		BoxRegion regionToDecompose = null;
+		double undecidedVolume = 0.0;
+		double greatestVolume = Double.NEGATIVE_INFINITY;
 		regionsBelowThreshold.clear();
 		regionsAboveThreshold.clear();
 		regionsUndecided.clear();
 
 		// Determine the regions and compute the volume of undecided regions
-		double undecidedVolume = 0.0;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
 			if ((Double) entry.getValue().getMin().getValue(initState) >= threshold)
 				regionsAboveThreshold.add(entry.getKey());
@@ -104,13 +106,16 @@ public final class ThresholdSynthesis extends DecompositionProcedure {
 			else {
 				regionsUndecided.add(entry.getKey());
 				undecidedVolume += entry.getKey().getVolume();
+				if (entry.getKey().getVolume() > greatestVolume)
+					regionToDecompose = entry.getKey();
 			}
 		}
 
+		// Evaluate whether a decomposition is needed
 		undecidedVsComplete = undecidedVolume / completeSpaceVolume;
 		if (undecidedVolume / completeSpaceVolume > volumeTolerance) {
-			// An undecided region needs to be decomposed, e.g. the first one from the list
-			throw new DecompositionNeeded(regionsUndecided.get(0));
+			// Decompose a largest undecided region
+			throw new DecompositionNeeded(regionToDecompose);
 		}
 	}
 
