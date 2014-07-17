@@ -755,7 +755,8 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * NB: Decompositions of the parameter space are performed implicitly.
 	 */
-	// TODO perform decompositions explicitly from doTransient analogically to backwards transient computation
+	// TODO: Perform decompositions explicitly from doTransient analogically to backwards transient computation,
+	// i.e. replace the double arrays initDist{Min,Max} with BoxRegionValues.
 	public BoxRegionValues computeTransientProbs(PSEModel model, double t, double initDistMin[], double initDistMax[], DecompositionProcedure decompositionProcedure)
 			throws PrismException
 	{

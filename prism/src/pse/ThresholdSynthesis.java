@@ -54,13 +54,13 @@ public final class ThresholdSynthesis extends DecompositionProcedure {
 	private List<BoxRegion> regionsUndecided = new LinkedList<BoxRegion>();
 	private double undecidedVsComplete;
 
-	public ThresholdSynthesis(Expression propExpr, Values constantValues, double volumeTolerance, int initState, BoxRegionFactory regionFactory) throws PrismException
+	public ThresholdSynthesis(Expression propExpr, Values constantValues, double volumeTolerance, int initState, BoxRegion completeSpace) throws PrismException
 	{
 		this.propExpr = propExpr;
 		processPropertyExpression(propExpr, constantValues);
 		this.volumeTolerance = volumeTolerance;
 		this.initState = initState;
-		this.completeSpaceVolume = regionFactory.completeSpace().getVolume();
+		this.completeSpaceVolume = completeSpace.getVolume();
 	}
 
 	private void processPropertyExpression(Expression propExpr, Values constantValues) throws PrismException

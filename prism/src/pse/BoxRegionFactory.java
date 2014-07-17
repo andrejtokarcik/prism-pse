@@ -32,13 +32,13 @@ public final class BoxRegionFactory {
 	private Values paramsLower;
 	private Values paramsUpper;
 
-	BoxRegionFactory(Values paramsLower, Values paramsUpper)
+	public BoxRegionFactory(Values paramsLower, Values paramsUpper)
 	{
 		this.paramsLower = paramsLower;
 		this.paramsUpper = paramsUpper;
 	}
 
-	BoxRegion completeSpace()
+	public BoxRegion completeSpace()
 	{
 		return new BoxRegion(paramsLower, paramsUpper);
 	}
