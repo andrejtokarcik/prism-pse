@@ -26,6 +26,8 @@
 
 package pse;
 
+import java.util.List;
+
 import parser.ast.Expression;
 import parser.ast.ExpressionFilter;
 import prism.PrismException;
@@ -61,5 +63,16 @@ abstract class DecompositionProcedure {
 	
 	public void printSolution(PrismLog log) {
 		// The solution is printed when model-checking the default filter
+	}
+
+	protected void printRegions(PrismLog log, List<BoxRegion> regions) {
+		if (regions.isEmpty()) {
+			log.println("\n * [none]");
+		} else {
+			log.println();
+			for(BoxRegion region : regions) {
+				log.println(" * " + region);
+		    }
+		}
 	}
 }

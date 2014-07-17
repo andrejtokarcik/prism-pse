@@ -34,6 +34,8 @@ final class BoxRegion implements Comparable<BoxRegion>
 	private Values boundsUpper;
 	private Values boundsMid;
 
+	private double volume = 0.0;
+
 	public BoxRegion(Values boundsLower, Values boundsUpper)
 	{
 		assert boundsLower.compareTo(boundsUpper) <= 0;
@@ -71,6 +73,21 @@ final class BoxRegion implements Comparable<BoxRegion>
 	public BoxRegion getUpperHalf()
 	{
 		return new BoxRegion(boundsMid, boundsUpper);
+	}
+
+	public double getVolume()
+	{
+		if (volume > 0.0)
+			return volume;
+
+		volume = 1.0;
+		for (int i = 0; i < boundsLower.getNumValues(); i++) {
+			double lowerValue = (Double) boundsLower.getValue(i);
+			double upperValue = (Double) boundsUpper.getValue(i);
+			if (lowerValue != upperValue)
+				volume *= upperValue - lowerValue;
+		}
+		return volume;
 	}
 
 	public int compareTo(BoxRegion r)
