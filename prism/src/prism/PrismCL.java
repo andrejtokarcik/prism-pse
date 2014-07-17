@@ -114,7 +114,7 @@ public class PrismCL implements PrismModelListener
 	// argument to -param switch
 	private String paramSwitch = null;
 
-	// argument to -pse switch
+	// argument to -pse / -psecheck switches
 	private String pseSwitch = null;
 
 	// files/filenames

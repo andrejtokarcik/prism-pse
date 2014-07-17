@@ -56,6 +56,9 @@ import parser.ast.LabelList;
 import parser.ast.ModulesFile;
 import parser.ast.PropertiesFile;
 import parser.ast.Property;
+import pse.PSEModel;
+import pse.PSEModelChecker;
+import pse.SimpleDecompositionProcedure;
 import pta.DigitalClocks;
 import pta.PTAModelChecker;
 import simulator.GenerateSimulationPath;
@@ -2997,11 +3000,11 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 	/**
 	 */
-	public Result modelCheckPSE(PropertiesFile propertiesFile, Property prop, String[] pseNames, double[] pseLowerBounds, double[] pseUpperBounds, double accuracy)
+	public Result modelCheckPSE(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double accuracy)
 			throws PrismException
 	{
 		// Some checks
-		if (pseNames == null) {
+		if (paramNames == null) {
 			throw new PrismException("Must specify some parameters in order to perform PSE model checking");
 		}
 		if (!(currentModelType == ModelType.CTMC))
@@ -3013,8 +3016,8 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 		Values definedPFConstants = propertiesFile.getConstantValues();
 		Values constlist = currentModulesFile.getConstantValues();
-		for (int pnr = 0; pnr < pseNames.length; pnr++) {
-			constlist.removeValue(pseNames[pnr]);
+		for (int pnr = 0; pnr < paramNames.length; pnr++) {
+			constlist.removeValue(paramNames[pnr]);
 		}
 
 		// Print info
@@ -3027,18 +3030,16 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 		pse.ModelBuilder builder = new pse.ModelBuilder(this);
 		builder.setModulesFile(currentModulesFile);
-		builder.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
+		builder.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
 		builder.build();
-		explicit.Model modelExpl = builder.getModel();
+		PSEModel model = builder.getModel();
 		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
 		// Allow the builder to be garbage-collected
 		builder = null;
 
-		pse.PSEModelChecker mc = new pse.PSEModelChecker(this, regionFactory);
-		//mc.setModelBuilder(builder);
-		//mc.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
+		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
 		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
-		return mc.check(modelExpl, prop.getExpression(), accuracy);
+		return mc.check(model, prop.getExpression(), new SimpleDecompositionProcedure(accuracy, model.getNumStates()));
 	}
 
 	/**

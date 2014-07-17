@@ -46,7 +46,7 @@ import prism.PrismException;
 import prism.PrismLog;
 import explicit.ModelExplicit;
 
-final class PSEModel extends ModelExplicit
+public final class PSEModel extends ModelExplicit
 {
 	/** total number of probabilistic transitions over all states */
 	private int numTotalTransitions;
@@ -565,7 +565,7 @@ final class PSEModel extends ModelExplicit
 		}
 	}
 
-	public void scaleParameterSpace(BoxRegion region) throws PrismException
+	public void setRegion(BoxRegion region) throws PrismException
 	{
 		for (int trans = 0; trans < numTotalTransitions; trans++) {
 			rateParamsLowers[trans] = rateParams[trans].evaluateDouble(region.getLowerBounds());
