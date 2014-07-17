@@ -58,6 +58,7 @@ import parser.ast.PropertiesFile;
 import parser.ast.Property;
 import pse.PSEModel;
 import pse.PSEModelChecker;
+import pse.MaxSynthesisNaive;
 import pse.SimpleDecompositionProcedure;
 import pse.ThresholdSynthesis;
 import pta.DigitalClocks;
@@ -3088,6 +3089,54 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		if (model.getNumInitialStates() != 1)
 			throw new PrismException("Threshold synthesis requires exactly one initial state");
 		ThresholdSynthesis synth = new ThresholdSynthesis(propExpr, mc.getConstantValues(), volumeTolerance, model.getFirstInitialState(), regionFactory);
+		return mc.check(model, propExpr, synth);
+	}
+
+	/**
+	 */
+	public Result doMaxSynthesisNaive(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double probTolerance)
+			throws PrismException
+	{
+		// Some checks
+		if (paramNames == null) {
+			throw new PrismException("Must specify some parameters in order to perform PSE model checking");
+		}
+		if (!(currentModelType == ModelType.CTMC))
+			throw new PrismException("PSE model checking supported for CTMCs only");
+		/*
+		if (!getExplicit())
+			throw new PrismException("Parameter space exploration supported for the explicit engine only");
+		*/
+
+		Values definedPFConstants = propertiesFile.getConstantValues();
+		Values constlist = currentModulesFile.getConstantValues();
+		for (int pnr = 0; pnr < paramNames.length; pnr++) {
+			constlist.removeValue(paramNames[pnr]);
+		}
+
+		// Print info
+		mainLog.printSeparator();
+		mainLog.println("\nPSE threshold synthesis: " + prop);
+		if (currentDefinedMFConstants != null && currentDefinedMFConstants.getNumValues() > 0)
+			mainLog.println("Model constants: " + currentDefinedMFConstants);
+		if (definedPFConstants != null && definedPFConstants.getNumValues() > 0)
+			mainLog.println("Property constants: " + definedPFConstants);
+
+		pse.ModelBuilder builder = new pse.ModelBuilder(this);
+		builder.setModulesFile(currentModulesFile);
+		builder.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
+		builder.build();
+		PSEModel model = builder.getModel();
+		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
+		// Allow the builder to be garbage-collected
+		builder = null;
+
+		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
+		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
+		Expression propExpr = prop.getExpression();
+		if (model.getNumInitialStates() != 1)
+			throw new PrismException("Max synthesis requires exactly one initial state");
+		MaxSynthesisNaive synth = new MaxSynthesisNaive(propExpr, probTolerance, model.getFirstInitialState());
 		return mc.check(model, propExpr, synth);
 	}
 

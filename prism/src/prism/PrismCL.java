@@ -90,6 +90,7 @@ public class PrismCL implements PrismModelListener
 	private boolean pse = false;
 	private boolean pseCheck = false;
 	private boolean pseSynthThr = false;
+	private boolean pseSynthMaxNaive = false;
 	private ModelType typeOverride = null;
 	private boolean orderingOverride = false;
 	private boolean explicitbuild = false;
@@ -245,7 +246,7 @@ public class PrismCL implements PrismModelListener
 					undefinedConstants[i].removeConstants(paramNames);
 				}
 			}
-			if (pse || pseCheck || pseSynthThr) {
+			if (pse || pseCheck || pseSynthThr || pseSynthMaxNaive) {
 				undefinedMFConstants.removeConstants(pseNames);
 				for (i = 0; i < numPropertiesToCheck; i++) {
 					undefinedConstants[i].removeConstants(pseNames);
@@ -364,6 +365,10 @@ public class PrismCL implements PrismModelListener
 							else if (pseSynthThr) {
 								// pseAccuracy interpreted as volume tolerance
 								res = prism.doThresholdSynthesis(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
+							}
+							else if (pseSynthMaxNaive) {
+								// pseAccuracy interpreted as probability tolerance
+								res = prism.doMaxSynthesisNaive(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
 							}
 							// Approximate (simulation-based) model checking
 							else if (simulate) {
@@ -1100,9 +1105,10 @@ public class PrismCL implements PrismModelListener
 					}
 				}
 				// PSE-based model checking techniques
-				else if (sw.equals("psecheck") || sw.equals("psesynth-thr")) {
+				else if (sw.equals("psecheck") || sw.equals("psesynth-thr") || sw.equals("psesynth-max-naive")) {
 					if (sw.equals("psecheck")) pseCheck = true;
 					else if (sw.equals("psesynth-thr")) pseSynthThr = true;
+					else if(sw.equals("psesynth-max-naive")) pseSynthMaxNaive = true;
 					if (i < args.length - 2) {
 						pseSwitch = args[++i].trim();
 						try {
@@ -2052,7 +2058,7 @@ public class PrismCL implements PrismModelListener
 		}
 
 		// process parameter space ranges
-		if (pse || pseCheck || pseSynthThr) {
+		if (pse || pseCheck || pseSynthThr || pseSynthMaxNaive) {
 			String[] pseDefs = pseSwitch.split(",");
 			pseNames = new String[pseDefs.length];
 			pseLowerBounds = new double[pseDefs.length];
