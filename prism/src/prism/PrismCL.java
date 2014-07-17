@@ -31,7 +31,6 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 
-import param.ParamModelChecker;
 import parser.Values;
 import parser.ast.Expression;
 import parser.ast.ExpressionReward;
@@ -926,7 +925,7 @@ public class PrismCL implements PrismModelListener
 				}
 
 				// Perform the exploration
-				prism.doParamSpaceExplore(ucPSE, pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy, importinitdist ? new File(importInitDistFilename) : null);
+				prism.doTransientPSE(ucPSE, pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy, importinitdist ? new File(importInitDistFilename) : null);
 			}
 			// In case of error, report it and proceed
 			catch (PrismException e) {

@@ -3452,7 +3452,8 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 	/**
 	 */
-	public void doParamSpaceExplore(UndefinedConstants times, String[] pseNames, double[] pseLowerBounds, double[] pseUpperBounds, double pseAccuracy, File fileIn) throws PrismException
+	public void doTransientPSE(UndefinedConstants times, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double accuracy, File fileIn)
+			throws PrismException
 	{
 		int i;
 		double timeDouble = 0, initTimeDouble = 0;
@@ -3462,7 +3463,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		explicit.StateValues initDistExplMin = null, initDistExplMax = null;
 
 		// Some checks
-		if (pseNames == null)
+		if (paramNames == null)
 			throw new PrismException("Must specify some parameters in order to perform parameter space exploration");
 		if (currentModelType != ModelType.CTMC)
 			throw new PrismException("Parameter space exploration supported for CTMCs only");
@@ -3472,16 +3473,16 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		*/
 
 		Values constlist = currentModulesFile.getConstantValues();
-		for (int pnr = 0; pnr < pseNames.length; pnr++) {
-			constlist.removeValue(pseNames[pnr]);
+		for (int pnr = 0; pnr < paramNames.length; pnr++) {
+			constlist.removeValue(paramNames[pnr]);
 		}
 
 		// Build model
 		pse.ModelBuilder builder = new pse.ModelBuilder(this);
 		builder.setModulesFile(currentModulesFile);
-		builder.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
+		builder.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
 		builder.build();
-		explicit.Model modelExpl = builder.getModel();
+		PSEModel model = builder.getModel();
 		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
 		// Allow the builder to be garbage-collected
 		builder = null;
@@ -3501,15 +3502,15 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			if (currentDefinedMFConstants != null && currentDefinedMFConstants.getNumValues() > 0)
 				mainLog.println("Model constants: " + currentDefinedMFConstants);
 			mainLog.print("Parameter space: ");
-			for (int pnr = 0; pnr < pseNames.length; pnr++) {
+			for (int pnr = 0; pnr < paramNames.length; pnr++) {
 				if (pnr != 0) mainLog.print(", ");
-				mainLog.print(pseNames[pnr] + "=" + pseLowerBounds[pnr] + ":" + pseUpperBounds[pnr]);
+				mainLog.print(paramNames[pnr] + "=" + paramLowerBounds[pnr] + ":" + paramUpperBounds[pnr]);
 			}
 			mainLog.println();
 			
 			l = System.currentTimeMillis();
 
-			pse.PSEModelChecker mc = new pse.PSEModelChecker(this, regionFactory);
+			PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
 			/*
 			// TODO
 			if (i == 0) {
@@ -3518,7 +3519,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 				initTimeDouble = 0;
 			}
 			*/
-			regionValues = mc.doTransient(modelExpl, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax, pseAccuracy);
+			regionValues = mc.doTransient(model, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax, new SimpleDecompositionProcedure(accuracy, model.getNumStates()));
 
 			// Results report
 			mainLog.println("\nPrinting transient probabilities w.r.t. the given parameter space:");

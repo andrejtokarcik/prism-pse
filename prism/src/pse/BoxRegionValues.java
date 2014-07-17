@@ -137,13 +137,11 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 	public void print(PrismLog log)
 	{
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : valuesPairs.entrySet()) {
-			log.println("== " + entry.getKey() + " ==");
-			log.println("=== Minimised state values ===");
+			log.println("\n== Region " + entry.getKey() + " ==");
+			log.println("\n=== Minimised state values ===\n");
 			entry.getValue().getMin().print(log);
-			log.println();
-			log.println("=== Maximised state values ===");
+			log.println("\n=== Maximised state values ===\n");
 			entry.getValue().getMax().print(log);
-			log.println();
 		}
 	}
 

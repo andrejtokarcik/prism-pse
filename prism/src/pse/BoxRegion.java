@@ -80,7 +80,7 @@ final class BoxRegion implements Comparable<BoxRegion>
 
 	@Override
 	public String toString() {
-		StringBuilder builder = new StringBuilder("Region ");
+		StringBuilder builder = new StringBuilder();
 		for (int i = 0; i < boundsLower.getNumValues(); i++) {
 			if (i != 0) builder.append(",");
 			builder.append(boundsLower.getName(i));

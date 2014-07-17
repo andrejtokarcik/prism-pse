@@ -329,6 +329,17 @@ public class Values implements Comparable<Values> //implements Comparable
 		return getBooleanValue(i);
 	}
 
+	// Auxiliary methods
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((names == null) ? 0 : names.hashCode());
+		result = prime * result + ((values == null) ? 0 : values.hashCode());
+		return result;
+	}
+
 	@Override
 	public boolean equals(Object o)
 	{

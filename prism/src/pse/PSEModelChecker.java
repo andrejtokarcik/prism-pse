@@ -129,7 +129,7 @@ public final class PSEModelChecker extends PrismComponent
 		timer = System.currentTimeMillis();
 		BoxRegionValues regionValues = checkExpression(model, expr, decompositionProcedure);
 		timer = System.currentTimeMillis() - timer;
-		mainLog.println("\nTime for model checking: " + timer / 1000.0 + " seconds.");
+		mainLog.println("\nTotal time for model checking: " + timer / 1000.0 + " seconds.");
 
 		// Return result
 		Result result = new Result();
@@ -191,14 +191,13 @@ public final class PSEModelChecker extends PrismComponent
 			StateValues subRgnValsMax = entry.getValue().getMax();
 
 			// Prepend all result strings with info about current region
-			resultExpl = "== " + region + " ==\n";
+			mainLog.println("\n== Region " + region + " ==");
 
 			// Compute result according to filter type
 			FilterOperator op = expr.getOperatorType();
 			switch (op) {
 			case PRINT:
 			case PRINTALL:
-				mainLog.print(resultExpl);
 				if (expr.getType() instanceof TypeBool) {
 					mainLog.print("\nSatisfying states");
 					mainLog.println(filterTrue ? ":" : " that are also in filter " + filter + ":");
@@ -235,7 +234,7 @@ public final class PSEModelChecker extends PrismComponent
 				resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
 				resRgnVals = new BoxRegionValues(model, region, resRgnValsMin, resRgnValsMax);
 
-				resultExpl += filterTrue ? "Count of satisfying states" : "Count of satisfying states also in filter";
+				resultExpl = filterTrue ? "Count of satisfying states" : "Count of satisfying states also in filter";
 				mainLog.println("\n" + resultExpl + ":");
 				mainLog.println("MIN = " + resObjMin);
 				mainLog.println("MAX = " + resObjMax);
@@ -250,7 +249,7 @@ public final class PSEModelChecker extends PrismComponent
 				resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
 				resRgnVals = new BoxRegionValues(model, region, resRgnValsMin, resRgnValsMax);
 
-				resultExpl += "Value in ";
+				resultExpl = "Value in ";
 				if (filterInit) {
 					resultExpl += filterInitSingle ? "the initial state" : "first initial state";
 				} else {
@@ -265,7 +264,7 @@ public final class PSEModelChecker extends PrismComponent
 				resObjMax = new prism.Interval(subRgnValsMax.minOverBitSet(bsFilterMax), subRgnValsMax.maxOverBitSet(bsFilterMax));
 				resRgnVals = subRgnVals;
 
-				resultExpl += "Range of values over ";
+				resultExpl = "Range of values over ";
 				resultExpl += filterInit ? "initial states" : filterStatesString;
 				mainLog.println("\n" + resultExpl + ":");
 				mainLog.println("MIN = " + resObjMin);
@@ -313,17 +312,17 @@ public final class PSEModelChecker extends PrismComponent
 				resRgnVals = new BoxRegionValues(model, region, resRgnValsMin, resRgnValsMax);
 
 				// Create explanation of result and print some details to log
-				resultExpl += "MIN = Property satisfied in ";
+				resultExpl = "MIN = Property satisfied in ";
 				if (filterTrue) {
-					resultExpl += ((Boolean) resObjMin).booleanValue() ? "at least one state" : "no states";
+					resultExpl += ((Boolean) resObjMin) ? "at least one state" : "no states";
 				} else {
-					resultExpl += ((Boolean) resObjMin).booleanValue() ? "at least one filter state" : "no filter states";
+					resultExpl += ((Boolean) resObjMin) ? "at least one filter state" : "no filter states";
 				}
 				resultExpl += "\nMAX = Property satisfied in ";
 				if (filterTrue) {
-					resultExpl += ((Boolean) resObjMax).booleanValue() ? "at least one state" : "no states";
+					resultExpl += ((Boolean) resObjMax) ? "at least one state" : "no states";
 				} else {
-					resultExpl += ((Boolean) resObjMax).booleanValue() ? "at least one filter state" : "no filter states";
+					resultExpl += ((Boolean) resObjMax) ? "at least one filter state" : "no filter states";
 				}
 				mainLog.println("\n" + resultExpl);
 				break;
@@ -344,7 +343,7 @@ public final class PSEModelChecker extends PrismComponent
 				resRgnVals = new BoxRegionValues(model, region, resRgnValsMin, resRgnValsMax);
 
 				// Create explanation of result and print some details to log
-				resultExpl += "Value in ";
+				resultExpl = "Value in ";
 				if (filterInit) {
 					resultExpl += "the initial state";
 				} else {
@@ -582,7 +581,7 @@ public final class PSEModelChecker extends PrismComponent
 			}
 		}
 
-		mainLog.print("\nAltogether, the backwards transient probability computations produced ");
+		mainLog.print("\nThe backwards transient probability computations produced ");
 		mainLog.println(regionValues.getNumRegions() + " final regions.");
 		return regionValues;
 	}
@@ -718,7 +717,7 @@ public final class PSEModelChecker extends PrismComponent
 		timer = System.currentTimeMillis() - timer;
 		mainLog.print("Backwards transient probability computation");
 		mainLog.print(" took " + totalIters + " iters");
-		mainLog.println(" and " + timer / 1000.0 + " seconds in total.");
+		mainLog.println(" and " + timer / 1000.0 + " seconds.");
 
 		return regionValues;
 	}
@@ -876,7 +875,7 @@ public final class PSEModelChecker extends PrismComponent
 		timer = System.currentTimeMillis() - timer;
 		mainLog.print("Transient probability computation");
 		mainLog.print(" took " + totalIters + " iters");
-		mainLog.print(" and " + timer / 1000.0 + " seconds in total");
+		mainLog.print(" and " + timer / 1000.0 + " seconds");
 		mainLog.println(" (producing " + regionValues.getNumRegions() + " final regions).");
 
 		return regionValues;
