@@ -123,7 +123,7 @@ public final class PSEModelChecker extends PrismComponent
 		//expr = (Expression) expr.replaceConstants(constantValues);
 
 		// Let the decomposition procedure adjust the property, if needed
-		expr = decompositionProcedure.adjustPropertyExpression(expr, model);
+		expr = decompositionProcedure.adjustPropertyExpression(expr, model.getNumInitialStates() == 1, constantValues);
 
 		// Do model checking and store result vector
 		timer = System.currentTimeMillis();
@@ -570,6 +570,8 @@ public final class PSEModelChecker extends PrismComponent
 
 				while (true) {
 					try {
+						// Decomposition is always performed due to the failed condition in the second transient computation.
+						// The first transient computation is executed with decomposing disabled.
 						tmpRegionValues = computeTransientBackwardsProbs(model, b2Min, tmpMin, b2Max, tmpMax, uTime - lTime, onesMultProbs, SimpleDecompositionProcedure.NoDecomposing.getInstance());
 						regionValues = computeTransientBackwardsProbs(model, b1Min, b1Min, b1Max, b1Max, lTime, tmpRegionValues, decompositionProcedure);
 						break;

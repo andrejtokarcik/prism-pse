@@ -28,20 +28,17 @@ package pse;
 
 import java.util.Map.Entry;
 
-import parser.ast.Expression;
-import prism.PrismException;
-
 public final class MaxSynthesisNaive extends MaxSynthesis {
-	public MaxSynthesisNaive(Expression propExpr, double probTolerance, int initState) throws PrismException
+	public MaxSynthesisNaive(double probTolerance, int initState)
 	{
-		super(propExpr, probTolerance, initState);
+		super(probTolerance, initState);
 	}
 
 	/**
 	 * Naive approach to determining the maximal lower bound.
 	 */
 	@Override
-	public double getMaximalLowerBound(BoxRegionValues regionValues)
+	protected double getMaximalLowerBound(BoxRegionValues regionValues)
 	{
 		double maximalLowerBound = Double.NEGATIVE_INFINITY;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
@@ -50,5 +47,11 @@ public final class MaxSynthesisNaive extends MaxSynthesis {
 				maximalLowerBound = currentLowerBound;
 		}
 		return maximalLowerBound;
+	}
+
+	@Override
+	public String toString()
+	{
+		return super.toString() + " (naive)";
 	}
 }

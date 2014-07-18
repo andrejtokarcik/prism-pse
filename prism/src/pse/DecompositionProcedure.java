@@ -28,12 +28,15 @@ package pse;
 
 import java.util.List;
 
+import parser.Values;
 import parser.ast.Expression;
 import parser.ast.ExpressionFilter;
 import prism.PrismException;
 import prism.PrismLog;
 
 abstract class DecompositionProcedure {
+	protected Expression propExpr;
+
 	@SuppressWarnings("serial")
 	public static class DecompositionNeeded extends Exception
 	{
@@ -50,19 +53,30 @@ abstract class DecompositionProcedure {
 		}
 	}
 
-	public Expression adjustPropertyExpression(Expression propExpr, PSEModel model) throws PrismException
+	protected void processPropertyExpression(boolean singleInit, Values constantValues) throws PrismException
 	{
 		// Wrap a filter round the property, if needed
 		// (in order to extract the final result of model checking)
-		return ExpressionFilter.addDefaultFilterIfNeeded(propExpr, model.getNumInitialStates() == 1);
+		propExpr = ExpressionFilter.addDefaultFilterIfNeeded(propExpr, singleInit);
 	}
-	
+
+	public Expression adjustPropertyExpression(Expression propExpr, boolean singleInit, Values constantValues) throws PrismException
+	{
+		this.propExpr = propExpr;
+		processPropertyExpression(singleInit, constantValues);
+		return this.propExpr;
+	}
+
 	public void examineSingleIteration(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded {}
 	
 	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded {}
-	
+
 	public void printSolution(PrismLog log) {
-		// The solution is printed when model-checking the default filter
+		// The default filter added above takes care of printing the solution
+	}
+
+	protected void printIntro(PrismLog log) {
+		log.println("\nSolution of " + toString() + " for property " + propExpr + ":");
 	}
 
 	protected void printRegions(PrismLog log, List<BoxRegion> regions) {

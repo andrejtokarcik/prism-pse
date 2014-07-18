@@ -3484,11 +3484,10 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
 		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
-		Expression propExpr = prop.getExpression();
 		if (model.getNumInitialStates() != 1)
 			throw new PrismException("Threshold synthesis requires exactly one initial state");
-		ThresholdSynthesis synth = new ThresholdSynthesis(propExpr, mc.getConstantValues(), volumeTolerance, model.getFirstInitialState(), regionFactory.completeSpace());
-		return mc.check(model, propExpr, synth);
+		ThresholdSynthesis synth = new ThresholdSynthesis(volumeTolerance, model.getFirstInitialState(), regionFactory.completeSpace());
+		return mc.check(model, prop.getExpression(), synth);
 	}
 
 	/**
@@ -3502,14 +3501,14 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		// Allow the builder to be garbage-collected
 		builder = null;
 
-		printInitInfoPSE(mainLog, "PSE max synthesis (naive): " + prop, regionFactory, propertiesFile);
+		printInitInfoPSE(mainLog, "PSE max synthesis using the naive approach: " + prop, regionFactory, propertiesFile);
 
 		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
 		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
 		Expression propExpr = prop.getExpression();
 		if (model.getNumInitialStates() != 1)
 			throw new PrismException("Max synthesis requires exactly one initial state");
-		MaxSynthesisNaive synth = new MaxSynthesisNaive(propExpr, probTolerance, model.getFirstInitialState());
+		MaxSynthesisNaive synth = new MaxSynthesisNaive(probTolerance, model.getFirstInitialState());
 		return mc.check(model, propExpr, synth);
 	}
 	

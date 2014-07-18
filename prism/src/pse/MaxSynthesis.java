@@ -26,87 +26,49 @@
 
 package pse;
 
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map.Entry;
 
-import parser.ast.Expression;
-import prism.PrismException;
-import prism.PrismLog;
-
 abstract class MaxSynthesis extends AbstractMinMaxSynthesis {
-	// Solution structures
-	protected List<BoxRegion> regionsMaximising = new LinkedList<BoxRegion>();
-	protected List<BoxRegion> regionsNonmaximising = new LinkedList<BoxRegion>();
-	
-	public MaxSynthesis(Expression propExpr, double probTolerance, int initState) throws PrismException
+	protected boolean doMin = false;
+
+	public MaxSynthesis(double probTolerance, int initState)
 	{
-		super(propExpr, probTolerance, initState);
+		super(probTolerance, initState);
+		captionForOptimising = "maximising";
 	}
 
-	public abstract double getMaximalLowerBound(BoxRegionValues regionValues);
-	
+	protected abstract double getMaximalLowerBound(BoxRegionValues regionValues);
+
 	@Override
-	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded
+	public void determineOptimalRegions(BoxRegionValues regionValues)
 	{
-		regionsMaximising.clear();
-		regionsNonmaximising.clear();
-
-		// NB: In the following, the term `bounds' refers to constraints on the probability
-		// of the property's being satisfied in a given region.  This is not to be confused
-		// with `bounds' in the sense of upper/lower values of parameter ranges characterising
-		// the parameter regions/subspaces.
-
 		// Determine the maximal lower bound
 		double maximalLowerBound = getMaximalLowerBound(regionValues);
 
-		// Determine the maximising regions
+		// Determine the (non-)maximising regions
+		regionsOptimising.clear();
+		regionsNonoptimising.clear();
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
 			if ((Double) entry.getValue().getMax().getValue(initState) < maximalLowerBound)
-				regionsNonmaximising.add(entry.getKey());
+				regionsNonoptimising.add(entry.getKey());
 			else
-				regionsMaximising.add(entry.getKey());
-		}
-
-		// Determine the deciding probability bounds
-		BoxRegion regionToDecompose = null;
-		double minimalLowerBoundOfMaximising = Double.POSITIVE_INFINITY;
-		double maximalUpperBoundOfMaximising = Double.NEGATIVE_INFINITY;
-		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
-			if (!regionsMaximising.contains(entry.getKey()))
-				continue;
-
-			double currentLowerBound = (Double) entry.getValue().getMin().getValue(initState);
-			if (currentLowerBound < minimalLowerBoundOfMaximising) {
-				minimalLowerBoundOfMaximising = currentLowerBound;
-			}
-
-			double currentUpperBound = (Double) entry.getValue().getMax().getValue(initState);
-			if (currentUpperBound > maximalUpperBoundOfMaximising) {
-				regionToDecompose = entry.getKey();
-				maximalUpperBoundOfMaximising = currentUpperBound;
-			}
-		}
-		
-		// Evaluate whether a decomposition is needed
-		probDifference = maximalUpperBoundOfMaximising - minimalLowerBoundOfMaximising;
-		if (probDifference > probTolerance) {
-			// Decompose a maximising region with the maximal upper bound
-			throw new DecompositionNeeded(regionToDecompose);
+				regionsOptimising.add(entry.getKey());
 		}
 	}
 
 	@Override
-	public void printSolution(PrismLog log)
+	protected BoxRegion chooseRegionToDecompose(BoxRegion current, BoxRegion candidate,
+			boolean candidateHasMinimalLowerBound)
 	{
-		log.println("\nSolution of the max synthesis problem for property " + propExpr + " using the naive approach:\n");
+		if (candidateHasMinimalLowerBound)
+			return current;
+		else
+			return candidate;
+	}
 
-		log.print("Regions maximising the property satisfaction probability:");
-		printRegions(log, regionsMaximising);
-		log.print("Non-maximising regions:");
-		printRegions(log, regionsNonmaximising);
-		
-		log.println("\nmax {upper prob bounds of maximising} - min {lower prob bounds of maximising} = " + probDifference);
-		log.println("probability tolerance = " + probTolerance);
+	@Override
+	public String toString()
+	{
+		return "max synthesis";
 	}
 }
