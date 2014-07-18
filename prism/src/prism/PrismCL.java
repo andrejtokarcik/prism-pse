@@ -90,9 +90,10 @@ public class PrismCL implements PrismModelListener
 	private boolean pse = false;
 	private boolean pseCheck = false;
 	private boolean pseSynthThr = false;
+	private boolean pseSynthMinNaive = false;
+	private boolean pseSynthMinSampling = false;
 	private boolean pseSynthMaxNaive = false;
 	private boolean pseSynthMaxSampling = false;
-	private boolean pseSynthMinNaive = false;
 	private ModelType typeOverride = null;
 	private boolean orderingOverride = false;
 	private boolean explicitbuild = false;
@@ -248,7 +249,7 @@ public class PrismCL implements PrismModelListener
 					undefinedConstants[i].removeConstants(paramNames);
 				}
 			}
-			if (pse || pseCheck || pseSynthThr || pseSynthMaxNaive || pseSynthMaxSampling || pseSynthMinNaive) {
+			if (pse || pseCheck || pseSynthThr || pseSynthMinNaive || pseSynthMinSampling || pseSynthMaxNaive || pseSynthMaxSampling) {
 				undefinedMFConstants.removeConstants(pseNames);
 				for (i = 0; i < numPropertiesToCheck; i++) {
 					undefinedConstants[i].removeConstants(pseNames);
@@ -368,6 +369,14 @@ public class PrismCL implements PrismModelListener
 								// pseAccuracy interpreted as volume tolerance
 								res = prism.doThresholdSynthesis(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
 							}
+							else if (pseSynthMinNaive) {
+								// pseAccuracy interpreted as probability tolerance
+								res = prism.doMinSynthesisNaive(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
+							}
+							else if (pseSynthMinSampling) {
+								// pseAccuracy interpreted as probability tolerance
+								res = prism.doMinSynthesisSampling(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
+							}
 							else if (pseSynthMaxNaive) {
 								// pseAccuracy interpreted as probability tolerance
 								res = prism.doMaxSynthesisNaive(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
@@ -375,10 +384,6 @@ public class PrismCL implements PrismModelListener
 							else if (pseSynthMaxSampling) {
 								// pseAccuracy interpreted as probability tolerance
 								res = prism.doMaxSynthesisSampling(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
-							}
-							else if (pseSynthMinNaive) {
-								// pseAccuracy interpreted as probability tolerance
-								res = prism.doMinSynthesisNaive(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
 							}
 							// Approximate (simulation-based) model checking
 							else if (simulate) {
@@ -1116,13 +1121,14 @@ public class PrismCL implements PrismModelListener
 				}
 				// PSE-based model checking techniques
 				else if (sw.equals("psecheck") || sw.equals("psesynth-thr") ||
-						sw.equals("psesynth-max-naive") || sw.equals("psesynth-max-sampling") ||
-						sw.equals("psesynth-min-naive")) {
+						sw.equals("psesynth-min-naive") || sw.equals("psesynth-min-sampling") ||
+						sw.equals("psesynth-max-naive") || sw.equals("psesynth-max-sampling")) {
 					if (sw.equals("psecheck")) pseCheck = true;
 					else if (sw.equals("psesynth-thr")) pseSynthThr = true;
+					else if (sw.equals("psesynth-min-naive")) pseSynthMinNaive = true;
+					else if (sw.equals("psesynth-min-sampling")) pseSynthMinSampling = true;
 					else if (sw.equals("psesynth-max-naive")) pseSynthMaxNaive = true;
 					else if (sw.equals("psesynth-max-sampling")) pseSynthMaxSampling = true;
-					else if (sw.equals("psesynth-min-naive")) pseSynthMinNaive = true;
 
 					if (i < args.length - 2) {
 						pseSwitch = args[++i].trim();
@@ -2073,7 +2079,7 @@ public class PrismCL implements PrismModelListener
 		}
 
 		// process parameter space ranges
-		if (pse || pseCheck || pseSynthThr || pseSynthMaxNaive || pseSynthMaxSampling || pseSynthMinNaive) {
+		if (pse || pseCheck || pseSynthThr || pseSynthMinNaive || pseSynthMinSampling || pseSynthMaxNaive || pseSynthMaxSampling) {
 			String[] pseDefs = pseSwitch.split(",");
 			pseNames = new String[pseDefs.length];
 			pseLowerBounds = new double[pseDefs.length];

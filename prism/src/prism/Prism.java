@@ -61,6 +61,7 @@ import pse.PSEModelChecker;
 import pse.MaxSynthesisNaive;
 import pse.MaxSynthesisSampling;
 import pse.MinSynthesisNaive;
+import pse.MinSynthesisSampling;
 import pse.SimpleDecompositionProcedure;
 import pse.ThresholdSynthesis;
 import pta.DigitalClocks;
@@ -3509,6 +3510,28 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		if (model.getNumInitialStates() != 1)
 			throw new PrismException("Min synthesis requires exactly one initial state");
 		MinSynthesisNaive synth = new MinSynthesisNaive(probTolerance, model.getFirstInitialState());
+		return mc.check(model, propExpr, synth);
+	}
+
+	/**
+	 */
+	public Result doMinSynthesisSampling(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double probTolerance)
+			throws PrismException
+	{
+		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
+		PSEModel model = builder.getModel();
+		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
+		// Allow the builder to be garbage-collected
+		builder = null;
+
+		printInitInfoPSE(mainLog, "PSE min synthesis using the sampling approach: " + prop, regionFactory, propertiesFile);
+
+		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
+		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
+		Expression propExpr = prop.getExpression();
+		if (model.getNumInitialStates() != 1)
+			throw new PrismException("Min synthesis requires exactly one initial state");
+		MinSynthesisSampling synth = new MinSynthesisSampling(probTolerance, model.getFirstInitialState(), getSimulator());
 		return mc.check(model, propExpr, synth);
 	}
 
