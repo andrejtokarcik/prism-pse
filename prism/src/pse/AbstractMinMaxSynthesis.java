@@ -30,7 +30,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
 
-import parser.Values;
 import parser.ast.ExpressionProb;
 import parser.ast.RelOp;
 import prism.PrismException;
@@ -57,7 +56,7 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure {
 	}
 
 	@Override
-	protected void processPropertyExpression(boolean singleInit, Values constantValues) throws PrismException
+	protected void processPropertyExpression() throws PrismException
 	{
 		try {
 			ExpressionProb probExpr = (ExpressionProb) propExpr;
@@ -68,13 +67,13 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure {
 		}
 	}
 
-	protected abstract void determineOptimalRegions(BoxRegionValues regionValues);
+	protected abstract void determineOptimalRegions(BoxRegionValues regionValues) throws PrismException;
 
 	protected abstract BoxRegion chooseRegionToDecompose(BoxRegion current, BoxRegion candidate,
 			boolean candidateHasMinimalLowerBound);
 
 	@Override
-	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded
+	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded, PrismException
 	{
 		// NB: In the following, the term `bounds' refers to constraints on the probability
 		// of the property's being satisfied in a given region.  This is not to be confused
@@ -84,23 +83,23 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure {
 		determineOptimalRegions(regionValues);
 
 		// Determine the deciding probability bounds
-		BoxRegion regionToDecompose = null;
 		minimalLowerBoundOfOptimising = Double.POSITIVE_INFINITY;
 		maximalUpperBoundOfOptimising = Double.NEGATIVE_INFINITY;
+		BoxRegion regionToDecompose = null;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
 			if (!regionsOptimising.contains(entry.getKey()))
 				continue;
 
 			double currentLowerBound = (Double) entry.getValue().getMin().getValue(initState);
 			if (currentLowerBound < minimalLowerBoundOfOptimising) {
-				regionToDecompose = chooseRegionToDecompose(regionToDecompose, entry.getKey(), true);
 				minimalLowerBoundOfOptimising = currentLowerBound;
+				regionToDecompose = chooseRegionToDecompose(regionToDecompose, entry.getKey(), true);
 			}
 
 			double currentUpperBound = (Double) entry.getValue().getMax().getValue(initState);
 			if (currentUpperBound > maximalUpperBoundOfOptimising) {
-				regionToDecompose = chooseRegionToDecompose(regionToDecompose, entry.getKey(), false);
 				maximalUpperBoundOfOptimising = currentUpperBound;
+				regionToDecompose = chooseRegionToDecompose(regionToDecompose, entry.getKey(), false);
 			}
 		}
 

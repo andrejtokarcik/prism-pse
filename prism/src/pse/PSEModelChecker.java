@@ -131,8 +131,11 @@ public final class PSEModelChecker extends PrismComponent
 		// Also evaluate/replace any constants
 		//expr = (Expression) expr.replaceConstants(constantValues);
 
-		// Let the decomposition procedure adjust the property, if needed
-		expr = decompositionProcedure.adjustPropertyExpression(expr, model.getNumInitialStates() == 1, constantValues);
+		// Initialise decomposition procedure before model checking starts
+		decompositionProcedure.initialise(this, model, expr);
+
+		// Let decomposition procedure adjust the property, if needed
+		expr = decompositionProcedure.getPropertyExpression();
 
 		// Do model checking and store result vector
 		timer = System.currentTimeMillis();

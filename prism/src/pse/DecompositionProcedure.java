@@ -28,13 +28,14 @@ package pse;
 
 import java.util.List;
 
-import parser.Values;
 import parser.ast.Expression;
 import parser.ast.ExpressionFilter;
 import prism.PrismException;
 import prism.PrismLog;
 
 abstract class DecompositionProcedure {
+	protected PSEModelChecker modelChecker;
+	protected PSEModel model;
 	protected Expression propExpr;
 
 	@SuppressWarnings("serial")
@@ -53,23 +54,29 @@ abstract class DecompositionProcedure {
 		}
 	}
 
-	protected void processPropertyExpression(boolean singleInit, Values constantValues) throws PrismException
+	public void initialise(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
+	{
+		this.modelChecker = modelChecker;
+		this.model = model;
+		this.propExpr = propExpr;
+		processPropertyExpression();
+	}
+
+	protected void processPropertyExpression() throws PrismException
 	{
 		// Wrap a filter round the property, if needed
 		// (in order to extract the final result of model checking)
-		propExpr = ExpressionFilter.addDefaultFilterIfNeeded(propExpr, singleInit);
+		propExpr = ExpressionFilter.addDefaultFilterIfNeeded(propExpr, model.getNumInitialStates() == 1);
 	}
 
-	public Expression adjustPropertyExpression(Expression propExpr, boolean singleInit, Values constantValues) throws PrismException
+	public Expression getPropertyExpression()
 	{
-		this.propExpr = propExpr;
-		processPropertyExpression(singleInit, constantValues);
-		return this.propExpr;
+		return propExpr;
 	}
 
-	public void examineSingleIteration(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded {}
+	public void examineSingleIteration(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded, PrismException {}
 	
-	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded {}
+	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded, PrismException {}
 
 	public void printSolution(PrismLog log) {
 		// The default filter added above takes care of printing the solution

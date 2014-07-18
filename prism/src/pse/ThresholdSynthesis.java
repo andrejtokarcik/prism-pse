@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.LinkedList;
 import java.util.Map.Entry;
 
-import parser.Values;
 import parser.ast.Expression;
 import parser.ast.ExpressionProb;
 import parser.ast.RelOp;
@@ -61,7 +60,7 @@ public final class ThresholdSynthesis extends DecompositionProcedure {
 	}
 
 	@Override
-	protected void processPropertyExpression(boolean singleInit, Values constantValues) throws PrismException
+	protected void processPropertyExpression() throws PrismException
 	{
 		try {
 			ExpressionProb probExpr = (ExpressionProb) propExpr;
@@ -72,7 +71,7 @@ public final class ThresholdSynthesis extends DecompositionProcedure {
 			Expression boundExpr = probExpr.getProb();
 			if (boundExpr == null)
 				throw new ClassCastException();
-			threshold = (Double) boundExpr.evaluate(constantValues);
+			threshold = (Double) boundExpr.evaluate(modelChecker.getConstantValues());
 		} catch (ClassCastException e) {
 			throw new PrismException("Threshold synthesis requires a P operator with a lower/upper bound");
 		}
