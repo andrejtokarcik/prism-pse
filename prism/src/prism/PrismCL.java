@@ -91,6 +91,7 @@ public class PrismCL implements PrismModelListener
 	private boolean pseCheck = false;
 	private boolean pseSynthThr = false;
 	private boolean pseSynthMaxNaive = false;
+	private boolean pseSynthMaxSampling = false;
 	private boolean pseSynthMinNaive = false;
 	private ModelType typeOverride = null;
 	private boolean orderingOverride = false;
@@ -247,7 +248,7 @@ public class PrismCL implements PrismModelListener
 					undefinedConstants[i].removeConstants(paramNames);
 				}
 			}
-			if (pse || pseCheck || pseSynthThr || pseSynthMaxNaive || pseSynthMinNaive) {
+			if (pse || pseCheck || pseSynthThr || pseSynthMaxNaive || pseSynthMaxSampling || pseSynthMinNaive) {
 				undefinedMFConstants.removeConstants(pseNames);
 				for (i = 0; i < numPropertiesToCheck; i++) {
 					undefinedConstants[i].removeConstants(pseNames);
@@ -370,6 +371,10 @@ public class PrismCL implements PrismModelListener
 							else if (pseSynthMaxNaive) {
 								// pseAccuracy interpreted as probability tolerance
 								res = prism.doMaxSynthesisNaive(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
+							}
+							else if (pseSynthMaxSampling) {
+								// pseAccuracy interpreted as probability tolerance
+								res = prism.doMaxSynthesisSampling(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
 							}
 							else if (pseSynthMinNaive) {
 								// pseAccuracy interpreted as probability tolerance
@@ -1110,12 +1115,14 @@ public class PrismCL implements PrismModelListener
 					}
 				}
 				// PSE-based model checking techniques
-				else if (sw.equals("psecheck") || sw.equals("psesynth-thr") || sw.equals("psesynth-max-naive") ||
+				else if (sw.equals("psecheck") || sw.equals("psesynth-thr") ||
+						sw.equals("psesynth-max-naive") || sw.equals("psesynth-max-sampling") ||
 						sw.equals("psesynth-min-naive")) {
 					if (sw.equals("psecheck")) pseCheck = true;
 					else if (sw.equals("psesynth-thr")) pseSynthThr = true;
-					else if(sw.equals("psesynth-max-naive")) pseSynthMaxNaive = true;
-					else if(sw.equals("psesynth-min-naive")) pseSynthMinNaive = true;
+					else if (sw.equals("psesynth-max-naive")) pseSynthMaxNaive = true;
+					else if (sw.equals("psesynth-max-sampling")) pseSynthMaxSampling = true;
+					else if (sw.equals("psesynth-min-naive")) pseSynthMinNaive = true;
 
 					if (i < args.length - 2) {
 						pseSwitch = args[++i].trim();
@@ -2066,7 +2073,7 @@ public class PrismCL implements PrismModelListener
 		}
 
 		// process parameter space ranges
-		if (pse || pseCheck || pseSynthThr || pseSynthMaxNaive || pseSynthMinNaive) {
+		if (pse || pseCheck || pseSynthThr || pseSynthMaxNaive || pseSynthMaxSampling || pseSynthMinNaive) {
 			String[] pseDefs = pseSwitch.split(",");
 			pseNames = new String[pseDefs.length];
 			pseLowerBounds = new double[pseDefs.length];

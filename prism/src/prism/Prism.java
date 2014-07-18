@@ -59,6 +59,7 @@ import parser.ast.Property;
 import pse.PSEModel;
 import pse.PSEModelChecker;
 import pse.MaxSynthesisNaive;
+import pse.MaxSynthesisSampling;
 import pse.MinSynthesisNaive;
 import pse.SimpleDecompositionProcedure;
 import pse.ThresholdSynthesis;
@@ -3491,6 +3492,28 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 	/**
 	 */
+	public Result doMinSynthesisNaive(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double probTolerance)
+			throws PrismException
+	{
+		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
+		PSEModel model = builder.getModel();
+		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
+		// Allow the builder to be garbage-collected
+		builder = null;
+
+		printInitInfoPSE(mainLog, "PSE min synthesis using the naive approach: " + prop, regionFactory, propertiesFile);
+
+		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
+		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
+		Expression propExpr = prop.getExpression();
+		if (model.getNumInitialStates() != 1)
+			throw new PrismException("Min synthesis requires exactly one initial state");
+		MinSynthesisNaive synth = new MinSynthesisNaive(probTolerance, model.getFirstInitialState());
+		return mc.check(model, propExpr, synth);
+	}
+
+	/**
+	 */
 	public Result doMaxSynthesisNaive(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double probTolerance)
 			throws PrismException
 	{
@@ -3513,7 +3536,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 	/**
 	 */
-	public Result doMinSynthesisNaive(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double probTolerance)
+	public Result doMaxSynthesisSampling(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double probTolerance)
 			throws PrismException
 	{
 		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
@@ -3522,14 +3545,14 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		// Allow the builder to be garbage-collected
 		builder = null;
 
-		printInitInfoPSE(mainLog, "PSE min synthesis using the naive approach: " + prop, regionFactory, propertiesFile);
+		printInitInfoPSE(mainLog, "PSE max synthesis using the sampling approach: " + prop, regionFactory, propertiesFile);
 
 		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
 		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
 		Expression propExpr = prop.getExpression();
 		if (model.getNumInitialStates() != 1)
-			throw new PrismException("Min synthesis requires exactly one initial state");
-		MinSynthesisNaive synth = new MinSynthesisNaive(probTolerance, model.getFirstInitialState());
+			throw new PrismException("Max synthesis requires exactly one initial state");
+		MaxSynthesisSampling synth = new MaxSynthesisSampling(probTolerance, model.getFirstInitialState(), getSimulator());
 		return mc.check(model, propExpr, synth);
 	}
 
@@ -3554,7 +3577,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			if (timeDouble < 0)
 				throw new PrismException("Cannot perform parameter space exploration for negative time value");
 			
-			printInitInfoPSE(mainLog, "Performing parameter space exploration (time = " + time + ")...", regionFactory, null);
+			printInitInfoPSE(mainLog, "Performing parameter space exploration (time = " + time + ", accuracy = " + accuracy + ")...", regionFactory, null);
 			
 			long l = System.currentTimeMillis();
 
