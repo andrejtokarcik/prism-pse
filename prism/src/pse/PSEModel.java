@@ -39,10 +39,12 @@ import java.util.TreeSet;
 
 import parser.Values;
 import parser.ast.Expression;
+import parser.ast.ModulesFile;
 import prism.ModelType;
 import prism.Pair;
 import prism.PrismException;
 import prism.PrismLog;
+import explicit.CTMC;
 import explicit.ModelExplicit;
 
 public final class PSEModel extends ModelExplicit
@@ -572,5 +574,14 @@ public final class PSEModel extends ModelExplicit
 			parametrisedTransitions[trans] = rateParamsLowers[trans] != rateParamsUppers[trans];
 
 		}
+	}
+
+	public CTMC instantiate(Point point, ModulesFile modulesFile, explicit.ConstructModel constructModel)
+			throws PrismException
+	{
+		modulesFile = (ModulesFile) modulesFile.deepCopy();
+		// Add point dimensions to constants of the model file
+		modulesFile.getConstantValues().addValues(point.getDimensions());
+		return (CTMC) constructModel.constructModel(modulesFile);
 	}
 }

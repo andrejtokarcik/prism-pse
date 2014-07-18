@@ -61,6 +61,9 @@ public final class PSEModelChecker extends PrismComponent
 	// Log for output (default to System.out)
 	private PrismLog mainLog = new PrismPrintStreamLog(System.out);
 
+	// Model file (for instantiating)
+	private ModulesFile modulesFile = null;
+
 	// Properties file (for labels, constants, etc.)
 	private PropertiesFile propertiesFile = null;
 
@@ -89,6 +92,7 @@ public final class PSEModelChecker extends PrismComponent
 	 */
 	public void setModulesFileAndPropertiesFile(ModulesFile modulesFile, PropertiesFile propertiesFile)
 	{
+		this.modulesFile = modulesFile;
 		this.propertiesFile = propertiesFile;
 		// Get combined constant values from model/properties
 		constantValues = new Values();
@@ -97,6 +101,11 @@ public final class PSEModelChecker extends PrismComponent
 			constantValues.addValues(propertiesFile.getConstantValues());
 
 		stateChecker.setModulesFileAndPropertiesFile(modulesFile, propertiesFile);
+	}
+
+	public ModulesFile getModulesFile()
+	{
+		return modulesFile;
 	}
 
 	public Values getConstantValues()

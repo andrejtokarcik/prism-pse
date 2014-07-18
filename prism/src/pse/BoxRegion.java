@@ -26,6 +26,10 @@
 
 package pse;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Random;
+
 import parser.Values;
 
 final class BoxRegion implements Comparable<BoxRegion>
@@ -87,6 +91,28 @@ final class BoxRegion implements Comparable<BoxRegion>
 				volume *= upperValue - lowerValue;
 		}
 		return volume;
+	}
+
+	public Set<Point> getPointSamples()
+	{
+		return getPointSamples(2);
+	}
+
+	public Set<Point> getPointSamples(int numSamples)
+	{
+		Set<Point> samples = new HashSet<Point>();
+		Random r = new Random();
+		while(samples.size() != numSamples) {
+			Values dimensions = new Values();
+			for (int i = 0; i < lowerBounds.getNumValues(); i++) {
+				double lowerValue = (Double) lowerBounds.getValue(i);
+				double upperValue = (Double) upperBounds.getValue(i);
+				double randomValue = lowerValue + r.nextDouble() * (upperValue - lowerValue);
+				dimensions.addValue(lowerBounds.getName(i), randomValue);
+			}
+			samples.add(new Point(dimensions));
+		}
+		return samples;
 	}
 
 	public int compareTo(BoxRegion r)
