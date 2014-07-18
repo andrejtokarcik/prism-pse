@@ -61,7 +61,7 @@ public class ConstructModel extends PrismComponent
 	// Details of built model
 	protected List<State> statesList;
 
-	public ConstructModel(PrismComponent parent, SimulatorEngine engine) throws PrismException
+	public ConstructModel(PrismComponent parent, SimulatorEngine engine)
 	{
 		super(parent);
 		this.engine = engine;

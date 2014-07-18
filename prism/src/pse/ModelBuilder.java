@@ -123,12 +123,11 @@ public final class ModelBuilder extends PrismComponent
 		// build model
 		time = System.currentTimeMillis();
 		modulesFile = (ModulesFile) modulesFile.deepCopy().replaceConstants(modulesFile.getConstantValues()).simplify();
-		PSEModel modelExpl = constructModel(modulesFile);
-		modelExpl.setRegion(regionFactory.completeSpace());
+		model = constructModel(modulesFile);
+		model.setRegion(regionFactory.completeSpace());
 		time = System.currentTimeMillis() - time;
 
 		mainLog.println("\nTime for model construction: " + time / 1000.0 + " seconds.");
-		model = modelExpl;
 	}
 
 	/**

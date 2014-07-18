@@ -3419,10 +3419,8 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		}
 		if (!(currentModelType == ModelType.CTMC))
 			throw new PrismException("PSE-based techniques supported for CTMCs only");
-		/*
-		if (!getExplicit())
-			throw new PrismException("Parameter space exploration supported for the explicit engine only");
-		*/
+		//if (!getExplicit())
+		//	throw new PrismException("Parameter space exploration supported for the explicit engine only");
 
 		Values constlist = currentModulesFile.getConstantValues();
 		for (int pnr = 0; pnr < paramNames.length; pnr++) {

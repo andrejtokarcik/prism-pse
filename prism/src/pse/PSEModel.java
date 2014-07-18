@@ -27,7 +27,6 @@
 package pse;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -389,9 +388,9 @@ public final class PSEModel extends ModelExplicit
 		inoutReactions = new HashMap<Integer, List<Pair<Integer, Integer>>>(numStates);
 		outReactions = new HashMap<Integer, List<Integer>>(numStates);
 		for (int state = 0; state < numStates; state++) {
-			inReactions.put(state, new ArrayList<Integer>());
-			inoutReactions.put(state, new ArrayList<Pair<Integer, Integer>>());
-			outReactions.put(state, new ArrayList<Integer>());
+			inReactions.put(state, new LinkedList<Integer>());
+			inoutReactions.put(state, new LinkedList<Pair<Integer, Integer>>());
+			outReactions.put(state, new LinkedList<Integer>());
 		}
 
 		// Populate the sets with transition indices

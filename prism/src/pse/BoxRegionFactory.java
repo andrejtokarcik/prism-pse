@@ -34,6 +34,7 @@ public final class BoxRegionFactory {
 
 	public BoxRegionFactory(Values paramsLower, Values paramsUpper)
 	{
+		assert paramsLower.getNumValues() == paramsUpper.getNumValues();
 		this.paramsLower = paramsLower;
 		this.paramsUpper = paramsUpper;
 	}
