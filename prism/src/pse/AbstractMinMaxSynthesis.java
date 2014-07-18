@@ -67,7 +67,7 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure {
 		}
 	}
 
-	protected abstract void determineOptimalRegions(BoxRegionValues regionValues) throws PrismException;
+	protected abstract void determineOptimisingRegions(BoxRegionValues regionValues) throws PrismException;
 
 	protected abstract BoxRegion chooseRegionToDecompose(BoxRegion current, BoxRegion candidate,
 			boolean candidateHasMinimalLowerBound);
@@ -80,7 +80,7 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure {
 		// with `bounds' in the sense of upper/lower values of parameter ranges characterising
 		// the parameter regions/subspaces.
 
-		determineOptimalRegions(regionValues);
+		determineOptimisingRegions(regionValues);
 
 		// Determine the deciding probability bounds
 		minimalLowerBoundOfOptimising = Double.POSITIVE_INFINITY;
@@ -115,7 +115,7 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure {
 
 		log.print("\nRegions " + captionForOptimising + " the property satisfaction probability:");
 		printRegions(log, regionsOptimising);
-		log.print("Non-optimal regions:");
+		log.print("Non-" + captionForOptimising + " regions:");
 		printRegions(log, regionsNonoptimising);
 
 		log.println("\nmin lower prob bound of " + captionForOptimising + " regions = " + minimalLowerBoundOfOptimising);

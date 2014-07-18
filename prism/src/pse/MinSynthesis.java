@@ -28,6 +28,8 @@ package pse;
 
 import java.util.Map.Entry;
 
+import prism.PrismException;
+
 abstract class MinSynthesis extends AbstractMinMaxSynthesis {
 	public MinSynthesis(double probTolerance, int initState)
 	{
@@ -35,10 +37,10 @@ abstract class MinSynthesis extends AbstractMinMaxSynthesis {
 		captionForOptimising = "minimising";
 	}
 
-	protected abstract double getMinimalUpperBound(BoxRegionValues regionValues);
+	protected abstract double getMinimalUpperBound(BoxRegionValues regionValues) throws PrismException;
 
 	@Override
-	protected void determineOptimalRegions(BoxRegionValues regionValues)
+	protected void determineOptimisingRegions(BoxRegionValues regionValues) throws PrismException
 	{
 		// Determine the minimal upper bound
 		double minimalUpperBound = getMinimalUpperBound(regionValues);
