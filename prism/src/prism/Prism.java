@@ -59,6 +59,7 @@ import parser.ast.Property;
 import pse.PSEModel;
 import pse.PSEModelChecker;
 import pse.MaxSynthesisNaive;
+import pse.MinSynthesisNaive;
 import pse.SimpleDecompositionProcedure;
 import pse.ThresholdSynthesis;
 import pta.DigitalClocks;
@@ -3511,7 +3512,29 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		MaxSynthesisNaive synth = new MaxSynthesisNaive(probTolerance, model.getFirstInitialState());
 		return mc.check(model, propExpr, synth);
 	}
-	
+
+	/**
+	 */
+	public Result doMinSynthesisNaive(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double probTolerance)
+			throws PrismException
+	{
+		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
+		PSEModel model = builder.getModel();
+		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
+		// Allow the builder to be garbage-collected
+		builder = null;
+
+		printInitInfoPSE(mainLog, "PSE min synthesis using the naive approach: " + prop, regionFactory, propertiesFile);
+
+		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
+		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
+		Expression propExpr = prop.getExpression();
+		if (model.getNumInitialStates() != 1)
+			throw new PrismException("Min synthesis requires exactly one initial state");
+		MinSynthesisNaive synth = new MinSynthesisNaive(probTolerance, model.getFirstInitialState());
+		return mc.check(model, propExpr, synth);
+	}
+
 	/**
 	 */
 	public void doTransientPSE(UndefinedConstants times, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double accuracy, File fileIn)
