@@ -123,20 +123,19 @@ public final class ModelBuilder extends PrismComponent
 		// build model
 		time = System.currentTimeMillis();
 		modulesFile = (ModulesFile) modulesFile.deepCopy().replaceConstants(modulesFile.getConstantValues()).simplify();
-		PSEModel modelExpl = constructModel(modulesFile);
-		modelExpl.scaleParameterSpace(regionFactory.completeSpace());
+		model = constructModel(modulesFile);
+		model.setRegion(regionFactory.completeSpace());
 		time = System.currentTimeMillis() - time;
 
 		mainLog.println("\nTime for model construction: " + time / 1000.0 + " seconds.");
-		model = modelExpl;
 	}
 
 	/**
-	 * Returns the constructed parametric Markov model.
+	 * Returns the constructed PSE model.
 	 * 
-	 * @return constructed parametric Markov model
+	 * @return constructed PSE model
 	 */
-	public explicit.Model getModel()
+	public PSEModel getModel()
 	{
 		return model;
 	}

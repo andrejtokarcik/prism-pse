@@ -28,19 +28,47 @@ package pse;
 
 import parser.Values;
 
-public final class BoxRegionFactory {
-	private Values paramsLower;
-	private Values paramsUpper;
+final class Point {
+	private Values dimensions;
 
-	public BoxRegionFactory(Values paramsLower, Values paramsUpper)
+	public Point(Values dimensions)
 	{
-		assert paramsLower.getNumValues() == paramsUpper.getNumValues();
-		this.paramsLower = paramsLower;
-		this.paramsUpper = paramsUpper;
+		this.dimensions = dimensions;
 	}
 
-	public BoxRegion completeSpace()
+	public Values getDimensions()
 	{
-		return new BoxRegion(paramsLower, paramsUpper);
+		return dimensions;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((dimensions == null) ? 0 : dimensions.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Point other = (Point) obj;
+		if (dimensions == null) {
+			if (other.dimensions != null)
+				return false;
+		} else if (!dimensions.equals(other.dimensions))
+			return false;
+		return true;
+	}
+
+	@Override
+	public String toString() {
+		return dimensions.toString();
 	}
 }

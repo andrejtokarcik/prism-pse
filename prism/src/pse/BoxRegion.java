@@ -26,68 +26,110 @@
 
 package pse;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Random;
+
 import parser.Values;
 
 final class BoxRegion implements Comparable<BoxRegion>
 {
-	private Values boundsLower;
-	private Values boundsUpper;
-	private Values boundsMid;
+	private Values lowerBounds;
+	private Values upperBounds;
+	private Values midBounds;
+
+	private double volume = 0.0;
 
 	public BoxRegion(Values boundsLower, Values boundsUpper)
 	{
 		assert boundsLower.compareTo(boundsUpper) <= 0;
-
-		this.boundsLower = boundsLower;
-		this.boundsUpper = boundsUpper;
+		this.lowerBounds = boundsLower;
+		this.upperBounds = boundsUpper;
 		computeMidBounds();
 	}
 
 	private void computeMidBounds()
 	{
-		boundsMid = new Values();
-		for (int i = 0; i < boundsLower.getNumValues(); i++) {
-			double lowerValue = (Double) boundsLower.getValue(i);
-			double upperValue = (Double) boundsUpper.getValue(i);
-			boundsMid.addValue(boundsLower.getName(i), lowerValue + 0.5 * (upperValue - lowerValue));
+		midBounds = new Values();
+		for (int i = 0; i < lowerBounds.getNumValues(); i++) {
+			double lowerValue = (Double) lowerBounds.getValue(i);
+			double upperValue = (Double) upperBounds.getValue(i);
+			midBounds.addValue(lowerBounds.getName(i), lowerValue + 0.5 * (upperValue - lowerValue));
 		}
 	}
 
 	public Values getLowerBounds()
 	{
-		return boundsLower;
+		return lowerBounds;
 	}
 
 	public Values getUpperBounds()
 	{
-		return boundsUpper;
+		return upperBounds;
 	}
 
 	public BoxRegion getLowerHalf()
 	{
-		return new BoxRegion(boundsLower, boundsMid);
+		return new BoxRegion(lowerBounds, midBounds);
 	}
 
 	public BoxRegion getUpperHalf()
 	{
-		return new BoxRegion(boundsMid, boundsUpper);
+		return new BoxRegion(midBounds, upperBounds);
+	}
+
+	public double getVolume()
+	{
+		if (volume > 0.0)
+			return volume;
+
+		volume = 1.0;
+		for (int i = 0; i < lowerBounds.getNumValues(); i++) {
+			double lowerValue = (Double) lowerBounds.getValue(i);
+			double upperValue = (Double) upperBounds.getValue(i);
+			if (lowerValue != upperValue)
+				volume *= upperValue - lowerValue;
+		}
+		return volume;
+	}
+
+	public Set<Point> getPointSamples()
+	{
+		return getPointSamples(2);
+	}
+
+	public Set<Point> getPointSamples(int numSamples)
+	{
+		Set<Point> samples = new HashSet<Point>();
+		Random r = new Random();
+		while(samples.size() != numSamples) {
+			Values dimensions = new Values();
+			for (int i = 0; i < lowerBounds.getNumValues(); i++) {
+				double lowerValue = (Double) lowerBounds.getValue(i);
+				double upperValue = (Double) upperBounds.getValue(i);
+				double randomValue = lowerValue + r.nextDouble() * (upperValue - lowerValue);
+				dimensions.addValue(lowerBounds.getName(i), randomValue);
+			}
+			samples.add(new Point(dimensions));
+		}
+		return samples;
 	}
 
 	public int compareTo(BoxRegion r)
 	{
-		return boundsLower.compareTo(r.boundsLower);
+		return lowerBounds.compareTo(r.lowerBounds);
 	}
 
 	@Override
 	public String toString() {
-		StringBuilder builder = new StringBuilder("Region ");
-		for (int i = 0; i < boundsLower.getNumValues(); i++) {
+		StringBuilder builder = new StringBuilder();
+		for (int i = 0; i < lowerBounds.getNumValues(); i++) {
 			if (i != 0) builder.append(",");
-			builder.append(boundsLower.getName(i));
+			builder.append(lowerBounds.getName(i));
 			builder.append("=");
-			builder.append((Double) boundsLower.getValue(i));
+			builder.append((Double) lowerBounds.getValue(i));
 			builder.append(":");
-			builder.append((Double) boundsUpper.getValue(i));
+			builder.append((Double) upperBounds.getValue(i));
 		}
 		return builder.toString();
 	}

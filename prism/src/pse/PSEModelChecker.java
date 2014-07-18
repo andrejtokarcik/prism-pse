@@ -1,10 +1,10 @@
 //==============================================================================
 //	
-//	Copyright (c) 2013-
+//	Copyright (c) 2014-
 //	Authors:
+//	* Andrej Tokarcik <andrejtokarcik@gmail.com> (Masaryk University)
 //	* Dave Parker <david.parker@comlab.ox.ac.uk> (University of Oxford)
 //	* Ernst Moritz Hahn <emhahn@cs.ox.ac.uk> (University of Oxford)
-//	* Andrej Tokarcik <andrejtokarcik@gmail.com> (Masaryk University)
 //	
 //------------------------------------------------------------------------------
 //	
@@ -52,7 +52,6 @@ import prism.PrismLog;
 import prism.PrismPrintStreamLog;
 import prism.Result;
 import explicit.FoxGlynn;
-import explicit.Model;
 import explicit.StateModelChecker;
 import explicit.StateValues;
 import explicit.Utils;
@@ -61,6 +60,9 @@ public final class PSEModelChecker extends PrismComponent
 {
 	// Log for output (default to System.out)
 	private PrismLog mainLog = new PrismPrintStreamLog(System.out);
+
+	// Model file (for instantiating)
+	private ModulesFile modulesFile = null;
 
 	// Properties file (for labels, constants, etc.)
 	private PropertiesFile propertiesFile = null;
@@ -81,7 +83,7 @@ public final class PSEModelChecker extends PrismComponent
 		this.regionFactory = regionFactory;
 		this.stateChecker = new StateModelChecker(this);
 	}
-	
+
 	// Setters/getters
 
 	/**
@@ -90,6 +92,7 @@ public final class PSEModelChecker extends PrismComponent
 	 */
 	public void setModulesFileAndPropertiesFile(ModulesFile modulesFile, PropertiesFile propertiesFile)
 	{
+		this.modulesFile = modulesFile;
 		this.propertiesFile = propertiesFile;
 		// Get combined constant values from model/properties
 		constantValues = new Values();
@@ -100,16 +103,24 @@ public final class PSEModelChecker extends PrismComponent
 		stateChecker.setModulesFileAndPropertiesFile(modulesFile, propertiesFile);
 	}
 
+	public ModulesFile getModulesFile()
+	{
+		return modulesFile;
+	}
+
+	public Values getConstantValues()
+	{
+		return constantValues;
+	}
+
 	// Model checking functions
 
 	/**
 	 * Model check an expression, process and return the result.
 	 * Information about states and model constants should be attached to the model.
 	 */
-	public Result check(Model explModel, Expression expr, double accuracy) throws PrismException
+	public Result check(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure) throws PrismException
 	{
-		PSEModel model = (PSEModel) explModel;
-
 		long timer = 0;
 
 		// Remove labels from property, using combined label list (on a copy of the expression)
@@ -120,39 +131,32 @@ public final class PSEModelChecker extends PrismComponent
 		// Also evaluate/replace any constants
 		//expr = (Expression) expr.replaceConstants(constantValues);
 
-		// Wrap a filter round the property, if needed
-		// (in order to extract the final result of model checking)
-		expr = ExpressionFilter.addDefaultFilterIfNeeded(expr, model.getNumInitialStates() == 1);
+		// Initialise decomposition procedure before model checking starts
+		decompositionProcedure.initialise(this, model, expr);
+
+		// Let decomposition procedure adjust the property, if needed
+		expr = decompositionProcedure.getPropertyExpression();
 
 		// Do model checking and store result vector
 		timer = System.currentTimeMillis();
-		BoxRegionValues regionValues = checkExpression(model, expr, accuracy);
+		BoxRegionValues regionValues = checkExpression(model, expr, decompositionProcedure);
 		timer = System.currentTimeMillis() - timer;
-		mainLog.println("\nTime for model checking: " + timer / 1000.0 + " seconds.");
+		mainLog.println("\nTotal time for model checking: " + timer / 1000.0 + " seconds.");
 
-		// Store result
+		// Return result
 		Result result = new Result();
 		result.setResult(regionValues);
-
-		/*
-		// Print result to log
-		String resultString = "Result";
-		if (!("Result".equals(expr.getResultName())))
-			resultString += " (" + expr.getResultName().toLowerCase() + ")";
-		resultString += ": " + result.getResultString();
-		mainLog.print("\n" + resultString);
-		*/
-
+		decompositionProcedure.printSolution(mainLog);
 		return result;
 	}
 
-	public BoxRegionValues checkExpression(PSEModel model, Expression expr, double accuracy) throws PrismException
+	public BoxRegionValues checkExpression(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure) throws PrismException
 	{
 		if (expr instanceof ExpressionFilter) {
-			return checkExpressionFilter(model, (ExpressionFilter) expr, accuracy);
+			return checkExpressionFilter(model, (ExpressionFilter) expr, decompositionProcedure);
 		}
 		if (expr instanceof ExpressionProb) {
-			return checkExpressionProb(model, (ExpressionProb) expr, accuracy);
+			return checkExpressionProb(model, (ExpressionProb) expr, decompositionProcedure);
 		}
 		// Let explicit.StateModelChecker take care of other expressions
 		StateValues vals = stateChecker.checkExpression(model, expr);
@@ -162,7 +166,7 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Model check a filter.
 	 */
-	protected BoxRegionValues checkExpressionFilter(PSEModel model, ExpressionFilter expr, double accuracy) throws PrismException
+	protected BoxRegionValues checkExpressionFilter(PSEModel model, ExpressionFilter expr, DecompositionProcedure decompositionProcedure) throws PrismException
 	{
 		Object resObjMin, resObjMax;
 		StateValues resRgnValsMin, resRgnValsMax;
@@ -177,7 +181,7 @@ public final class PSEModelChecker extends PrismComponent
 		boolean filterTrue = Expression.isTrue(filter);
 		String filterStatesString = filterTrue ? "all states" : "states satisfying filter";
 
-		BoxRegionValues filterRgnVals = checkExpression(model, filter, accuracy);
+		BoxRegionValues filterRgnVals = checkExpression(model, filter, decompositionProcedure);
 		assert filterRgnVals.getNumRegions() == 1;
 		BitSet bsFilterMin = filterRgnVals.getMin(regionFactory.completeSpace()).getBitSet();
 		BitSet bsFilterMax = filterRgnVals.getMax(regionFactory.completeSpace()).getBitSet();
@@ -192,21 +196,20 @@ public final class PSEModelChecker extends PrismComponent
 			mainLog.println("MAX = " + bsFilterMax.cardinality());
 		}
 
-		BoxRegionValues subRgnVals = checkExpression(model, expr.getOperand(), accuracy);
+		BoxRegionValues subRgnVals = checkExpression(model, expr.getOperand(), decompositionProcedure);
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : subRgnVals) {
 			BoxRegion region = entry.getKey();
 			StateValues subRgnValsMin = entry.getValue().getMin();
 			StateValues subRgnValsMax = entry.getValue().getMax();
 
 			// Prepend all result strings with info about current region
-			resultExpl = "== " + region + " ==\n";
+			mainLog.println("\n== Region " + region + " ==");
 
 			// Compute result according to filter type
 			FilterOperator op = expr.getOperatorType();
 			switch (op) {
 			case PRINT:
 			case PRINTALL:
-				mainLog.print(resultExpl);
 				if (expr.getType() instanceof TypeBool) {
 					mainLog.print("\nSatisfying states");
 					mainLog.println(filterTrue ? ":" : " that are also in filter " + filter + ":");
@@ -243,7 +246,7 @@ public final class PSEModelChecker extends PrismComponent
 				resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
 				resRgnVals = new BoxRegionValues(model, region, resRgnValsMin, resRgnValsMax);
 
-				resultExpl += filterTrue ? "Count of satisfying states" : "Count of satisfying states also in filter";
+				resultExpl = filterTrue ? "Count of satisfying states" : "Count of satisfying states also in filter";
 				mainLog.println("\n" + resultExpl + ":");
 				mainLog.println("MIN = " + resObjMin);
 				mainLog.println("MAX = " + resObjMax);
@@ -258,7 +261,7 @@ public final class PSEModelChecker extends PrismComponent
 				resRgnValsMax = new StateValues(expr.getType(), resObjMax, model);
 				resRgnVals = new BoxRegionValues(model, region, resRgnValsMin, resRgnValsMax);
 
-				resultExpl += "Value in ";
+				resultExpl = "Value in ";
 				if (filterInit) {
 					resultExpl += filterInitSingle ? "the initial state" : "first initial state";
 				} else {
@@ -273,7 +276,7 @@ public final class PSEModelChecker extends PrismComponent
 				resObjMax = new prism.Interval(subRgnValsMax.minOverBitSet(bsFilterMax), subRgnValsMax.maxOverBitSet(bsFilterMax));
 				resRgnVals = subRgnVals;
 
-				resultExpl += "Range of values over ";
+				resultExpl = "Range of values over ";
 				resultExpl += filterInit ? "initial states" : filterStatesString;
 				mainLog.println("\n" + resultExpl + ":");
 				mainLog.println("MIN = " + resObjMin);
@@ -321,17 +324,17 @@ public final class PSEModelChecker extends PrismComponent
 				resRgnVals = new BoxRegionValues(model, region, resRgnValsMin, resRgnValsMax);
 
 				// Create explanation of result and print some details to log
-				resultExpl += "MIN = Property satisfied in ";
+				resultExpl = "MIN = Property satisfied in ";
 				if (filterTrue) {
-					resultExpl += ((Boolean) resObjMin).booleanValue() ? "at least one state" : "no states";
+					resultExpl += ((Boolean) resObjMin) ? "at least one state" : "no states";
 				} else {
-					resultExpl += ((Boolean) resObjMin).booleanValue() ? "at least one filter state" : "no filter states";
+					resultExpl += ((Boolean) resObjMin) ? "at least one filter state" : "no filter states";
 				}
 				resultExpl += "\nMAX = Property satisfied in ";
 				if (filterTrue) {
-					resultExpl += ((Boolean) resObjMax).booleanValue() ? "at least one state" : "no states";
+					resultExpl += ((Boolean) resObjMax) ? "at least one state" : "no states";
 				} else {
-					resultExpl += ((Boolean) resObjMax).booleanValue() ? "at least one filter state" : "no filter states";
+					resultExpl += ((Boolean) resObjMax) ? "at least one filter state" : "no filter states";
 				}
 				mainLog.println("\n" + resultExpl);
 				break;
@@ -352,7 +355,7 @@ public final class PSEModelChecker extends PrismComponent
 				resRgnVals = new BoxRegionValues(model, region, resRgnValsMin, resRgnValsMax);
 
 				// Create explanation of result and print some details to log
-				resultExpl += "Value in ";
+				resultExpl = "Value in ";
 				if (filterInit) {
 					resultExpl += "the initial state";
 				} else {
@@ -373,7 +376,7 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Model check a P operator expression and return the values for all states.
 	 */
-	protected BoxRegionValues checkExpressionProb(PSEModel model, ExpressionProb expr, double accuracy) throws PrismException
+	protected BoxRegionValues checkExpressionProb(PSEModel model, ExpressionProb expr, DecompositionProcedure decompositionProcedure) throws PrismException
 	{
 		Expression pb; // Probability bound (expression)
 		double p = 0; // Probability bound (actual value)
@@ -394,7 +397,7 @@ public final class PSEModelChecker extends PrismComponent
 		// Compute probabilities
 		switch (modelType) {
 		case CTMC:
-			regionValues = checkProbPathFormula(model, expr.getExpression(), accuracy);
+			regionValues = checkProbPathFormula(model, expr.getExpression(), decompositionProcedure);
 			break;
 		default:
 			throw new PrismException("Cannot model check " + expr + " for a " + modelType);
@@ -418,12 +421,12 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Compute probabilities for the contents of a P operator.
 	 */
-	protected BoxRegionValues checkProbPathFormula(PSEModel model, Expression expr, double accuracy) throws PrismException
+	protected BoxRegionValues checkProbPathFormula(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure) throws PrismException
 	{
 		// Test whether this is a simple path formula (i.e. PCTL)
 		// and then pass control to appropriate method.
 		if (expr.isSimplePathFormula()) {
-			return checkProbPathFormulaSimple(model, expr, accuracy);
+			return checkProbPathFormulaSimple(model, expr, decompositionProcedure);
 		} else {
 			throw new PrismException("PSE supports unnested CSL formulae only");
 		}
@@ -432,7 +435,7 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Compute probabilities for a simple, non-LTL path operator.
 	 */
-	protected BoxRegionValues checkProbPathFormulaSimple(PSEModel model, Expression expr, double accuracy) throws PrismException
+	protected BoxRegionValues checkProbPathFormulaSimple(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure) throws PrismException
 	{
 		BoxRegionValues regionValues = null;
 
@@ -442,12 +445,12 @@ public final class PSEModelChecker extends PrismComponent
 			// Parentheses
 			if (exprUnary.getOperator() == ExpressionUnaryOp.PARENTH) {
 				// Recurse
-				regionValues = checkProbPathFormulaSimple(model, exprUnary.getOperand(), accuracy);
+				regionValues = checkProbPathFormulaSimple(model, exprUnary.getOperand(), decompositionProcedure);
 			}
 			// Negation
 			else if (exprUnary.getOperator() == ExpressionUnaryOp.NOT) {
 				// Compute, then subtract from 1
-				regionValues = checkProbPathFormulaSimple(model, exprUnary.getOperand(), accuracy);
+				regionValues = checkProbPathFormulaSimple(model, exprUnary.getOperand(), decompositionProcedure);
 				for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
 					entry.getValue().getMin().timesConstant(-1.0);
 					entry.getValue().getMin().plusConstant(1.0);
@@ -466,14 +469,14 @@ public final class PSEModelChecker extends PrismComponent
 			// Until
 			else if (exprTemp.getOperator() == ExpressionTemporal.P_U) {
 				if (exprTemp.hasBounds()) {
-					regionValues = checkProbBoundedUntil(model, exprTemp, accuracy);
+					regionValues = checkProbBoundedUntil(model, exprTemp, decompositionProcedure);
 				} else {
 					throw new PrismException("PSE supports bounded until only");
 				}
 			}
 			// Anything else - convert to until and recurse
 			else {
-				regionValues = checkProbPathFormulaSimple(model, exprTemp.convertToUntilForm(), accuracy);
+				regionValues = checkProbPathFormulaSimple(model, exprTemp.convertToUntilForm(), decompositionProcedure);
 			}
 		}
 
@@ -486,7 +489,8 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Model check a time-bounded until operator; return vector of probabilities for all states.
 	 */
-	protected BoxRegionValues checkProbBoundedUntil(PSEModel model, ExpressionTemporal expr, double accuracy) throws PrismException
+	protected BoxRegionValues checkProbBoundedUntil(PSEModel model, ExpressionTemporal expr, DecompositionProcedure decompositionProcedure)
+			throws PrismException
 	{
 		double lTime, uTime; // time bounds
 		Expression exprTmp;
@@ -524,8 +528,8 @@ public final class PSEModelChecker extends PrismComponent
 		}
 
 		// model check operands first
-		BoxRegionValues op1RgnVals = checkExpression(model, expr.getOperand1(), accuracy);
-		BoxRegionValues op2RgnVals = checkExpression(model, expr.getOperand2(), accuracy);
+		BoxRegionValues op1RgnVals = checkExpression(model, expr.getOperand1(), decompositionProcedure);
+		BoxRegionValues op2RgnVals = checkExpression(model, expr.getOperand2(), decompositionProcedure);
 		assert op1RgnVals.getNumRegions() == 1 && op2RgnVals.getNumRegions() == 1;
 		b1Min = op1RgnVals.getMin(regionFactory.completeSpace()).getBitSet();
 		b1Max = op1RgnVals.getMax(regionFactory.completeSpace()).getBitSet();
@@ -558,9 +562,10 @@ public final class PSEModelChecker extends PrismComponent
 
 				while (true) {
 					try {
-						regionValues = computeTransientBackwardsProbs(model, b2Min, b1Min, b2Max, b1Max, uTime, onesMultProbs, accuracy);
+						regionValues = computeTransientBackwardsProbs(model, b2Min, b1Min, b2Max, b1Max, uTime, onesMultProbs, decompositionProcedure);
 						break;
-					} catch (SignificantInaccuracy e) {
+					} catch (DecompositionProcedure.DecompositionNeeded e) {
+						mainLog.println("Region " + e.getRegion() + " is to be decomposed.");
 						onesMultProbs.divideRegion(e.getRegion());
 					}
 				}
@@ -577,17 +582,20 @@ public final class PSEModelChecker extends PrismComponent
 
 				while (true) {
 					try {
-						tmpRegionValues = computeTransientBackwardsProbs(model, b2Min, tmpMin, b2Max, tmpMax, uTime - lTime, onesMultProbs, Double.POSITIVE_INFINITY);
-						regionValues = computeTransientBackwardsProbs(model, b1Min, b1Min, b1Max, b1Max, lTime, tmpRegionValues, accuracy);
+						// Decomposition is always performed due to the failed condition in the second transient computation.
+						// The first transient computation is executed with decomposing disabled.
+						tmpRegionValues = computeTransientBackwardsProbs(model, b2Min, tmpMin, b2Max, tmpMax, uTime - lTime, onesMultProbs, SimpleDecompositionProcedure.NoDecomposing.getInstance());
+						regionValues = computeTransientBackwardsProbs(model, b1Min, b1Min, b1Max, b1Max, lTime, tmpRegionValues, decompositionProcedure);
 						break;
-					} catch (SignificantInaccuracy e) {
+					} catch (DecompositionProcedure.DecompositionNeeded e) {
+						mainLog.println("Region " + e.getRegion() + " is to be decomposed.");
 						onesMultProbs.divideRegion(e.getRegion());
 					}
 				}
 			}
 		}
 
-		mainLog.print("\nAltogether, the backwards transient probability computations produced ");
+		mainLog.print("\nThe backwards transient probability computations produced ");
 		mainLog.println(regionValues.getNumRegions() + " final regions.");
 		return regionValues;
 	}
@@ -598,8 +606,8 @@ public final class PSEModelChecker extends PrismComponent
 	 */
 	public BoxRegionValues computeTransientBackwardsProbs(PSEModel model,
 			BitSet targetMin, BitSet nonAbsMin, BitSet targetMax, BitSet nonAbsMax,
-			double t, BoxRegionValues multProbs, double accuracy)
-					throws PrismException, SignificantInaccuracy
+			double t, BoxRegionValues multProbs, DecompositionProcedure decompositionProcedure)
+					throws PrismException, DecompositionProcedure.DecompositionNeeded
 	{
 		BoxRegionValues regionValues = new BoxRegionValues(model);
 		int i, n, iters, totalIters;
@@ -658,8 +666,9 @@ public final class PSEModelChecker extends PrismComponent
 			double[] multProbsMin = entry.getValue().getMin().getDoubleArray();
 			double[] multProbsMax = entry.getValue().getMax().getDoubleArray();
 
-			// Shrink the parameter space
-			model.scaleParameterSpace(region);
+			// Configure parameter space
+			model.setRegion(region);
+			mainLog.println("Computing probabilities for parameter region " + region);
 
 			// Create solution vectors
 			solnMin = new double[n];
@@ -703,12 +712,9 @@ public final class PSEModelChecker extends PrismComponent
 				if (iters >= left) {
 					for (i = 0; i < n; i++) {
 						sumMin[i] += weights[iters - left] * solnMin[i];
-						sumMax[i] += weights[iters - left] * solnMax[i];
-
-						// Check whether the minimised/maximised probs are accurate enough
-						if ((sumMax[i] - sumMin[i]) > accuracy)
-							throw new SignificantInaccuracy(region);
+						sumMax[i] += weights[iters - left] * solnMax[i];;
 					}
+					decompositionProcedure.examineSingleIteration(region, sumMin, sumMax);
 				}
 
 				iters++;
@@ -719,21 +725,21 @@ public final class PSEModelChecker extends PrismComponent
 			regionValues.put(region, sumMin, sumMax);
 		}
 
+		decompositionProcedure.examineWholeComputation(regionValues);
+
 		// Finished bounded probabilistic reachability
 		timer = System.currentTimeMillis() - timer;
 		mainLog.print("Backwards transient probability computation");
 		mainLog.print(" took " + totalIters + " iters");
-		mainLog.println(" and " + timer / 1000.0 + " seconds in total.");
+		mainLog.println(" and " + timer / 1000.0 + " seconds.");
 
 		return regionValues;
 	}
 
 	// Transient analysis
 
-	public BoxRegionValues doTransient(Model modelExpl, double t, StateValues initDistMin, StateValues initDistMax, double accuracy) throws PrismException
+	public BoxRegionValues doTransient(PSEModel model, double t, StateValues initDistMin, StateValues initDistMax, DecompositionProcedure decompositionProcedure) throws PrismException
 	{
-		PSEModel model = (PSEModel) modelExpl;
-		BoxRegionValues res = null;
 		StateValues initDistMinNew = null, initDistMaxNew = null;
 
 		// Build initial distribution (if not specified)
@@ -757,15 +763,16 @@ public final class PSEModelChecker extends PrismComponent
 		}
 		
 		// Compute transient probabilities
-		res = computeTransientProbs(model, t, initDistMinNew.getDoubleArray(), initDistMaxNew.getDoubleArray(), accuracy);
-
-		return res;
+		return computeTransientProbs(model, t, initDistMinNew.getDoubleArray(), initDistMaxNew.getDoubleArray(), decompositionProcedure);
 	}
 
 	/**
 	 * NB: Decompositions of the parameter space are performed implicitly.
 	 */
-	public BoxRegionValues computeTransientProbs(PSEModel model, double t, double initDistMin[], double initDistMax[], double accuracy) throws PrismException
+	// TODO: Perform decompositions explicitly from doTransient analogically to backwards transient computation,
+	// i.e. replace the double arrays initDist{Min,Max} with BoxRegionValues.
+	public BoxRegionValues computeTransientProbs(PSEModel model, double t, double initDistMin[], double initDistMax[], DecompositionProcedure decompositionProcedure)
+			throws PrismException
 	{
 		BoxRegionValues regionValues = new BoxRegionValues(model);
 		int i, n, iters, totalIters;
@@ -833,9 +840,10 @@ public final class PSEModelChecker extends PrismComponent
 				}
 			}
 
-			// Shrink the parameter space
+			// Configure parameter space
 			BoxRegion region = regions.remove();
-			model.scaleParameterSpace(region);
+			model.setRegion(region);
+			mainLog.println("Computing probabilities for parameter region " + region);
 
 			try {
 				// Start iterations
@@ -858,11 +866,8 @@ public final class PSEModelChecker extends PrismComponent
 						for (i = 0; i < n; i++) {
 							sumMin[i] += weights[iters - left] * solnMin[i];
 							sumMax[i] += weights[iters - left] * solnMax[i];
-
-							// Check whether the minimised/maximised probs are accurate enough
-							if ((sumMax[i] - sumMin[i]) > accuracy)
-								throw new SignificantInaccuracy(region);
 						}
+						decompositionProcedure.examineSingleIteration(region, sumMin, sumMax);
 					}
 
 					iters++;
@@ -871,18 +876,21 @@ public final class PSEModelChecker extends PrismComponent
 
 				// Store result
 				regionValues.put(region, sumMin, sumMax);
-			} catch (SignificantInaccuracy e) {
+			} catch (DecompositionProcedure.DecompositionNeeded e) {
 				// Decompose the region giving inaccurate results
+				mainLog.println("Region " + e.getRegion() + " is to be decomposed.");
 				regions.add(e.getRegion().getLowerHalf());
 				regions.add(e.getRegion().getUpperHalf());
 			}
 		}
 
+		// TODO call decompositionProcedure.examineWholeComputation()?
+
 		// Finished bounded probabilistic reachability
 		timer = System.currentTimeMillis() - timer;
 		mainLog.print("Transient probability computation");
 		mainLog.print(" took " + totalIters + " iters");
-		mainLog.print(" and " + timer / 1000.0 + " seconds in total");
+		mainLog.print(" and " + timer / 1000.0 + " seconds");
 		mainLog.println(" (producing " + regionValues.getNumRegions() + " final regions).");
 
 		return regionValues;

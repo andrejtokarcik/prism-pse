@@ -27,7 +27,6 @@
 package pse;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,13 +39,15 @@ import java.util.TreeSet;
 
 import parser.Values;
 import parser.ast.Expression;
+import parser.ast.ModulesFile;
 import prism.ModelType;
 import prism.Pair;
 import prism.PrismException;
 import prism.PrismLog;
+import explicit.CTMC;
 import explicit.ModelExplicit;
 
-final class PSEModel extends ModelExplicit
+public final class PSEModel extends ModelExplicit
 {
 	/** total number of probabilistic transitions over all states */
 	private int numTotalTransitions;
@@ -389,9 +390,9 @@ final class PSEModel extends ModelExplicit
 		inoutReactions = new HashMap<Integer, List<Pair<Integer, Integer>>>(numStates);
 		outReactions = new HashMap<Integer, List<Integer>>(numStates);
 		for (int state = 0; state < numStates; state++) {
-			inReactions.put(state, new ArrayList<Integer>());
-			inoutReactions.put(state, new ArrayList<Pair<Integer, Integer>>());
-			outReactions.put(state, new ArrayList<Integer>());
+			inReactions.put(state, new LinkedList<Integer>());
+			inoutReactions.put(state, new LinkedList<Pair<Integer, Integer>>());
+			outReactions.put(state, new LinkedList<Integer>());
 		}
 
 		// Populate the sets with transition indices
@@ -565,7 +566,7 @@ final class PSEModel extends ModelExplicit
 		}
 	}
 
-	public void scaleParameterSpace(BoxRegion region) throws PrismException
+	public void setRegion(BoxRegion region) throws PrismException
 	{
 		for (int trans = 0; trans < numTotalTransitions; trans++) {
 			rateParamsLowers[trans] = rateParams[trans].evaluateDouble(region.getLowerBounds());
@@ -573,5 +574,14 @@ final class PSEModel extends ModelExplicit
 			parametrisedTransitions[trans] = rateParamsLowers[trans] != rateParamsUppers[trans];
 
 		}
+	}
+
+	public CTMC instantiate(Point point, ModulesFile modulesFile, explicit.ConstructModel constructModel)
+			throws PrismException
+	{
+		modulesFile = (ModulesFile) modulesFile.deepCopy();
+		// Add point dimensions to constants of the model file
+		modulesFile.getConstantValues().addValues(point.getDimensions());
+		return (CTMC) constructModel.constructModel(modulesFile);
 	}
 }

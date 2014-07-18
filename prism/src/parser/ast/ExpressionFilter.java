@@ -58,7 +58,6 @@ public class ExpressionFilter extends Expression
 	private boolean storeVector = false;
 	// whether this is a filter over parameters
 	private boolean param = false;
-	
 
 	// Constructors
 
@@ -363,7 +362,7 @@ public class ExpressionFilter extends Expression
 			exprFilter.typeCheck();
 			return exprFilter;
 		} else {
-			// If no new filter was created, we no expr is an ExpressionFilter
+			// If no new filter was created, we know expr is an ExpressionFilter
 			return (ExpressionFilter) expr;
 		}
 	}

@@ -56,6 +56,14 @@ import parser.ast.LabelList;
 import parser.ast.ModulesFile;
 import parser.ast.PropertiesFile;
 import parser.ast.Property;
+import pse.PSEModel;
+import pse.PSEModelChecker;
+import pse.MaxSynthesisNaive;
+import pse.MaxSynthesisSampling;
+import pse.MinSynthesisNaive;
+import pse.MinSynthesisSampling;
+import pse.SimpleDecompositionProcedure;
+import pse.ThresholdSynthesis;
 import pta.DigitalClocks;
 import pta.PTAModelChecker;
 import simulator.GenerateSimulationPath;
@@ -2996,52 +3004,6 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	}
 
 	/**
-	 */
-	public Result modelCheckPSE(PropertiesFile propertiesFile, Property prop, String[] pseNames, double[] pseLowerBounds, double[] pseUpperBounds, double accuracy)
-			throws PrismException
-	{
-		// Some checks
-		if (pseNames == null) {
-			throw new PrismException("Must specify some parameters in order to perform PSE model checking");
-		}
-		if (!(currentModelType == ModelType.CTMC))
-			throw new PrismException("PSE model checking supported for CTMCs only");
-		/*
-		if (!getExplicit())
-			throw new PrismException("Parameter space exploration supported for the explicit engine only");
-		*/
-
-		Values definedPFConstants = propertiesFile.getConstantValues();
-		Values constlist = currentModulesFile.getConstantValues();
-		for (int pnr = 0; pnr < pseNames.length; pnr++) {
-			constlist.removeValue(pseNames[pnr]);
-		}
-
-		// Print info
-		mainLog.printSeparator();
-		mainLog.println("\nPSE model checking: " + prop);
-		if (currentDefinedMFConstants != null && currentDefinedMFConstants.getNumValues() > 0)
-			mainLog.println("Model constants: " + currentDefinedMFConstants);
-		if (definedPFConstants != null && definedPFConstants.getNumValues() > 0)
-			mainLog.println("Property constants: " + definedPFConstants);
-
-		pse.ModelBuilder builder = new pse.ModelBuilder(this);
-		builder.setModulesFile(currentModulesFile);
-		builder.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
-		builder.build();
-		explicit.Model modelExpl = builder.getModel();
-		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
-		// Allow the builder to be garbage-collected
-		builder = null;
-
-		pse.PSEModelChecker mc = new pse.PSEModelChecker(this, regionFactory);
-		//mc.setModelBuilder(builder);
-		//mc.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
-		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
-		return mc.check(modelExpl, prop.getExpression(), accuracy);
-	}
-
-	/**
 	 * Export a strategy. The associated model should be attached to the strategy.
 	 * Strictly, speaking that does not need to be the currently loaded model,
 	 * but it would probably have been discarded if that was not the case.
@@ -3449,66 +3411,200 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			tmpLog.close();
 	}
 
-	/**
-	 */
-	public void doParamSpaceExplore(UndefinedConstants times, String[] pseNames, double[] pseLowerBounds, double[] pseUpperBounds, double pseAccuracy, File fileIn) throws PrismException
-	{
-		int i;
-		double timeDouble = 0, initTimeDouble = 0;
-		Object time;
-		long l = 0; // timer
-		pse.BoxRegionValues regionValues;
-		explicit.StateValues initDistExplMin = null, initDistExplMax = null;
+	// PSE methods
 
+	private pse.ModelBuilder setupPSE(String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds) throws PrismException
+	{
 		// Some checks
-		if (pseNames == null)
-			throw new PrismException("Must specify some parameters in order to perform parameter space exploration");
-		if (currentModelType != ModelType.CTMC)
-			throw new PrismException("Parameter space exploration supported for CTMCs only");
-		/*
-		if (!getExplicit())
-			throw new PrismException("Parameter space exploration supported for the explicit engine only");
-		*/
+		if (paramNames == null) {
+			throw new PrismException("Must specify some parameters in order to perform the PSE-based techniques");
+		}
+		if (!(currentModelType == ModelType.CTMC))
+			throw new PrismException("PSE-based techniques supported for CTMCs only");
+		//if (!getExplicit())
+		//	throw new PrismException("Parameter space exploration supported for the explicit engine only");
 
 		Values constlist = currentModulesFile.getConstantValues();
-		for (int pnr = 0; pnr < pseNames.length; pnr++) {
-			constlist.removeValue(pseNames[pnr]);
+		for (int pnr = 0; pnr < paramNames.length; pnr++) {
+			constlist.removeValue(paramNames[pnr]);
 		}
 
 		// Build model
 		pse.ModelBuilder builder = new pse.ModelBuilder(this);
 		builder.setModulesFile(currentModulesFile);
-		builder.setParameters(pseNames, pseLowerBounds, pseUpperBounds);
+		builder.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
 		builder.build();
-		explicit.Model modelExpl = builder.getModel();
+		return builder;
+	}
+
+	private void printInitInfoPSE(PrismLog log, String intro, pse.BoxRegionFactory regionFactory, PropertiesFile propertiesFile)
+	{
+		log.printSeparator();
+		log.println("\n" + intro);
+		log.println("Parameter space: " + regionFactory.completeSpace());
+		if (currentDefinedMFConstants != null && currentDefinedMFConstants.getNumValues() > 0)
+			log.println("Model constants: " + currentDefinedMFConstants);
+		if (propertiesFile != null) {
+			Values definedPFConstants = propertiesFile.getConstantValues();
+			if (definedPFConstants != null && definedPFConstants.getNumValues() > 0)
+				log.println("Property constants: " + definedPFConstants);
+		}
+		log.println();
+	}
+
+	/**
+	 */
+	public Result modelCheckPSE(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double accuracy)
+			throws PrismException
+	{
+		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
+		PSEModel model = builder.getModel();
+		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
+		// Allow the builder to be garbage-collected
+		builder = null;
+
+		printInitInfoPSE(mainLog, "PSE model checking: " + prop, regionFactory, propertiesFile);
+		
+		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
+		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
+		return mc.check(model, prop.getExpression(), new SimpleDecompositionProcedure(accuracy, model.getNumStates()));
+	}
+
+	/**
+	 */
+	public Result doThresholdSynthesis(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double volumeTolerance)
+			throws PrismException
+	{
+		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
+		PSEModel model = builder.getModel();
+		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
+		// Allow the builder to be garbage-collected
+		builder = null;
+
+		printInitInfoPSE(mainLog, "PSE threshold synthesis: " + prop, regionFactory, propertiesFile);
+
+		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
+		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
+		if (model.getNumInitialStates() != 1)
+			throw new PrismException("Threshold synthesis requires exactly one initial state");
+		ThresholdSynthesis synth = new ThresholdSynthesis(volumeTolerance, model.getFirstInitialState(), regionFactory.completeSpace());
+		return mc.check(model, prop.getExpression(), synth);
+	}
+
+	/**
+	 */
+	public Result doMinSynthesisNaive(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double probTolerance)
+			throws PrismException
+	{
+		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
+		PSEModel model = builder.getModel();
+		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
+		// Allow the builder to be garbage-collected
+		builder = null;
+
+		printInitInfoPSE(mainLog, "PSE min synthesis using the naive approach: " + prop, regionFactory, propertiesFile);
+
+		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
+		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
+		Expression propExpr = prop.getExpression();
+		if (model.getNumInitialStates() != 1)
+			throw new PrismException("Min synthesis requires exactly one initial state");
+		MinSynthesisNaive synth = new MinSynthesisNaive(probTolerance, model.getFirstInitialState());
+		return mc.check(model, propExpr, synth);
+	}
+
+	/**
+	 */
+	public Result doMinSynthesisSampling(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double probTolerance)
+			throws PrismException
+	{
+		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
+		PSEModel model = builder.getModel();
+		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
+		// Allow the builder to be garbage-collected
+		builder = null;
+
+		printInitInfoPSE(mainLog, "PSE min synthesis using the sampling approach: " + prop, regionFactory, propertiesFile);
+
+		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
+		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
+		Expression propExpr = prop.getExpression();
+		if (model.getNumInitialStates() != 1)
+			throw new PrismException("Min synthesis requires exactly one initial state");
+		MinSynthesisSampling synth = new MinSynthesisSampling(probTolerance, model.getFirstInitialState(), getSimulator());
+		return mc.check(model, propExpr, synth);
+	}
+
+	/**
+	 */
+	public Result doMaxSynthesisNaive(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double probTolerance)
+			throws PrismException
+	{
+		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
+		PSEModel model = builder.getModel();
+		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
+		// Allow the builder to be garbage-collected
+		builder = null;
+
+		printInitInfoPSE(mainLog, "PSE max synthesis using the naive approach: " + prop, regionFactory, propertiesFile);
+
+		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
+		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
+		Expression propExpr = prop.getExpression();
+		if (model.getNumInitialStates() != 1)
+			throw new PrismException("Max synthesis requires exactly one initial state");
+		MaxSynthesisNaive synth = new MaxSynthesisNaive(probTolerance, model.getFirstInitialState());
+		return mc.check(model, propExpr, synth);
+	}
+
+	/**
+	 */
+	public Result doMaxSynthesisSampling(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double probTolerance)
+			throws PrismException
+	{
+		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
+		PSEModel model = builder.getModel();
+		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
+		// Allow the builder to be garbage-collected
+		builder = null;
+
+		printInitInfoPSE(mainLog, "PSE max synthesis using the sampling approach: " + prop, regionFactory, propertiesFile);
+
+		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
+		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
+		Expression propExpr = prop.getExpression();
+		if (model.getNumInitialStates() != 1)
+			throw new PrismException("Max synthesis requires exactly one initial state");
+		MaxSynthesisSampling synth = new MaxSynthesisSampling(probTolerance, model.getFirstInitialState(), getSimulator());
+		return mc.check(model, propExpr, synth);
+	}
+
+	/**
+	 */
+	public void doTransientPSE(UndefinedConstants times, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double accuracy, File fileIn)
+			throws PrismException
+	{
+		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
+		PSEModel model = builder.getModel();
 		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
 		// Allow the builder to be garbage-collected
 		builder = null;
 
 		// Step through required time points
-		for (i = 0; i < times.getNumPropertyIterations(); i++) {
+		double initTimeDouble = 0;
+		explicit.StateValues initDistExplMin = null, initDistExplMax = null;
+		for (int i = 0; i < times.getNumPropertyIterations(); i++) {
 			// Get time, check non-negative
-			time = times.getPFConstantValues().getValue(0);
-			timeDouble = ((Double) time).doubleValue();
+			Object time = times.getPFConstantValues().getValue(0);
+			double timeDouble = ((Double) time).doubleValue();
 			if (timeDouble < 0)
 				throw new PrismException("Cannot perform parameter space exploration for negative time value");
-
 			
-			// Print initialisation info
-			mainLog.printSeparator();
-			mainLog.println("\nPerforming parameter space exploration (time = " + time + ")...");
-			if (currentDefinedMFConstants != null && currentDefinedMFConstants.getNumValues() > 0)
-				mainLog.println("Model constants: " + currentDefinedMFConstants);
-			mainLog.print("Parameter space: ");
-			for (int pnr = 0; pnr < pseNames.length; pnr++) {
-				if (pnr != 0) mainLog.print(", ");
-				mainLog.print(pseNames[pnr] + "=" + pseLowerBounds[pnr] + ":" + pseUpperBounds[pnr]);
-			}
-			mainLog.println();
+			printInitInfoPSE(mainLog, "Performing parameter space exploration (time = " + time + ", accuracy = " + accuracy + ")...", regionFactory, null);
 			
-			l = System.currentTimeMillis();
+			long l = System.currentTimeMillis();
 
-			pse.PSEModelChecker mc = new pse.PSEModelChecker(this, regionFactory);
+			PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
 			/*
 			// TODO
 			if (i == 0) {
@@ -3517,7 +3613,8 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 				initTimeDouble = 0;
 			}
 			*/
-			regionValues = mc.doTransient(modelExpl, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax, pseAccuracy);
+			pse.BoxRegionValues regionValues = mc.doTransient(model, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax,
+					new SimpleDecompositionProcedure(accuracy, model.getNumStates()));
 
 			// Results report
 			mainLog.println("\nPrinting transient probabilities w.r.t. the given parameter space:");
@@ -3538,6 +3635,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		}
 	}
 
+	//------------------------------------------------------------------------------
 
 	public void explicitBuildTest() throws PrismException
 	{

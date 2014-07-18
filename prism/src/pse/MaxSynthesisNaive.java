@@ -26,21 +26,32 @@
 
 package pse;
 
-import parser.Values;
+import java.util.Map.Entry;
 
-public final class BoxRegionFactory {
-	private Values paramsLower;
-	private Values paramsUpper;
-
-	public BoxRegionFactory(Values paramsLower, Values paramsUpper)
+public final class MaxSynthesisNaive extends MaxSynthesis {
+	public MaxSynthesisNaive(double probTolerance, int initState)
 	{
-		assert paramsLower.getNumValues() == paramsUpper.getNumValues();
-		this.paramsLower = paramsLower;
-		this.paramsUpper = paramsUpper;
+		super(probTolerance, initState);
 	}
 
-	public BoxRegion completeSpace()
+	/**
+	 * Naive approach to determining the maximal lower bound.
+	 */
+	@Override
+	protected double getMaximalLowerBound(BoxRegionValues regionValues)
 	{
-		return new BoxRegion(paramsLower, paramsUpper);
+		double maximalLowerBound = Double.NEGATIVE_INFINITY;
+		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
+			double currentLowerBound = (Double) entry.getValue().getMin().getValue(initState);
+			if (currentLowerBound > maximalLowerBound)
+				maximalLowerBound = currentLowerBound;
+		}
+		return maximalLowerBound;
+	}
+
+	@Override
+	public String toString()
+	{
+		return super.toString() + " (naive)";
 	}
 }

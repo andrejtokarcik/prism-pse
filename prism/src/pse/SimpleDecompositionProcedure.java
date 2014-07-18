@@ -26,18 +26,36 @@
 
 package pse;
 
-@SuppressWarnings("serial")
-public class SignificantInaccuracy extends Exception
-{
-	protected BoxRegion region;
+public final class SimpleDecompositionProcedure extends DecompositionProcedure {
+	private double accuracy;
+	private int numStates;
 
-	public SignificantInaccuracy(BoxRegion region)
+	public static final class NoDecomposing extends DecompositionProcedure {
+		private static final NoDecomposing INSTANCE = new NoDecomposing();
+
+		private NoDecomposing() {}
+
+		public static NoDecomposing getInstance()
+		{
+			return INSTANCE;
+		}
+
+		@Override
+		public void examineSingleIteration(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded {}
+	}
+	
+	public SimpleDecompositionProcedure(double accuracy, int numStates)
 	{
-		this.region = region;
+		this.accuracy = accuracy;
+		this.numStates = numStates;
 	}
 
-	public BoxRegion getRegion()
+	@Override
+	public void examineSingleIteration(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded
 	{
-		return region;
+		for (int state = 0; state < numStates; state++) {
+			if (probsMax[state] - probsMin[state] > accuracy)
+				throw new DecompositionNeeded(region);
+		}
 	}
 }
