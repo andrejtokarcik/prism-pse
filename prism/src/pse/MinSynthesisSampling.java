@@ -59,7 +59,7 @@ public final class MinSynthesisSampling extends MinSynthesis {
 		}
 
 		double minimalSampleProb = Double.POSITIVE_INFINITY;
-		for (Point sample : minimalUpperBoundRegion.getPointSamples()) {
+		for (Point sample : minimalUpperBoundRegion.getSamplePoints()) {
 			CTMC ctmc = model.instantiate(sample, modelChecker.getModulesFile(), constructModel);
 			CTMCModelChecker ctmcModelChecker = new CTMCModelChecker(modelChecker);
 			double currentSampleProb = (Double) ctmcModelChecker.checkExpression(ctmc, propExpr).getValue(initState);

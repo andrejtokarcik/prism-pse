@@ -93,12 +93,12 @@ final class BoxRegion implements Comparable<BoxRegion>
 		return volume;
 	}
 
-	public Set<Point> getPointSamples()
+	public Set<Point> getSamplePoints()
 	{
-		return getPointSamples(2);
+		return getSamplePoints(2);
 	}
 
-	public Set<Point> getPointSamples(int numSamples)
+	public Set<Point> getSamplePoints(int numSamples)
 	{
 		Set<Point> samples = new HashSet<Point>();
 		Random r = new Random();
