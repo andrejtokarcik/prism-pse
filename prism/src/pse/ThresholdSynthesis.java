@@ -81,13 +81,14 @@ public final class ThresholdSynthesis extends DecompositionProcedure {
 	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded
 	{
 		// Determine the regions and compute the volume of undecided regions
-		regionsBelowThreshold.clear();
-		regionsAboveThreshold.clear();
 		regionsUndecided.clear();
 		BoxRegion regionToDecompose = null;
 		double undecidedVolume = 0.0;
 		double greatestVolume = Double.NEGATIVE_INFINITY;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
+			if (regionsAboveThreshold.contains(entry.getKey()) || regionsBelowThreshold.contains(entry.getKey()))
+				continue;
+
 			if ((Double) entry.getValue().getMin().getValue(initState) >= threshold)
 				regionsAboveThreshold.add(entry.getKey());
 			else if ((Double) entry.getValue().getMax().getValue(initState) < threshold)
