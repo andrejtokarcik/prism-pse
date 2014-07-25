@@ -33,7 +33,8 @@ import parser.ast.ExpressionFilter;
 import prism.PrismException;
 import prism.PrismLog;
 
-abstract class DecompositionProcedure {
+abstract class DecompositionProcedure
+{
 	protected PSEModelChecker modelChecker;
 	protected PSEModel model;
 	protected Expression propExpr;
@@ -41,16 +42,21 @@ abstract class DecompositionProcedure {
 	@SuppressWarnings("serial")
 	public static class DecompositionNeeded extends Exception
 	{
-		protected BoxRegion region;
+		protected BoxRegionsToDecompose regions;
 
-		public DecompositionNeeded(BoxRegion region)
+		public DecompositionNeeded(BoxRegionsToDecompose regions)
 		{
-			this.region = region;
+			this.regions = regions;
+		}
+		
+		public DecompositionNeeded(BoxRegion region, String explanation)
+		{
+			this.regions = new BoxRegionsToDecompose(region, explanation);
 		}
 
-		public BoxRegion getRegion()
+		public BoxRegionsToDecompose getRegionsToDecompose()
 		{
-			return region;
+			return regions;
 		}
 	}
 
@@ -91,7 +97,7 @@ abstract class DecompositionProcedure {
 			log.println("\n * [none]");
 		} else {
 			log.println();
-			for(BoxRegion region : regions) {
+			for (BoxRegion region : regions) {
 				log.println(" * " + region);
 		    }
 		}

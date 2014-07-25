@@ -30,12 +30,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
 
+import parser.ast.Expression;
 import parser.ast.ExpressionProb;
 import parser.ast.RelOp;
 import prism.PrismException;
 import prism.PrismLog;
 
-abstract class AbstractMinMaxSynthesis extends DecompositionProcedure {
+abstract class AbstractMinMaxSynthesis extends DecompositionProcedure
+{
 	// Synthesis parameters
 	protected double probTolerance;
 	protected String captionForOptimising;
@@ -44,15 +46,25 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure {
 	protected int initState;
 
 	// Solution structures
-	protected List<BoxRegion> regionsOptimising = new LinkedList<BoxRegion>();
-	protected List<BoxRegion> regionsNonoptimising = new LinkedList<BoxRegion>();
-	double minimalLowerBoundOfOptimising;
-	double maximalUpperBoundOfOptimising;
+	protected List<BoxRegion> regionsOptimising;
+	protected List<BoxRegion> regionsNonoptimising;
+	private double minimalLowerProbBoundOfOptimising;
+	private double maximalUpperProbBoundOfOptimising;
+	protected List<Double> demarcationProbBounds;
 
 	public AbstractMinMaxSynthesis(double probTolerance, int initState)
 	{
 		this.probTolerance = probTolerance;
 		this.initState = initState;
+	}
+
+	@Override
+	public void initialise(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
+	{
+		super.initialise(modelChecker, model, propExpr);
+		regionsOptimising = new LinkedList<BoxRegion>();
+		regionsNonoptimising = new LinkedList<BoxRegion>();
+		demarcationProbBounds = new LinkedList<Double>();
 	}
 
 	@Override
@@ -69,60 +81,57 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure {
 
 	protected abstract void determineOptimisingRegions(BoxRegionValues regionValues) throws PrismException;
 
-	protected abstract BoxRegion chooseRegionToDecompose(BoxRegion current, BoxRegion candidate,
-			boolean candidateHasMinimalLowerBound);
-
 	@Override
 	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded, PrismException
 	{
-		// NB: In the following, the term `bounds' refers to constraints on the probability
-		// of the property's being satisfied in a given region.  This is not to be confused
-		// with `bounds' in the sense of upper/lower values of parameter ranges characterising
-		// the parameter regions/subspaces.
-
 		determineOptimisingRegions(regionValues);
 
 		// Determine the deciding probability bounds
-		minimalLowerBoundOfOptimising = Double.POSITIVE_INFINITY;
-		maximalUpperBoundOfOptimising = Double.NEGATIVE_INFINITY;
-		BoxRegion regionToDecompose = null;
+		minimalLowerProbBoundOfOptimising = Double.POSITIVE_INFINITY;
+		maximalUpperProbBoundOfOptimising = Double.NEGATIVE_INFINITY;
+		BoxRegion regionToDecomposeMin = null;
+		BoxRegion regionToDecomposeMax = null;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
 			if (!regionsOptimising.contains(entry.getKey()))
 				continue;
 
-			double currentLowerBound = (Double) entry.getValue().getMin().getValue(initState);
-			if (currentLowerBound < minimalLowerBoundOfOptimising) {
-				minimalLowerBoundOfOptimising = currentLowerBound;
-				regionToDecompose = chooseRegionToDecompose(regionToDecompose, entry.getKey(), true);
+			double currentLowerProbBound = (Double) entry.getValue().getMin().getValue(initState);
+			if (currentLowerProbBound < minimalLowerProbBoundOfOptimising) {
+				minimalLowerProbBoundOfOptimising = currentLowerProbBound;
+				regionToDecomposeMin = entry.getKey();
 			}
 
-			double currentUpperBound = (Double) entry.getValue().getMax().getValue(initState);
-			if (currentUpperBound > maximalUpperBoundOfOptimising) {
-				maximalUpperBoundOfOptimising = currentUpperBound;
-				regionToDecompose = chooseRegionToDecompose(regionToDecompose, entry.getKey(), false);
+			double currentUpperProbBound = (Double) entry.getValue().getMax().getValue(initState);
+			if (currentUpperProbBound > maximalUpperProbBoundOfOptimising) {
+				maximalUpperProbBoundOfOptimising = currentUpperProbBound;
+				regionToDecomposeMax = entry.getKey();
 			}
 		}
 
 		// Evaluate whether a decomposition is needed
-		if (maximalUpperBoundOfOptimising - minimalLowerBoundOfOptimising > probTolerance)
-			throw new DecompositionNeeded(regionToDecompose);
+		if (maximalUpperProbBoundOfOptimising - minimalLowerProbBoundOfOptimising > probTolerance) {
+			BoxRegionsToDecompose regionsToDecompose = new BoxRegionsToDecompose();
+			regionsToDecompose.addRegion(regionToDecomposeMin, "min lower prob bound");
+			regionsToDecompose.addRegion(regionToDecomposeMax, "max upper prob bound");
+			throw new DecompositionNeeded(regionsToDecompose);
+		}
 	}
 
 	@Override
 	public void printSolution(PrismLog log)
 	{
-		super.printIntro(log);
+		printIntro(log);
 
 		log.print("\nRegions " + captionForOptimising + " the property satisfaction probability:");
 		printRegions(log, regionsOptimising);
 		log.print("Non-" + captionForOptimising + " regions:");
 		printRegions(log, regionsNonoptimising);
 
-		log.println("\nmin lower prob bound of " + captionForOptimising + " regions = " + minimalLowerBoundOfOptimising);
-		log.println("max upper prob bound of " + captionForOptimising + " regions = " + maximalUpperBoundOfOptimising);
-
-		log.print("\nmax upper prob bound of " + captionForOptimising + " - min lower prob bound of " + captionForOptimising + " = ");
-		log.println(maximalUpperBoundOfOptimising - minimalLowerBoundOfOptimising);
+		log.println("\nmin lower prob bound of " + captionForOptimising + " regions = " + minimalLowerProbBoundOfOptimising);
+		log.println("max upper prob bound of " + captionForOptimising + " regions = " + maximalUpperProbBoundOfOptimising);
 		log.println("probability tolerance = " + probTolerance);
+		
+		log.println("\ndemarcation prob bounds in the order they were used to exclude regions:");
+		log.println(demarcationProbBounds);
 	}
 }

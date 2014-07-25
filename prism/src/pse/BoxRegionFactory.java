@@ -28,7 +28,8 @@ package pse;
 
 import parser.Values;
 
-public final class BoxRegionFactory {
+public final class BoxRegionFactory
+{
 	private Values paramsLower;
 	private Values paramsUpper;
 

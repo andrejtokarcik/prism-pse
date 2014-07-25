@@ -30,16 +30,26 @@ import java.util.Map.Entry;
 
 import explicit.CTMC;
 import explicit.CTMCModelChecker;
+import parser.ast.Expression;
 import prism.PrismException;
 import simulator.SimulatorEngine;
 
-public final class MaxSynthesisSampling extends MaxSynthesis {
+public final class MaxSynthesisSampling extends MaxSynthesis
+{
 	private explicit.ConstructModel constructModel;
+	private double lastMaximalSampleProb;
 
 	public MaxSynthesisSampling(double probTolerance, int initState, SimulatorEngine simulatorEngine)
 	{
 		super(probTolerance, initState);
 		constructModel = new explicit.ConstructModel(modelChecker, simulatorEngine);
+	}
+
+	@Override
+	public void initialise(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
+	{
+		super.initialise(modelChecker, model, propExpr);
+		lastMaximalSampleProb = Double.POSITIVE_INFINITY;
 	}
 
 	/**
@@ -67,7 +77,11 @@ public final class MaxSynthesisSampling extends MaxSynthesis {
 				maximalSampleProb = currentSampleProb;
 		}
 
-		return maximalSampleProb;
+		if (maximalSampleProb > lastMaximalSampleProb) {
+			lastMaximalSampleProb = maximalSampleProb;
+			return maximalSampleProb;
+		}
+		return lastMaximalSampleProb;
 	}
 
 	@Override

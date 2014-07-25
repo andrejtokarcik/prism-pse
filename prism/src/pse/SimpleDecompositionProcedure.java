@@ -26,11 +26,13 @@
 
 package pse;
 
-public final class SimpleDecompositionProcedure extends DecompositionProcedure {
+public final class SimpleDecompositionProcedure extends DecompositionProcedure
+{
 	private double accuracy;
 	private int numStates;
 
-	public static final class NoDecomposing extends DecompositionProcedure {
+	public static final class NoDecomposing extends DecompositionProcedure
+	{
 		private static final NoDecomposing INSTANCE = new NoDecomposing();
 
 		private NoDecomposing() {}
@@ -55,7 +57,7 @@ public final class SimpleDecompositionProcedure extends DecompositionProcedure {
 	{
 		for (int state = 0; state < numStates; state++) {
 			if (probsMax[state] - probsMin[state] > accuracy)
-				throw new DecompositionNeeded(region);
+				throw new DecompositionNeeded(region, "significant inaccuracy");
 		}
 	}
 }

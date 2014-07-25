@@ -30,9 +30,8 @@ import java.util.Map.Entry;
 
 import prism.PrismException;
 
-abstract class MaxSynthesis extends AbstractMinMaxSynthesis {
-	protected boolean doMin = false;
-
+abstract class MaxSynthesis extends AbstractMinMaxSynthesis
+{
 	public MaxSynthesis(double probTolerance, int initState)
 	{
 		super(probTolerance, initState);
@@ -46,6 +45,7 @@ abstract class MaxSynthesis extends AbstractMinMaxSynthesis {
 	{
 		// Determine the maximal lower bound
 		double maximalLowerBound = getMaximalLowerBound(regionValues);
+		demarcationProbBounds.add(maximalLowerBound);
 
 		// Determine the (non-)maximising regions
 		regionsOptimising.clear();
@@ -56,16 +56,6 @@ abstract class MaxSynthesis extends AbstractMinMaxSynthesis {
 			else
 				regionsOptimising.add(entry.getKey());
 		}
-	}
-
-	@Override
-	protected BoxRegion chooseRegionToDecompose(BoxRegion current, BoxRegion candidate,
-			boolean candidateHasMinimalLowerBound)
-	{
-		if (candidateHasMinimalLowerBound)
-			return current;
-		else
-			return candidate;
 	}
 
 	@Override

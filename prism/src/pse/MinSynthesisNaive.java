@@ -28,7 +28,8 @@ package pse;
 
 import java.util.Map.Entry;
 
-public final class MinSynthesisNaive extends MinSynthesis {
+public final class MinSynthesisNaive extends MinSynthesis
+{
 	public MinSynthesisNaive(double probTolerance, int initState)
 	{
 		super(probTolerance, initState);

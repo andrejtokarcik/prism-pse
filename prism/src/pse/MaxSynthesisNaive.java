@@ -28,7 +28,8 @@ package pse;
 
 import java.util.Map.Entry;
 
-public final class MaxSynthesisNaive extends MaxSynthesis {
+public final class MaxSynthesisNaive extends MaxSynthesis
+{
 	public MaxSynthesisNaive(double probTolerance, int initState)
 	{
 		super(probTolerance, initState);

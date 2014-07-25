@@ -28,7 +28,8 @@ package pse;
 
 import parser.Values;
 
-final class Point {
+final class Point
+{
 	private Values dimensions;
 
 	public Point(Values dimensions)
