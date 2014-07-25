@@ -565,8 +565,9 @@ public final class PSEModelChecker extends PrismComponent
 						regionValues = computeTransientBackwardsProbs(model, b2Min, b1Min, b2Max, b1Max, uTime, onesMultProbs, decompositionProcedure);
 						break;
 					} catch (DecompositionProcedure.DecompositionNeeded e) {
-						mainLog.println("Region " + e.getRegion() + " is to be decomposed.");
-						onesMultProbs.divideRegion(e.getRegion());
+						e.getRegionsToDecompose().print(mainLog);
+						for (BoxRegion region : e.getRegionsToDecompose())
+							onesMultProbs.divideRegion(region);
 					}
 				}
 			}
@@ -588,8 +589,9 @@ public final class PSEModelChecker extends PrismComponent
 						regionValues = computeTransientBackwardsProbs(model, b1Min, b1Min, b1Max, b1Max, lTime, tmpRegionValues, decompositionProcedure);
 						break;
 					} catch (DecompositionProcedure.DecompositionNeeded e) {
-						mainLog.println("Region " + e.getRegion() + " is to be decomposed.");
-						onesMultProbs.divideRegion(e.getRegion());
+						e.getRegionsToDecompose().print(mainLog);
+						for (BoxRegion region : e.getRegionsToDecompose())
+							onesMultProbs.divideRegion(region);
 					}
 				}
 			}
@@ -602,7 +604,7 @@ public final class PSEModelChecker extends PrismComponent
 
 	/**
 	 * NB: Decompositions of the parameter space must be performed explicitly,
-	 * SignificantInacurracy is not handled within the method.
+	 * DecompositionNeeded is not handled within the method.
 	 */
 	public BoxRegionValues computeTransientBackwardsProbs(PSEModel model,
 			BitSet targetMin, BitSet nonAbsMin, BitSet targetMax, BitSet nonAbsMax,
@@ -761,7 +763,7 @@ public final class PSEModelChecker extends PrismComponent
 		} else {
 			initDistMaxNew = initDistMax;
 		}
-		
+
 		// Compute transient probabilities
 		return computeTransientProbs(model, t, initDistMinNew.getDoubleArray(), initDistMaxNew.getDoubleArray(), decompositionProcedure);
 	}
@@ -877,10 +879,11 @@ public final class PSEModelChecker extends PrismComponent
 				// Store result
 				regionValues.put(region, sumMin, sumMax);
 			} catch (DecompositionProcedure.DecompositionNeeded e) {
-				// Decompose the region giving inaccurate results
-				mainLog.println("Region " + e.getRegion() + " is to be decomposed.");
-				regions.add(e.getRegion().getLowerHalf());
-				regions.add(e.getRegion().getUpperHalf());
+				e.getRegionsToDecompose().print(mainLog);
+				for (BoxRegion regionToDecompose : e.getRegionsToDecompose()) {
+					regions.add(regionToDecompose.getLowerHalf());
+					regions.add(regionToDecompose.getUpperHalf());
+				}
 			}
 		}
 

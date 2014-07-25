@@ -115,9 +115,43 @@ final class BoxRegion implements Comparable<BoxRegion>
 		return samples;
 	}
 
+	@Override
 	public int compareTo(BoxRegion r)
 	{
 		return lowerBounds.compareTo(r.lowerBounds);
+	}
+	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((lowerBounds == null) ? 0 : lowerBounds.hashCode());
+		result = prime * result
+				+ ((upperBounds == null) ? 0 : upperBounds.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		BoxRegion other = (BoxRegion) obj;
+		if (lowerBounds == null) {
+			if (other.lowerBounds != null)
+				return false;
+		} else if (!lowerBounds.equals(other.lowerBounds))
+			return false;
+		if (upperBounds == null) {
+			if (other.upperBounds != null)
+				return false;
+		} else if (!upperBounds.equals(other.upperBounds))
+			return false;
+		return true;
 	}
 
 	@Override

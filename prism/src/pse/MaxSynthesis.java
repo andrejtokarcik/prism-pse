@@ -59,16 +59,6 @@ abstract class MaxSynthesis extends AbstractMinMaxSynthesis {
 	}
 
 	@Override
-	protected BoxRegion chooseRegionToDecompose(BoxRegion current, BoxRegion candidate,
-			boolean candidateHasMinimalLowerBound)
-	{
-		if (candidateHasMinimalLowerBound)
-			return current;
-		else
-			return candidate;
-	}
-
-	@Override
 	public String toString()
 	{
 		return "max synthesis";

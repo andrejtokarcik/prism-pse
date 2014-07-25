@@ -69,9 +69,6 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure {
 
 	protected abstract void determineOptimisingRegions(BoxRegionValues regionValues) throws PrismException;
 
-	protected abstract BoxRegion chooseRegionToDecompose(BoxRegion current, BoxRegion candidate,
-			boolean candidateHasMinimalLowerBound);
-
 	@Override
 	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded, PrismException
 	{
@@ -85,7 +82,8 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure {
 		// Determine the deciding probability bounds
 		minimalLowerBoundOfOptimising = Double.POSITIVE_INFINITY;
 		maximalUpperBoundOfOptimising = Double.NEGATIVE_INFINITY;
-		BoxRegion regionToDecompose = null;
+		BoxRegion regionToDecomposeMin = null;
+		BoxRegion regionToDecomposeMax = null;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
 			if (!regionsOptimising.contains(entry.getKey()))
 				continue;
@@ -93,25 +91,29 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure {
 			double currentLowerBound = (Double) entry.getValue().getMin().getValue(initState);
 			if (currentLowerBound < minimalLowerBoundOfOptimising) {
 				minimalLowerBoundOfOptimising = currentLowerBound;
-				regionToDecompose = chooseRegionToDecompose(regionToDecompose, entry.getKey(), true);
+				regionToDecomposeMin = entry.getKey();
 			}
 
 			double currentUpperBound = (Double) entry.getValue().getMax().getValue(initState);
 			if (currentUpperBound > maximalUpperBoundOfOptimising) {
 				maximalUpperBoundOfOptimising = currentUpperBound;
-				regionToDecompose = chooseRegionToDecompose(regionToDecompose, entry.getKey(), false);
+				regionToDecomposeMax = entry.getKey();
 			}
 		}
 
 		// Evaluate whether a decomposition is needed
-		if (maximalUpperBoundOfOptimising - minimalLowerBoundOfOptimising > probTolerance)
-			throw new DecompositionNeeded(regionToDecompose);
+		if (maximalUpperBoundOfOptimising - minimalLowerBoundOfOptimising > probTolerance) {
+			BoxRegionsToDecompose regionsToDecompose = new BoxRegionsToDecompose();
+			regionsToDecompose.addRegion(regionToDecomposeMin, "min lower prob bound of " + captionForOptimising);
+			regionsToDecompose.addRegion(regionToDecomposeMax, "max upper prob bound of " + captionForOptimising);
+			throw new DecompositionNeeded(regionsToDecompose);
+		}
 	}
 
 	@Override
 	public void printSolution(PrismLog log)
 	{
-		super.printIntro(log);
+		printIntro(log);
 
 		log.print("\nRegions " + captionForOptimising + " the property satisfaction probability:");
 		printRegions(log, regionsOptimising);

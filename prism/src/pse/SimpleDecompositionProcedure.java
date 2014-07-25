@@ -55,7 +55,7 @@ public final class SimpleDecompositionProcedure extends DecompositionProcedure {
 	{
 		for (int state = 0; state < numStates; state++) {
 			if (probsMax[state] - probsMin[state] > accuracy)
-				throw new DecompositionNeeded(region);
+				throw new DecompositionNeeded(region, "significant inaccuracy");
 		}
 	}
 }

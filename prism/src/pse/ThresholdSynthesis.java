@@ -104,15 +104,14 @@ public final class ThresholdSynthesis extends DecompositionProcedure {
 		// Evaluate whether a decomposition is needed
 		undecidedVsComplete = undecidedVolume / completeSpaceVolume;
 		if (undecidedVolume / completeSpaceVolume > volumeTolerance) {
-			// Decompose a largest undecided region
-			throw new DecompositionNeeded(regionToDecompose);
+			throw new DecompositionNeeded(regionToDecompose, "largest volume of undecided");
 		}
 	}
 
 	@Override
 	public void printSolution(PrismLog log)
 	{
-		super.printIntro(log);
+		printIntro(log);
 
 		log.print("\nTrue regions:");
 		printRegions(log, aboveIsTrue ? regionsAboveThreshold : regionsBelowThreshold);
