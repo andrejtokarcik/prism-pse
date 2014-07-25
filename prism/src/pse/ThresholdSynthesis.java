@@ -95,9 +95,12 @@ public final class ThresholdSynthesis extends DecompositionProcedure {
 				regionsBelowThreshold.add(entry.getKey());
 			else {
 				regionsUndecided.add(entry.getKey());
-				undecidedVolume += entry.getKey().getVolume();
-				if (entry.getKey().getVolume() > greatestVolume)
+				double currentVolume = entry.getKey().getVolume();
+				undecidedVolume += currentVolume;
+				if (currentVolume > greatestVolume) {
+					greatestVolume = currentVolume;
 					regionToDecompose = entry.getKey();
+				}
 			}
 		}
 
