@@ -36,7 +36,8 @@ import parser.ast.RelOp;
 import prism.PrismException;
 import prism.PrismLog;
 
-abstract class AbstractMinMaxSynthesis extends DecompositionProcedure {
+abstract class AbstractMinMaxSynthesis extends DecompositionProcedure
+{
 	// Synthesis parameters
 	protected double probTolerance;
 	protected String captionForOptimising;

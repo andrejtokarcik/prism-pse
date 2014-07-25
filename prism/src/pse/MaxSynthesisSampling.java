@@ -34,7 +34,8 @@ import parser.ast.Expression;
 import prism.PrismException;
 import simulator.SimulatorEngine;
 
-public final class MaxSynthesisSampling extends MaxSynthesis {
+public final class MaxSynthesisSampling extends MaxSynthesis
+{
 	private explicit.ConstructModel constructModel;
 	private double lastMaximalSampleProb;
 

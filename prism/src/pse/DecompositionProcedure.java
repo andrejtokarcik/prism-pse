@@ -33,7 +33,8 @@ import parser.ast.ExpressionFilter;
 import prism.PrismException;
 import prism.PrismLog;
 
-abstract class DecompositionProcedure {
+abstract class DecompositionProcedure
+{
 	protected PSEModelChecker modelChecker;
 	protected PSEModel model;
 	protected Expression propExpr;

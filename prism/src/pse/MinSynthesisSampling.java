@@ -34,7 +34,8 @@ import parser.ast.Expression;
 import prism.PrismException;
 import simulator.SimulatorEngine;
 
-public final class MinSynthesisSampling extends MinSynthesis {
+public final class MinSynthesisSampling extends MinSynthesis
+{
 	private explicit.ConstructModel constructModel;
 	private double lastMinimalSampleProb;
 

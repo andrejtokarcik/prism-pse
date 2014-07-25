@@ -36,7 +36,8 @@ import parser.ast.RelOp;
 import prism.PrismException;
 import prism.PrismLog;
 
-public final class ThresholdSynthesis extends DecompositionProcedure {
+public final class ThresholdSynthesis extends DecompositionProcedure
+{
 	// Synthesis parameters
 	private boolean aboveIsTrue;
 	private double threshold;
