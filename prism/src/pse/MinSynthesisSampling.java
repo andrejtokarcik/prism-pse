@@ -35,6 +35,7 @@ import simulator.SimulatorEngine;
 
 public final class MinSynthesisSampling extends MinSynthesis {
 	private explicit.ConstructModel constructModel;
+	private double lastMinimalSampleProb = Double.POSITIVE_INFINITY;
 
 	public MinSynthesisSampling(double probTolerance, int initState, SimulatorEngine simulatorEngine)
 	{
@@ -67,7 +68,11 @@ public final class MinSynthesisSampling extends MinSynthesis {
 				minimalSampleProb = currentSampleProb;
 		}
 
-		return minimalSampleProb;
+		if (minimalSampleProb < lastMinimalSampleProb) {
+			lastMinimalSampleProb = minimalSampleProb;
+			return minimalSampleProb;
+		}
+		return lastMinimalSampleProb;
 	}
 
 	@Override

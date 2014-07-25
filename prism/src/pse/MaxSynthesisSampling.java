@@ -35,6 +35,7 @@ import simulator.SimulatorEngine;
 
 public final class MaxSynthesisSampling extends MaxSynthesis {
 	private explicit.ConstructModel constructModel;
+	private double lastMaximalSampleProb = Double.NEGATIVE_INFINITY;
 
 	public MaxSynthesisSampling(double probTolerance, int initState, SimulatorEngine simulatorEngine)
 	{
@@ -67,7 +68,11 @@ public final class MaxSynthesisSampling extends MaxSynthesis {
 				maximalSampleProb = currentSampleProb;
 		}
 
-		return maximalSampleProb;
+		if (maximalSampleProb > lastMaximalSampleProb) {
+			lastMaximalSampleProb = maximalSampleProb;
+			return maximalSampleProb;
+		}
+		return lastMaximalSampleProb;
 	}
 
 	@Override
