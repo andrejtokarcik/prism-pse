@@ -47,9 +47,9 @@ public final class ThresholdSynthesis extends DecompositionProcedure {
 	private double completeSpaceVolume;
 
 	// Solution structures
-	private List<BoxRegion> regionsBelowThreshold = new LinkedList<BoxRegion>();
-	private List<BoxRegion> regionsAboveThreshold = new LinkedList<BoxRegion>();
-	private List<BoxRegion> regionsUndecided = new LinkedList<BoxRegion>();
+	private List<BoxRegion> regionsBelowThreshold;
+	private List<BoxRegion> regionsAboveThreshold;
+	private List<BoxRegion> regionsUndecided;
 	private double undecidedVsComplete;
 
 	public ThresholdSynthesis(double volumeTolerance, int initState, BoxRegion completeSpace) throws PrismException
@@ -57,6 +57,15 @@ public final class ThresholdSynthesis extends DecompositionProcedure {
 		this.volumeTolerance = volumeTolerance;
 		this.initState = initState;
 		this.completeSpaceVolume = completeSpace.getVolume();
+	}
+
+	@Override
+	public void initialise(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
+	{
+		super.initialise(modelChecker, model, propExpr);
+		regionsBelowThreshold = new LinkedList<BoxRegion>();
+		regionsAboveThreshold = new LinkedList<BoxRegion>();
+		regionsUndecided = new LinkedList<BoxRegion>();
 	}
 
 	@Override

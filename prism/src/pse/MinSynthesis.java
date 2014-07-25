@@ -44,6 +44,7 @@ abstract class MinSynthesis extends AbstractMinMaxSynthesis {
 	{
 		// Determine the minimal upper bound
 		double minimalUpperBound = getMinimalUpperBound(regionValues);
+		demarcationProbBounds.add(minimalUpperBound);
 		
 		// Determine the (non-)minimising regions
 		regionsOptimising.clear();

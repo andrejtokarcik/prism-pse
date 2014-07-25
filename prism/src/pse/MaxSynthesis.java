@@ -31,8 +31,6 @@ import java.util.Map.Entry;
 import prism.PrismException;
 
 abstract class MaxSynthesis extends AbstractMinMaxSynthesis {
-	protected boolean doMin = false;
-
 	public MaxSynthesis(double probTolerance, int initState)
 	{
 		super(probTolerance, initState);
@@ -46,6 +44,7 @@ abstract class MaxSynthesis extends AbstractMinMaxSynthesis {
 	{
 		// Determine the maximal lower bound
 		double maximalLowerBound = getMaximalLowerBound(regionValues);
+		demarcationProbBounds.add(maximalLowerBound);
 
 		// Determine the (non-)maximising regions
 		regionsOptimising.clear();
