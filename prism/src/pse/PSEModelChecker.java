@@ -495,7 +495,8 @@ public final class PSEModelChecker extends PrismComponent
 		double lTime, uTime; // time bounds
 		Expression exprTmp;
 		BitSet b1Min, b1Max, b2Min, b2Max, tmpMin, tmpMax;
-		BoxRegionValues regionValues, tmpRegionValues;
+		BoxRegionValues regionValues = null, tmpRegionValues = null;
+		BoxRegionValues oldRegionValues = null, oldTmpRegionValues = null;
 		StateValues probsMin, probsMax;
 
 		// get info from bounded until
@@ -545,10 +546,7 @@ public final class PSEModelChecker extends PrismComponent
 			probsMax = StateValues.createFromBitSetAsDoubles(b2Max, model);
 			regionValues = new BoxRegionValues(model, regionFactory.completeSpace(), probsMin, probsMax);
 		} else {
-			// break down into different cases to compute probabilities
-
-			StateValues ones = new StateValues(TypeDouble.getInstance(), new Double(1.0), model);
-			BoxRegionValues onesMultProbs = new BoxRegionValues(model, regionFactory.completeSpace(), ones, ones);
+			BoxRegionValues onesMultProbs = BoxRegionValues.createWithOnes(model, regionFactory.completeSpace());
 
 			// >= lTime
 			if (uTime == -1) {
@@ -560,15 +558,15 @@ public final class PSEModelChecker extends PrismComponent
 				b1Min.andNot(b2Min);
 				b1Max.andNot(b2Max);
 
-
 				while (true) {
 					try {
-						regionValues = computeTransientBackwardsProbs(model, b2Min, b1Min, b2Max, b1Max, uTime, onesMultProbs, decompositionProcedure);
+						regionValues = computeTransientBackwardsProbs(model, b2Min, b1Min, b2Max, b1Max, uTime, onesMultProbs, decompositionProcedure, oldRegionValues);
 						break;
 					} catch (DecompositionProcedure.DecompositionNeeded e) {
 						e.getRegionsToDecompose().print(mainLog);
 						for (BoxRegion region : e.getRegionsToDecompose())
 							onesMultProbs.divideRegion(region);
+						oldRegionValues = e.getExaminedRegionValues();
 					}
 				}
 			}
@@ -583,13 +581,15 @@ public final class PSEModelChecker extends PrismComponent
 					try {
 						// Decomposition is always performed due to the failed condition in the second transient computation.
 						// The first transient computation is executed with decomposing disabled.
-						tmpRegionValues = computeTransientBackwardsProbs(model, b2Min, tmpMin, b2Max, tmpMax, uTime - lTime, onesMultProbs, SimpleDecompositionProcedure.NoDecomposing.getInstance());
-						regionValues = computeTransientBackwardsProbs(model, b1Min, b1Min, b1Max, b1Max, lTime, tmpRegionValues, decompositionProcedure);
+						tmpRegionValues = computeTransientBackwardsProbs(model, b2Min, tmpMin, b2Max, tmpMax, uTime - lTime, onesMultProbs, SimpleDecompositionProcedure.NoDecomposing.getInstance(), oldTmpRegionValues);
+						regionValues = computeTransientBackwardsProbs(model, b1Min, b1Min, b1Max, b1Max, lTime, tmpRegionValues, decompositionProcedure, oldRegionValues);
 						break;
 					} catch (DecompositionProcedure.DecompositionNeeded e) {
 						e.getRegionsToDecompose().print(mainLog);
 						for (BoxRegion region : e.getRegionsToDecompose())
 							onesMultProbs.divideRegion(region);
+						oldTmpRegionValues = tmpRegionValues;
+						oldRegionValues = e.getExaminedRegionValues();
 					}
 				}
 			}
@@ -600,13 +600,22 @@ public final class PSEModelChecker extends PrismComponent
 		return regionValues;
 	}
 
+	public BoxRegionValues computeTransientBackwardsProbs(PSEModel model,
+			BitSet targetMin, BitSet nonAbsMin, BitSet targetMax, BitSet nonAbsMax,
+			double t, BoxRegionValues multProbs, DecompositionProcedure decompositionProcedure)
+					throws PrismException, DecompositionProcedure.DecompositionNeeded
+	{
+		return computeTransientBackwardsProbs(model, targetMin, nonAbsMin, targetMax, nonAbsMax, t, multProbs, decompositionProcedure, null);
+	}
+
 	/**
 	 * NB: Decompositions of the parameter space must be performed explicitly,
 	 * DecompositionNeeded is not handled within the method.
 	 */
 	public BoxRegionValues computeTransientBackwardsProbs(PSEModel model,
 			BitSet targetMin, BitSet nonAbsMin, BitSet targetMax, BitSet nonAbsMax,
-			double t, BoxRegionValues multProbs, DecompositionProcedure decompositionProcedure)
+			double t, BoxRegionValues multProbs, DecompositionProcedure decompositionProcedure,
+			BoxRegionValues previousResult)
 					throws PrismException, DecompositionProcedure.DecompositionNeeded
 	{
 		BoxRegionValues regionValues = new BoxRegionValues(model);
@@ -622,6 +631,8 @@ public final class PSEModelChecker extends PrismComponent
 
 		assert nonAbsMin.equals(nonAbsMax);
 		BitSet nonAbs = nonAbsMin;
+		if (previousResult == null)
+			previousResult = new BoxRegionValues(model);
 
 		// Store num states
 		n = model.getNumStates();
@@ -661,8 +672,15 @@ public final class PSEModelChecker extends PrismComponent
 
 		totalIters = 0;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : multProbs) {
-			// Extract data from entry
 			BoxRegion region = entry.getKey();
+
+			// If the previous region values contain probs for this region, i.e. the region
+			// has not been decomposed, then just use the previous result directly.
+			if (previousResult.hasRegion(region)) {
+				regionValues.put(region, previousResult.getMin(region), previousResult.getMax(region));
+				continue;
+			}
+
 			double[] multProbsMin = entry.getValue().getMin().getDoubleArray();
 			double[] multProbsMax = entry.getValue().getMax().getDoubleArray();
 

@@ -53,7 +53,7 @@ public final class SimpleDecompositionProcedure extends DecompositionProcedure
 	}
 
 	@Override
-	public void examineSingleIteration(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded
+	public void verifySingleRegion(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded
 	{
 		for (int state = 0; state < numStates; state++) {
 			if (probsMax[state] - probsMin[state] > accuracy)

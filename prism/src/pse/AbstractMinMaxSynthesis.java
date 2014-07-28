@@ -82,7 +82,7 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure
 	protected abstract void determineOptimisingRegions(BoxRegionValues regionValues) throws PrismException;
 
 	@Override
-	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded, PrismException
+	public void verifyRegionValues(BoxRegionValues regionValues) throws DecompositionNeeded, PrismException
 	{
 		determineOptimisingRegions(regionValues);
 
@@ -122,9 +122,11 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure
 	{
 		printIntro(log);
 
-		log.print("\nRegions " + captionForOptimising + " the property satisfaction probability:");
+		log.print("\nRegions " + captionForOptimising + " the property satisfaction probability");
+		log.println(" (" + regionsOptimising.size() + "):");
 		printRegions(log, regionsOptimising);
-		log.print("Non-" + captionForOptimising + " regions:");
+		log.print("Non-" + captionForOptimising + " regions");
+		log.println(" (" + regionsNonoptimising.size() + "):");
 		printRegions(log, regionsNonoptimising);
 
 		log.println("\nmin lower prob bound of " + captionForOptimising + " regions = " + minimalLowerProbBoundOfOptimising);
