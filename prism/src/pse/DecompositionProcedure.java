@@ -43,6 +43,7 @@ abstract class DecompositionProcedure
 	public static class DecompositionNeeded extends Exception
 	{
 		protected BoxRegionsToDecompose regions;
+		protected BoxRegionValues examinedRegionValues;
 
 		public DecompositionNeeded(BoxRegionsToDecompose regions)
 		{
@@ -57,6 +58,16 @@ abstract class DecompositionProcedure
 		public BoxRegionsToDecompose getRegionsToDecompose()
 		{
 			return regions;
+		}
+
+		public void setExaminedRegionValues(BoxRegionValues examinedRegionValues)
+		{
+			this.examinedRegionValues = examinedRegionValues;
+		}
+
+		public BoxRegionValues getExaminedRegionValues()
+		{
+			return examinedRegionValues;
 		}
 	}
 
@@ -80,9 +91,22 @@ abstract class DecompositionProcedure
 		return propExpr;
 	}
 
-	public void examineSingleIteration(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded, PrismException {}
-	
-	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded, PrismException {}
+	public void examineSingleIteration(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded, PrismException {
+		verifySingleRegion(region, probsMin, probsMax);
+	}
+
+	protected void verifySingleRegion(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded, PrismException {}
+
+	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded, PrismException {
+		try {
+			verifyRegionValues(regionValues);
+		} catch (DecompositionNeeded e) {
+			e.setExaminedRegionValues(regionValues);
+			throw e;
+		}
+	}
+
+	protected void verifyRegionValues(BoxRegionValues regionValues) throws DecompositionNeeded, PrismException {}
 
 	public void printSolution(PrismLog log) {
 		// The default filter added above takes care of printing the solution

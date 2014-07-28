@@ -33,7 +33,9 @@ import java.util.Map.Entry;
 
 import explicit.Model;
 import explicit.StateValues;
+import parser.type.TypeDouble;
 import prism.Pair;
+import prism.PrismException;
 import prism.PrismLog;
 
 public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValues.StateValuesPair>>
@@ -77,6 +79,12 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 		put(region, minValues, maxValues);
 	}
 
+	public static BoxRegionValues createWithOnes(Model model, BoxRegion region) throws PrismException
+	{
+		StateValues ones = new StateValues(TypeDouble.getInstance(), new Double(1.0), model);
+		return new BoxRegionValues(model, region, ones, ones);
+	}
+	
 	public StateValuesPair put(BoxRegion region, StateValues minValues, StateValues maxValues)
 	{
 		return put(region, new StateValuesPair(minValues, maxValues));
@@ -111,6 +119,11 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 		StateValuesPair oldValuesPair = remove(region);
 		put(region.getLowerHalf(), oldValuesPair);
 		put(region.getUpperHalf(), oldValuesPair);
+	}
+
+	public boolean hasRegion(BoxRegion region)
+	{
+		return valuesPairs.containsKey(region);
 	}
 
 	public StateValues getMin(BoxRegion region)

@@ -82,7 +82,7 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure
 	protected abstract void determineOptimisingRegions(BoxRegionValues regionValues) throws PrismException;
 
 	@Override
-	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded, PrismException
+	public void verifyRegionValues(BoxRegionValues regionValues) throws DecompositionNeeded, PrismException
 	{
 		determineOptimisingRegions(regionValues);
 

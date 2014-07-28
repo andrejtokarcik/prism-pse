@@ -88,7 +88,7 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 	}
 
 	@Override
-	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded
+	public void verifyRegionValues(BoxRegionValues regionValues) throws DecompositionNeeded
 	{
 		// Determine the regions and compute the volume of undecided regions
 		regionsUndecided.clear();

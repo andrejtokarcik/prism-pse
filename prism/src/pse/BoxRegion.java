@@ -118,9 +118,20 @@ final class BoxRegion implements Comparable<BoxRegion>
 	@Override
 	public int compareTo(BoxRegion r)
 	{
-		return lowerBounds.compareTo(r.lowerBounds);
+		int lowerRes = lowerBounds.compareTo(r.lowerBounds);
+		int upperRes = upperBounds.compareTo(r.upperBounds);
+		if (lowerRes == upperRes)
+			return lowerRes;
+
+		int min = Math.min(lowerRes, upperRes);
+		int max = Math.max(lowerRes, upperRes);
+		if (min == 0)
+			return max;
+		if (max == 0)
+			return min;
+		throw new ClassCastException();
 	}
-	
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
