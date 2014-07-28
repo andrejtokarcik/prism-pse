@@ -60,7 +60,7 @@ final class BoxRegionsToDecompose extends HashMap<BoxRegion, Collection<String>>
 			initialiseExplanations(region);
 		
 		Collection<String> explanations = get(region);
-		explanations.add("has " + explanation);
+		explanations.add(explanation);
 		return explanations;
 	}
 

@@ -69,7 +69,7 @@ public final class MaxSynthesisSampling extends MaxSynthesis
 		}
 
 		double maximalSampleProb = Double.NEGATIVE_INFINITY;
-		for (Point sample : maximalLowerBoundRegion.getSamplePoints()) {
+		for (Point sample : maximalLowerBoundRegion.generateSamplePoints()) {
 			CTMC ctmc = model.instantiate(sample, modelChecker.getModulesFile(), constructModel);
 			CTMCModelChecker ctmcModelChecker = new CTMCModelChecker(modelChecker);
 			double currentSampleProb = (Double) ctmcModelChecker.checkExpression(ctmc, propExpr).getValue(initState);

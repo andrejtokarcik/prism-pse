@@ -547,6 +547,9 @@ public final class PSEModelChecker extends PrismComponent
 		} else {
 			// break down into different cases to compute probabilities
 
+			StateValues ones = new StateValues(TypeDouble.getInstance(), new Double(1.0), model);
+			BoxRegionValues onesMultProbs = new BoxRegionValues(model, regionFactory.completeSpace(), ones, ones);
+
 			// >= lTime
 			if (uTime == -1) {
 				throw new PrismException("PSE supports bounded until only");
@@ -557,8 +560,6 @@ public final class PSEModelChecker extends PrismComponent
 				b1Min.andNot(b2Min);
 				b1Max.andNot(b2Max);
 
-				StateValues ones = new StateValues(TypeDouble.getInstance(), new Double(1.0), model);
-				BoxRegionValues onesMultProbs = new BoxRegionValues(model, regionFactory.completeSpace(), ones, ones);
 
 				while (true) {
 					try {
@@ -577,9 +578,6 @@ public final class PSEModelChecker extends PrismComponent
 				tmpMin.andNot(b2Min);
 				tmpMax = (BitSet) b1Max.clone();
 				tmpMax.andNot(b2Max);
-
-				StateValues ones = new StateValues(TypeDouble.getInstance(), new Double(1.0), model);
-				BoxRegionValues onesMultProbs = new BoxRegionValues(model, regionFactory.completeSpace(), ones, ones);
 
 				while (true) {
 					try {
@@ -881,8 +879,8 @@ public final class PSEModelChecker extends PrismComponent
 			} catch (DecompositionProcedure.DecompositionNeeded e) {
 				e.getRegionsToDecompose().print(mainLog);
 				for (BoxRegion regionToDecompose : e.getRegionsToDecompose()) {
-					regions.add(regionToDecompose.getLowerHalf());
-					regions.add(regionToDecompose.getUpperHalf());
+					regions.add(regionToDecompose.lowerHalf());
+					regions.add(regionToDecompose.upperHalf());
 				}
 			}
 		}

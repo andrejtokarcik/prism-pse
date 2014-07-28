@@ -68,12 +68,12 @@ final class BoxRegion implements Comparable<BoxRegion>
 		return upperBounds;
 	}
 
-	public BoxRegion getLowerHalf()
+	public BoxRegion lowerHalf()
 	{
 		return new BoxRegion(lowerBounds, midBounds);
 	}
 
-	public BoxRegion getUpperHalf()
+	public BoxRegion upperHalf()
 	{
 		return new BoxRegion(midBounds, upperBounds);
 	}
@@ -93,12 +93,12 @@ final class BoxRegion implements Comparable<BoxRegion>
 		return volume;
 	}
 
-	public Set<Point> getSamplePoints()
+	public Set<Point> generateSamplePoints()
 	{
-		return getSamplePoints(2);
+		return generateSamplePoints(2);
 	}
 
-	public Set<Point> getSamplePoints(int numSamples)
+	public Set<Point> generateSamplePoints(int numSamples)
 	{
 		Set<Point> samples = new HashSet<Point>();
 		Random r = new Random();
