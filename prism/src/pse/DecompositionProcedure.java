@@ -118,9 +118,8 @@ abstract class DecompositionProcedure
 
 	protected void printRegions(PrismLog log, List<BoxRegion> regions) {
 		if (regions.isEmpty()) {
-			log.println("\n * [none]");
+			log.println(" * [none]");
 		} else {
-			log.println();
 			for (BoxRegion region : regions) {
 				log.println(" * " + region);
 		    }
