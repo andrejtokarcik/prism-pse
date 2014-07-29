@@ -49,7 +49,7 @@ public final class MaxSynthesisSampling extends MaxSynthesis
 	public void initialise(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
 	{
 		super.initialise(modelChecker, model, propExpr);
-		lastMaximalSampleProb = Double.POSITIVE_INFINITY;
+		lastMaximalSampleProb = Double.NEGATIVE_INFINITY;
 	}
 
 	/**

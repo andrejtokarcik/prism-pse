@@ -129,11 +129,11 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure
 		log.println(" (" + regionsNonoptimising.size() + "):");
 		printRegions(log, regionsNonoptimising);
 
-		log.println("\nmin lower prob bound of " + captionForOptimising + " regions = " + minimalLowerProbBoundOfOptimising);
-		log.println("max upper prob bound of " + captionForOptimising + " regions = " + maximalUpperProbBoundOfOptimising);
-		log.println("probability tolerance = " + probTolerance);
+		log.println("\nMin lower prob bound of " + captionForOptimising + " regions = " + minimalLowerProbBoundOfOptimising);
+		log.println("Max upper prob bound of " + captionForOptimising + " regions = " + maximalUpperProbBoundOfOptimising);
+		log.println("Probability tolerance = " + probTolerance);
 		
-		log.println("\ndemarcation prob bounds in the order they were used to exclude regions:");
+		log.println("\nDemarcation prob bounds in the order they were used to exclude regions:");
 		log.println(demarcationProbBounds);
 	}
 }

@@ -137,7 +137,7 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 		printRegions(log, undecidedRegions);
 
 		log.println("\nvol(undecided) / vol(complete parameter space) = " + undecidedVsComplete);
-		log.println("volume tolerance = " + volumeTolerance);
+		log.println("Volume tolerance = " + volumeTolerance);
 	}
 
 	@Override
