@@ -67,7 +67,7 @@ final class BoxRegionsToDecompose extends HashMap<BoxRegion, Collection<String>>
 	public void print(PrismLog log)
 	{
 		assert size() > 0;
-		log.println("There are " + size() + " regions to be decomposed:");
+		log.println("The following " + size() + " regions are to be decomposed:");
 		for (Map.Entry<BoxRegion, Collection<String>> entry : entrySet()) {
 			log.println(" * " + entry.getKey() + " " + entry.getValue());
 		}

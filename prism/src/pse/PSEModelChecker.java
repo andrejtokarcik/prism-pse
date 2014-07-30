@@ -54,7 +54,7 @@ import prism.Result;
 import explicit.FoxGlynn;
 import explicit.StateModelChecker;
 import explicit.StateValues;
-import explicit.Utils;
+import static explicit.Utils.bitsetToDoubleArray;
 
 public final class PSEModelChecker extends PrismComponent
 {
@@ -565,7 +565,7 @@ public final class PSEModelChecker extends PrismComponent
 					} catch (DecompositionProcedure.DecompositionNeeded e) {
 						e.getRegionsToDecompose().print(mainLog);
 						for (BoxRegion region : e.getRegionsToDecompose())
-							onesMultProbs.divideRegion(region);
+							onesMultProbs.decomposeRegion(region);
 						oldRegionValues = e.getExaminedRegionValues();
 					}
 				}
@@ -587,7 +587,7 @@ public final class PSEModelChecker extends PrismComponent
 					} catch (DecompositionProcedure.DecompositionNeeded e) {
 						e.getRegionsToDecompose().print(mainLog);
 						for (BoxRegion region : e.getRegionsToDecompose())
-							onesMultProbs.divideRegion(region);
+							onesMultProbs.decomposeRegion(region);
 						oldTmpRegionValues = tmpRegionValues;
 						oldRegionValues = e.getExaminedRegionValues();
 					}
@@ -641,8 +641,8 @@ public final class PSEModelChecker extends PrismComponent
 		if (((nonAbsMin != null && nonAbsMin.isEmpty()) || t == 0) &&
 				((nonAbsMax != null && nonAbsMax.isEmpty()) || t == 0) &&
 				multProbs == null) {
-			solnMin = Utils.bitsetToDoubleArray(targetMin, n);
-			solnMax = Utils.bitsetToDoubleArray(targetMax, n);
+			solnMin = bitsetToDoubleArray(targetMin, n);
+			solnMax = bitsetToDoubleArray(targetMax, n);
 			return new BoxRegionValues(model, regionFactory.completeSpace(), solnMin, solnMax);
 		}
 
@@ -897,8 +897,7 @@ public final class PSEModelChecker extends PrismComponent
 			} catch (DecompositionProcedure.DecompositionNeeded e) {
 				e.getRegionsToDecompose().print(mainLog);
 				for (BoxRegion regionToDecompose : e.getRegionsToDecompose()) {
-					regions.add(regionToDecompose.lowerHalf());
-					regions.add(regionToDecompose.upperHalf());
+					regions.addAll(regionToDecompose.decompose());
 				}
 			}
 		}

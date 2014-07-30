@@ -31,12 +31,12 @@ import java.util.Set;
 import java.util.Random;
 
 import parser.Values;
+import static explicit.Utils.powerSet;
 
 final class BoxRegion implements Comparable<BoxRegion>
 {
 	private Values lowerBounds;
 	private Values upperBounds;
-	private Values midBounds;
 
 	private double volume = 0.0;
 
@@ -45,18 +45,8 @@ final class BoxRegion implements Comparable<BoxRegion>
 		assert boundsLower.compareTo(boundsUpper) <= 0;
 		this.lowerBounds = boundsLower;
 		this.upperBounds = boundsUpper;
-		computeMidBounds();
 	}
 
-	private void computeMidBounds()
-	{
-		midBounds = new Values();
-		for (int i = 0; i < lowerBounds.getNumValues(); i++) {
-			double lowerValue = (Double) lowerBounds.getValue(i);
-			double upperValue = (Double) upperBounds.getValue(i);
-			midBounds.addValue(lowerBounds.getName(i), lowerValue + 0.5 * (upperValue - lowerValue));
-		}
-	}
 
 	public Values getLowerBounds()
 	{
@@ -68,14 +58,43 @@ final class BoxRegion implements Comparable<BoxRegion>
 		return upperBounds;
 	}
 
-	public BoxRegion lowerHalf()
+	private Values computeMidBounds()
 	{
-		return new BoxRegion(lowerBounds, midBounds);
+		Values midBounds = new Values();
+		for (int i = 0; i < lowerBounds.getNumValues(); i++) {
+			double lowerValue = (Double) lowerBounds.getValue(i);
+			double upperValue = (Double) upperBounds.getValue(i);
+			midBounds.addValue(lowerBounds.getName(i), lowerValue + 0.5 * (upperValue - lowerValue));
+		}
+		return midBounds;
 	}
 
-	public BoxRegion upperHalf()
+	public Set<BoxRegion> decompose()
 	{
-		return new BoxRegion(midBounds, upperBounds);
+		Set<BoxRegion> subregions = new HashSet<BoxRegion>();
+		Values midBounds = computeMidBounds();
+		Set<Integer> allIndices = new HashSet<Integer>();
+		for (int i = 0; i < midBounds.getNumValues(); i++) {
+			allIndices.add(i);
+		}
+
+		for (Set<Integer> indices : powerSet(allIndices)) {
+			Values newLowerBounds = new Values();
+			Values newUpperBounds = new Values();
+			for (int i = 0; i < midBounds.getNumValues(); i++) {
+				String name = midBounds.getName(i);
+				double midValue = (Double) midBounds.getValue(i);
+				if (indices.contains(i)) {
+					newLowerBounds.addValue(name, (Double) lowerBounds.getValue(i));
+					newUpperBounds.addValue(name, midValue);
+				} else {
+					newLowerBounds.addValue(name, midValue);
+					newUpperBounds.addValue(name, (Double) upperBounds.getValue(i));
+				}
+			}
+			subregions.add(new BoxRegion(newLowerBounds, newUpperBounds));
+		}
+		return subregions;
 	}
 
 	public double getVolume()
@@ -129,7 +148,7 @@ final class BoxRegion implements Comparable<BoxRegion>
 			return max;
 		if (max == 0)
 			return min;
-		throw new ClassCastException();
+		return lowerRes;
 	}
 
 	@Override

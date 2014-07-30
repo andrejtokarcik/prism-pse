@@ -114,11 +114,12 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 		return valuesPairs.remove(region);
 	}
 
-	public void divideRegion(BoxRegion region)
+	public void decomposeRegion(BoxRegion region)
 	{
 		StateValuesPair oldValuesPair = remove(region);
-		put(region.lowerHalf(), oldValuesPair);
-		put(region.upperHalf(), oldValuesPair);
+		for (BoxRegion subregion : region.decompose()) {
+			put(subregion, oldValuesPair);
+		}
 	}
 
 	public boolean hasRegion(BoxRegion region)
