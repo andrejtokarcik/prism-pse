@@ -50,13 +50,15 @@ abstract class MinSynthesis extends AbstractMinMaxSynthesis
 		// Determine the (non-)minimising regions
 		regionsOptimising.clear();
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
-			if (regionsNonoptimising.contains(entry.getKey()))
+			if (regionsNonoptimising.contains(entry.getKey())) {
 				continue;
-
-			if ((Double) entry.getValue().getMin().getValue(initState) > minimalUpperBound)
-				regionsNonoptimising.add(entry.getKey());
-			else
-				regionsOptimising.add(entry.getKey());
+			}
+			double lowerProbBound = (Double) entry.getValue().getMin().getValue(initState);
+			if (lowerProbBound > minimalUpperBound) {
+				regionsNonoptimising.add(entry.getKey(), "lower prob bound = " + lowerProbBound);
+			} else {
+				regionsOptimising.add(entry.getKey(), "lower prob bound = " + lowerProbBound);
+			}
 		}
 	}
 

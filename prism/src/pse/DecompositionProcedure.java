@@ -26,7 +26,7 @@
 
 package pse;
 
-import java.util.List;
+import java.util.Set;
 
 import parser.ast.Expression;
 import parser.ast.ExpressionFilter;
@@ -42,22 +42,27 @@ abstract class DecompositionProcedure
 	@SuppressWarnings("serial")
 	public static class DecompositionNeeded extends Exception
 	{
-		protected BoxRegionsToDecompose regions;
+		protected LabelledBoxRegions regionsToDecompose;
 		protected BoxRegionValues examinedRegionValues;
 
-		public DecompositionNeeded(BoxRegionsToDecompose regions)
+		public DecompositionNeeded(LabelledBoxRegions regionsToDecompose)
 		{
-			this.regions = regions;
-		}
-		
-		public DecompositionNeeded(BoxRegion region, String explanation)
-		{
-			this.regions = new BoxRegionsToDecompose(region, explanation);
+			this.regionsToDecompose = regionsToDecompose;
 		}
 
-		public BoxRegionsToDecompose getRegionsToDecompose()
+		public DecompositionNeeded(BoxRegion region, String explanation)
 		{
-			return regions;
+			this.regionsToDecompose = new LabelledBoxRegions(region, explanation);
+		}
+
+		public Set<BoxRegion> getRegionsToDecompose()
+		{
+			return regionsToDecompose.keySet();
+		}
+
+		public void printRegionsToDecompose(PrismLog log) {
+			log.println("The following " + regionsToDecompose.size() + " regions are to be decomposed");
+			regionsToDecompose.print(log);
 		}
 
 		public void setExaminedRegionValues(BoxRegionValues examinedRegionValues)
@@ -114,15 +119,5 @@ abstract class DecompositionProcedure
 
 	protected void printIntro(PrismLog log) {
 		log.println("\nSolution of " + toString() + " for property " + propExpr + ":");
-	}
-
-	protected void printRegions(PrismLog log, List<BoxRegion> regions) {
-		if (regions.isEmpty()) {
-			log.println(" * [none]");
-		} else {
-			for (BoxRegion region : regions) {
-				log.println(" * " + region);
-		    }
-		}
 	}
 }

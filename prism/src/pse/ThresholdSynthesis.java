@@ -26,8 +26,6 @@
 
 package pse;
 
-import java.util.List;
-import java.util.LinkedList;
 import java.util.Map.Entry;
 
 import parser.ast.Expression;
@@ -48,9 +46,9 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 	private double completeSpaceVolume;
 
 	// Solution structures
-	private List<BoxRegion> belowRegions;
-	private List<BoxRegion> aboveRegions;
-	private List<BoxRegion> undecidedRegions;
+	private LabelledBoxRegions belowRegions;
+	private LabelledBoxRegions aboveRegions;
+	private LabelledBoxRegions undecidedRegions;
 	private double undecidedVsComplete;
 
 	public ThresholdSynthesis(double volumeTolerance, int initState, BoxRegion completeSpace) throws PrismException
@@ -64,9 +62,9 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 	public void initialise(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
 	{
 		super.initialise(modelChecker, model, propExpr);
-		belowRegions = new LinkedList<BoxRegion>();
-		aboveRegions = new LinkedList<BoxRegion>();
-		undecidedRegions = new LinkedList<BoxRegion>();
+		belowRegions = new LabelledBoxRegions();
+		aboveRegions = new LabelledBoxRegions();
+		undecidedRegions = new LabelledBoxRegions();
 	}
 
 	@Override
@@ -99,11 +97,13 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 			if (aboveRegions.contains(entry.getKey()) || belowRegions.contains(entry.getKey()))
 				continue;
 
-			if ((Double) entry.getValue().getMin().getValue(initState) >= threshold)
-				aboveRegions.add(entry.getKey());
-			else if ((Double) entry.getValue().getMax().getValue(initState) < threshold)
-				belowRegions.add(entry.getKey());
-			else {
+			double lowerProbBound = (Double) entry.getValue().getMin().getValue(initState);
+			double upperProbBound = (Double) entry.getValue().getMax().getValue(initState);
+			if (lowerProbBound >= threshold) {
+				aboveRegions.add(entry.getKey(), "lower prob bound = " + lowerProbBound);
+			} else if (upperProbBound < threshold) {
+				belowRegions.add(entry.getKey(), "upper prob bound = " + upperProbBound);
+			} else {
 				undecidedRegions.add(entry.getKey());
 				double currentVolume = entry.getKey().getVolume();
 				undecidedVolume += currentVolume;
@@ -126,15 +126,15 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 	{
 		printIntro(log);
 
-		List<BoxRegion> trueRegions = aboveIsTrue ? aboveRegions : belowRegions;
-		List<BoxRegion> falseRegions = aboveIsTrue ? belowRegions : aboveRegions;
+		LabelledBoxRegions trueRegions = aboveIsTrue ? aboveRegions : belowRegions;
+		LabelledBoxRegions falseRegions = aboveIsTrue ? belowRegions : aboveRegions;
 
 		log.println("\nTrue regions (" + trueRegions.size() + "):");
-		printRegions(log, trueRegions);
+		trueRegions.print(log);
 		log.println("False regions (" + falseRegions.size() + "):");
-		printRegions(log, falseRegions);
+		falseRegions.print(log);
 		log.println("Undecided regions (" + undecidedRegions.size() + "):");
-		printRegions(log, undecidedRegions);
+		undecidedRegions.print(log);
 
 		log.println("\nvol(undecided) / vol(complete parameter space) = " + undecidedVsComplete);
 		log.println("Volume tolerance = " + volumeTolerance);

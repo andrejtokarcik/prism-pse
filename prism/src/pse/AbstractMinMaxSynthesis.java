@@ -46,8 +46,8 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure
 	protected int initState;
 
 	// Solution structures
-	protected List<BoxRegion> regionsOptimising;
-	protected List<BoxRegion> regionsNonoptimising;
+	protected LabelledBoxRegions regionsOptimising;
+	protected LabelledBoxRegions regionsNonoptimising;
 	private double minimalLowerProbBoundOfOptimising;
 	private double maximalUpperProbBoundOfOptimising;
 	protected List<Double> demarcationProbBounds;
@@ -62,8 +62,8 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure
 	public void initialise(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
 	{
 		super.initialise(modelChecker, model, propExpr);
-		regionsOptimising = new LinkedList<BoxRegion>();
-		regionsNonoptimising = new LinkedList<BoxRegion>();
+		regionsOptimising = new LabelledBoxRegions();
+		regionsNonoptimising = new LabelledBoxRegions();
 		demarcationProbBounds = new LinkedList<Double>();
 	}
 
@@ -110,9 +110,9 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure
 
 		// Evaluate whether a decomposition is needed
 		if (maximalUpperProbBoundOfOptimising - minimalLowerProbBoundOfOptimising > probTolerance) {
-			BoxRegionsToDecompose regionsToDecompose = new BoxRegionsToDecompose();
-			regionsToDecompose.addRegion(regionToDecomposeMin, "min lower prob bound");
-			regionsToDecompose.addRegion(regionToDecomposeMax, "max upper prob bound");
+			LabelledBoxRegions regionsToDecompose = new LabelledBoxRegions();
+			regionsToDecompose.add(regionToDecomposeMin, "min lower prob bound");
+			regionsToDecompose.add(regionToDecomposeMax, "max upper prob bound");
 			throw new DecompositionNeeded(regionsToDecompose);
 		}
 	}
@@ -124,10 +124,10 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure
 
 		log.print("\nRegions " + captionForOptimising + " the property satisfaction probability");
 		log.println(" (" + regionsOptimising.size() + "):");
-		printRegions(log, regionsOptimising);
+		regionsOptimising.print(log);
 		log.print("Non-" + captionForOptimising + " regions");
 		log.println(" (" + regionsNonoptimising.size() + "):");
-		printRegions(log, regionsNonoptimising);
+		regionsNonoptimising.print(log);
 
 		log.println("\nMin lower prob bound of " + captionForOptimising + " regions = " + minimalLowerProbBoundOfOptimising);
 		log.println("Max upper prob bound of " + captionForOptimising + " regions = " + maximalUpperProbBoundOfOptimising);

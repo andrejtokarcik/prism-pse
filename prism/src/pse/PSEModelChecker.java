@@ -563,7 +563,7 @@ public final class PSEModelChecker extends PrismComponent
 						regionValues = computeTransientBackwardsProbs(model, b2Min, b1Min, b2Max, b1Max, uTime, onesMultProbs, decompositionProcedure, oldRegionValues);
 						break;
 					} catch (DecompositionProcedure.DecompositionNeeded e) {
-						e.getRegionsToDecompose().print(mainLog);
+						e.printRegionsToDecompose(mainLog);
 						for (BoxRegion region : e.getRegionsToDecompose())
 							onesMultProbs.decomposeRegion(region);
 						oldRegionValues = e.getExaminedRegionValues();
@@ -585,7 +585,7 @@ public final class PSEModelChecker extends PrismComponent
 						regionValues = computeTransientBackwardsProbs(model, b1Min, b1Min, b1Max, b1Max, lTime, tmpRegionValues, decompositionProcedure, oldRegionValues);
 						break;
 					} catch (DecompositionProcedure.DecompositionNeeded e) {
-						e.getRegionsToDecompose().print(mainLog);
+						e.printRegionsToDecompose(mainLog);
 						for (BoxRegion region : e.getRegionsToDecompose())
 							onesMultProbs.decomposeRegion(region);
 						oldTmpRegionValues = tmpRegionValues;
@@ -895,7 +895,7 @@ public final class PSEModelChecker extends PrismComponent
 				// Store result
 				regionValues.put(region, sumMin, sumMax);
 			} catch (DecompositionProcedure.DecompositionNeeded e) {
-				e.getRegionsToDecompose().print(mainLog);
+				e.printRegionsToDecompose(mainLog);
 				for (BoxRegion regionToDecompose : e.getRegionsToDecompose()) {
 					regions.addAll(regionToDecompose.decompose());
 				}

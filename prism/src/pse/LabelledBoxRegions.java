@@ -26,7 +26,6 @@
 
 package pse;
 
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Collection;
 import java.util.Map;
@@ -35,46 +34,59 @@ import java.util.HashMap;
 import prism.PrismLog;
 
 @SuppressWarnings("serial")
-final class BoxRegionsToDecompose extends HashMap<BoxRegion, Collection<String>> implements Iterable<BoxRegion> 
+final class LabelledBoxRegions extends HashMap<BoxRegion, Collection<String>> 
 {
-	public BoxRegionsToDecompose()
+	public LabelledBoxRegions()
 	{
 		super();
 	}
 
-	public BoxRegionsToDecompose(BoxRegion region, String explanation)
+	public LabelledBoxRegions(BoxRegion region, String label)
 	{
 		super();
-		initialiseExplanations(region);
-		get(region).add(explanation);
+		initialiseLabels(region);
+		get(region).add(label);
 	}
 
-	private void initialiseExplanations(BoxRegion region)
+	private void initialiseLabels(BoxRegion region)
 	{
 		put(region, new LinkedList<String>());
 	}
 
-	public Collection<String> addRegion(BoxRegion region, String explanation)
+	public Collection<String> add(BoxRegion region)
 	{
-		if (!containsKey(region))
-			initialiseExplanations(region);
-		
-		Collection<String> explanations = get(region);
-		explanations.add(explanation);
-		return explanations;
+		return add(region, null);
+	}
+
+	public Collection<String> add(BoxRegion region, String label)
+	{
+		if (!containsKey(region)) {
+			initialiseLabels(region);
+		}
+		Collection<String> labels = get(region);
+		if (label != null) {
+			labels.add(label);
+		}
+		return labels;
+	}
+
+	public boolean contains(BoxRegion region)
+	{
+		return containsKey(region);
 	}
 
 	public void print(PrismLog log)
 	{
-		assert size() > 0;
-		log.println("The following " + size() + " regions are to be decomposed:");
-		for (Map.Entry<BoxRegion, Collection<String>> entry : entrySet()) {
-			log.println(" * " + entry.getKey() + " " + entry.getValue());
+		if (isEmpty()) {
+			log.println(" * [none]");
+		} else {
+			for (Map.Entry<BoxRegion, Collection<String>> entry : entrySet()) {
+				log.print(" * " + entry.getKey());
+				if (!entry.getValue().isEmpty()) {
+					log.print(" " + entry.getValue());
+				}
+				log.println();
+			}
 		}
-	}
-
-	@Override
-	public Iterator<BoxRegion> iterator() {
-		return keySet().iterator();
 	}
 }
