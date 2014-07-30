@@ -56,8 +56,11 @@ public final class SimpleDecompositionProcedure extends DecompositionProcedure
 	public void verifySingleRegion(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded
 	{
 		for (int state = 0; state < numStates; state++) {
-			if (probsMax[state] - probsMin[state] > accuracy)
-				throw new DecompositionNeeded(region, "significant inaccuracy");
+			if (probsMax[state] - probsMin[state] > accuracy) {
+				throw new DecompositionNeeded(
+						probsMax[state] + " - " + probsMin[state] + " > " + accuracy + " in state " + state,
+						region, "significant inaccuracy");
+			}
 		}
 	}
 }

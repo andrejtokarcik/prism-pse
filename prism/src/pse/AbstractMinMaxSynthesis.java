@@ -113,7 +113,9 @@ abstract class AbstractMinMaxSynthesis extends DecompositionProcedure
 			LabelledBoxRegions regionsToDecompose = new LabelledBoxRegions();
 			regionsToDecompose.add(regionToDecomposeMin, "min lower prob bound");
 			regionsToDecompose.add(regionToDecomposeMax, "max upper prob bound");
-			throw new DecompositionNeeded(regionsToDecompose);
+			throw new DecompositionNeeded(
+					maximalUpperProbBoundOfOptimising + " - " + minimalLowerProbBoundOfOptimising + " > " + probTolerance,
+					regionsToDecompose);
 		}
 	}
 

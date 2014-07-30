@@ -42,16 +42,19 @@ abstract class DecompositionProcedure
 	@SuppressWarnings("serial")
 	public static class DecompositionNeeded extends Exception
 	{
+		protected String reason;
 		protected LabelledBoxRegions regionsToDecompose;
 		protected BoxRegionValues examinedRegionValues;
 
-		public DecompositionNeeded(LabelledBoxRegions regionsToDecompose)
+		public DecompositionNeeded(String reason, LabelledBoxRegions regionsToDecompose)
 		{
+			this.reason = reason;
 			this.regionsToDecompose = regionsToDecompose;
 		}
 
-		public DecompositionNeeded(BoxRegion region, String explanation)
+		public DecompositionNeeded(String reason, BoxRegion region, String explanation)
 		{
+			this.reason = reason;
 			this.regionsToDecompose = new LabelledBoxRegions(region, explanation);
 		}
 
@@ -61,7 +64,8 @@ abstract class DecompositionProcedure
 		}
 
 		public void printRegionsToDecompose(PrismLog log) {
-			log.println("The following " + regionsToDecompose.size() + " regions are to be decomposed");
+			log.print("The following " + regionsToDecompose.size() + " regions are to be decomposed");
+			log.println(" because " + reason + ":");
 			regionsToDecompose.print(log);
 		}
 
