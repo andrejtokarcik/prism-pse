@@ -41,9 +41,6 @@ public final class SimpleDecompositionProcedure extends DecompositionProcedure
 		{
 			return INSTANCE;
 		}
-
-		@Override
-		public void examineSingleIteration(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded {}
 	}
 	
 	public SimpleDecompositionProcedure(double accuracy, int numStates)

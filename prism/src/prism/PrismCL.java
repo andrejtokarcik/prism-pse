@@ -1113,7 +1113,7 @@ public class PrismCL implements PrismModelListener
 						try {
 							pseAccuracy = Double.parseDouble(args[++i]);
 						} catch (NumberFormatException e) {
-							errorAndExit("Invalid accuracy value for -" + sw + " switch");
+							errorAndExit("Invalid accuracy/tolerance value for -" + sw + " switch");
 						}
 					} else {
 						errorAndExit("Incomplete -" + sw + " switch");
@@ -2097,7 +2097,9 @@ public class PrismCL implements PrismModelListener
 					pseLowerBounds[pdNr] = Double.parseDouble(upperLower[0].trim());
 					pseUpperBounds[pdNr] = Double.parseDouble(upperLower[1].trim());
 					if (pseLowerBounds[pdNr] > pseUpperBounds[pdNr])
-						throw new PrismException("Invalid range \"" + pseDefSplit[1] + "\" for parameter " + pseNames[pdNr]);
+						throw new PrismException(
+								"Invalid range \"" + pseDefSplit[1] + "\" for parameter " + pseNames[pdNr] +
+								" (lower bound greater than upper)");
 				}
 			}
 		}

@@ -27,9 +27,9 @@
 package pse;
 
 import java.util.BitSet;
-import java.util.TreeMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import explicit.Model;
 import explicit.StateValues;
@@ -38,10 +38,10 @@ import prism.Pair;
 import prism.PrismException;
 import prism.PrismLog;
 
-public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValues.StateValuesPair>>
+@SuppressWarnings("serial")
+public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateValuesPair> implements Iterable<Entry<BoxRegion, BoxRegionValues.StateValuesPair>>
 {
 	private Model model;
-	private TreeMap<BoxRegion, BoxRegionValues.StateValuesPair> valuesPairs;
 
 	public static class StateValuesPair extends Pair<StateValues, StateValues>
 	{
@@ -64,7 +64,6 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 	public BoxRegionValues(Model model)
 	{
 		this.model = model;
-		valuesPairs = new TreeMap<BoxRegion, BoxRegionValues.StateValuesPair>();
 	}
 
 	public BoxRegionValues(Model model, BoxRegion region, StateValues minValues, StateValues maxValues)
@@ -90,11 +89,6 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 		return put(region, new StateValuesPair(minValues, maxValues));
 	}
 
-	public StateValuesPair put(BoxRegion region, StateValuesPair valuesPair)
-	{
-		return valuesPairs.put(region, valuesPair);
-	}
-
 	public StateValuesPair put(BoxRegion region, double[] min, double[] max)
 	{
 		StateValues minValues = StateValues.createFromDoubleArray(min, model);
@@ -111,7 +105,7 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 
 	public StateValuesPair remove(BoxRegion region)
 	{
-		return valuesPairs.remove(region);
+		return remove(region);
 	}
 
 	public void decomposeRegion(BoxRegion region)
@@ -124,33 +118,33 @@ public class BoxRegionValues implements Iterable<Entry<BoxRegion, BoxRegionValue
 
 	public boolean hasRegion(BoxRegion region)
 	{
-		return valuesPairs.containsKey(region);
+		return containsKey(region);
 	}
 
 	public StateValues getMin(BoxRegion region)
 	{
-		return valuesPairs.get(region).getMin();
+		return get(region).getMin();
 	}
 
 	public StateValues getMax(BoxRegion region)
 	{
-		return valuesPairs.get(region).getMax();
+		return get(region).getMax();
 	}
 
 	public int getNumRegions()
 	{
-		return valuesPairs.keySet().size();
+		return keySet().size();
 	}
 
 	@Override
 	public Iterator<Entry<BoxRegion, BoxRegionValues.StateValuesPair>> iterator()
 	{
-		return valuesPairs.entrySet().iterator();
+		return entrySet().iterator();
 	}
 
 	public void print(PrismLog log)
 	{
-		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : valuesPairs.entrySet()) {
+		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : entrySet()) {
 			log.println("\n== Region " + entry.getKey() + " ==");
 			log.println("\n=== Minimised state values ===\n");
 			entry.getValue().getMin().print(log);

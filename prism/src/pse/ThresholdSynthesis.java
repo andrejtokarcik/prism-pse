@@ -94,9 +94,9 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 		double undecidedVolume = 0.0;
 		double greatestVolume = Double.NEGATIVE_INFINITY;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
-			if (aboveRegions.contains(entry.getKey()) || belowRegions.contains(entry.getKey()))
+			if (aboveRegions.contains(entry.getKey()) || belowRegions.contains(entry.getKey())) {
 				continue;
-
+			}
 			double lowerProbBound = (Double) entry.getValue().getMin().getValue(initState);
 			double upperProbBound = (Double) entry.getValue().getMax().getValue(initState);
 			if (lowerProbBound >= threshold) {
