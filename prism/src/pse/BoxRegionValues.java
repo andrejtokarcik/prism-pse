@@ -59,6 +59,12 @@ public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateVal
 		{
 			return second;
 		}
+
+		public void swap() {
+			StateValues tmpFirst = first; 
+			first = second;
+			second = tmpFirst;
+		}
 	}
 
 	public BoxRegionValues(Model model)

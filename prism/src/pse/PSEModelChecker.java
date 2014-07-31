@@ -759,14 +759,18 @@ public final class PSEModelChecker extends PrismComponent
 			// Store result
 			regionValues.put(region, sumMin, sumMax);
 		}
+
+		// Negate if necessary
 		if (negate) {
 			for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
 				entry.getValue().getMin().timesConstant(-1.0);
 				entry.getValue().getMin().plusConstant(1.0);
 				entry.getValue().getMax().timesConstant(-1.0);
 				entry.getValue().getMax().plusConstant(1.0);
+				entry.getValue().swap();
 			}
 		}
+
 		decompositionProcedure.examineWholeComputation(regionValues);
 
 		// Finished bounded probabilistic reachability
