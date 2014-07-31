@@ -143,10 +143,10 @@ public final class PSEModelChecker extends PrismComponent
 		timer = System.currentTimeMillis() - timer;
 		mainLog.println("\nTotal time for model checking: " + timer / 1000.0 + " seconds.");
 
-		// Return result
+		// Print and return result
+		decompositionProcedure.printSolution(mainLog);
 		Result result = new Result();
 		result.setResult(regionValues);
-		decompositionProcedure.printSolution(mainLog);
 		return result;
 	}
 
@@ -428,14 +428,21 @@ public final class PSEModelChecker extends PrismComponent
 		if (expr.isSimplePathFormula()) {
 			return checkProbPathFormulaSimple(model, expr, decompositionProcedure);
 		} else {
-			throw new PrismException("PSE supports unnested CSL formulae only");
+			throw new PrismException("PSE does not support nested CSL formulae");
 		}
 	}
 
 	/**
 	 * Compute probabilities for a simple, non-LTL path operator.
 	 */
-	protected BoxRegionValues checkProbPathFormulaSimple(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure) throws PrismException
+	protected BoxRegionValues checkProbPathFormulaSimple(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure)
+			throws PrismException
+	{
+		return checkProbPathFormulaSimple(model, expr, decompositionProcedure, false);
+	}
+
+	protected BoxRegionValues checkProbPathFormulaSimple(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure, boolean negate)
+			throws PrismException
 	{
 		BoxRegionValues regionValues = null;
 
@@ -445,18 +452,15 @@ public final class PSEModelChecker extends PrismComponent
 			// Parentheses
 			if (exprUnary.getOperator() == ExpressionUnaryOp.PARENTH) {
 				// Recurse
-				regionValues = checkProbPathFormulaSimple(model, exprUnary.getOperand(), decompositionProcedure);
+				regionValues = checkProbPathFormulaSimple(model, exprUnary.getOperand(), decompositionProcedure, negate);
 			}
 			// Negation
+			// NB: Handling of negations depends on the formula's being unnested/simple,
+			// i.e. the only top-level operators beyond the one temporal operator can be
+			// negations and/or parentheses.
 			else if (exprUnary.getOperator() == ExpressionUnaryOp.NOT) {
 				// Compute, then subtract from 1
-				regionValues = checkProbPathFormulaSimple(model, exprUnary.getOperand(), decompositionProcedure);
-				for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
-					entry.getValue().getMin().timesConstant(-1.0);
-					entry.getValue().getMin().plusConstant(1.0);
-					entry.getValue().getMax().timesConstant(-1.0);
-					entry.getValue().getMax().plusConstant(1.0);
-				}
+				regionValues = checkProbPathFormulaSimple(model, exprUnary.getOperand(), decompositionProcedure, !negate);
 			}
 		}
 		// Temporal operators
@@ -469,14 +473,14 @@ public final class PSEModelChecker extends PrismComponent
 			// Until
 			else if (exprTemp.getOperator() == ExpressionTemporal.P_U) {
 				if (exprTemp.hasBounds()) {
-					regionValues = checkProbBoundedUntil(model, exprTemp, decompositionProcedure);
+					regionValues = checkProbBoundedUntil(model, exprTemp, decompositionProcedure, negate);
 				} else {
-					throw new PrismException("PSE supports bounded until only");
+					throw new PrismException("PSE supports bounded U operator only");
 				}
 			}
 			// Anything else - convert to until and recurse
 			else {
-				regionValues = checkProbPathFormulaSimple(model, exprTemp.convertToUntilForm(), decompositionProcedure);
+				regionValues = checkProbPathFormulaSimple(model, exprTemp.convertToUntilForm(), decompositionProcedure, negate);
 			}
 		}
 
@@ -490,6 +494,12 @@ public final class PSEModelChecker extends PrismComponent
 	 * Model check a time-bounded until operator; return vector of probabilities for all states.
 	 */
 	protected BoxRegionValues checkProbBoundedUntil(PSEModel model, ExpressionTemporal expr, DecompositionProcedure decompositionProcedure)
+			throws PrismException
+	{
+		return checkProbBoundedUntil(model, expr, decompositionProcedure, false);
+	}
+
+	protected BoxRegionValues checkProbBoundedUntil(PSEModel model, ExpressionTemporal expr, DecompositionProcedure decompositionProcedure, boolean negate)
 			throws PrismException
 	{
 		double lTime, uTime; // time bounds
@@ -550,7 +560,7 @@ public final class PSEModelChecker extends PrismComponent
 
 			// >= lTime
 			if (uTime == -1) {
-				throw new PrismException("PSE supports bounded until only");
+				throw new PrismException("PSE requires until formula time-bounded from above");
 			}
 			// <= uTime
 			else if (lTime == 0) {
@@ -560,7 +570,9 @@ public final class PSEModelChecker extends PrismComponent
 
 				while (true) {
 					try {
-						regionValues = computeTransientBackwardsProbs(model, b2Min, b1Min, b2Max, b1Max, uTime, onesMultProbs, decompositionProcedure, oldRegionValues);
+						regionValues = computeTransientBackwardsProbs(
+								model, b2Min, b1Min, b2Max, b1Max, uTime, onesMultProbs,
+								decompositionProcedure, oldRegionValues, negate);
 						break;
 					} catch (DecompositionProcedure.DecompositionNeeded e) {
 						e.printRegionsToDecompose(mainLog);
@@ -581,13 +593,18 @@ public final class PSEModelChecker extends PrismComponent
 					try {
 						// Decomposition is always performed due to the failed condition in the second transient computation.
 						// The first transient computation is executed with decomposing disabled.
-						tmpRegionValues = computeTransientBackwardsProbs(model, b2Min, tmpMin, b2Max, tmpMax, uTime - lTime, onesMultProbs, SimpleDecompositionProcedure.NoDecomposing.getInstance(), oldTmpRegionValues);
-						regionValues = computeTransientBackwardsProbs(model, b1Min, b1Min, b1Max, b1Max, lTime, tmpRegionValues, decompositionProcedure, oldRegionValues);
+						tmpRegionValues = computeTransientBackwardsProbs(
+								model, b2Min, tmpMin, b2Max, tmpMax, uTime - lTime, onesMultProbs,
+								SimpleDecompositionProcedure.NoDecomposing.getInstance(), oldTmpRegionValues, false);
+						regionValues = computeTransientBackwardsProbs(
+								model, b1Min, b1Min, b1Max, b1Max, lTime, tmpRegionValues,
+								decompositionProcedure, oldRegionValues, negate);
 						break;
 					} catch (DecompositionProcedure.DecompositionNeeded e) {
 						e.printRegionsToDecompose(mainLog);
-						for (BoxRegion region : e.getRegionsToDecompose())
+						for (BoxRegion region : e.getRegionsToDecompose()) {
 							onesMultProbs.decomposeRegion(region);
+						}
 						oldTmpRegionValues = tmpRegionValues;
 						oldRegionValues = e.getExaminedRegionValues();
 					}
@@ -605,7 +622,7 @@ public final class PSEModelChecker extends PrismComponent
 			double t, BoxRegionValues multProbs, DecompositionProcedure decompositionProcedure)
 					throws PrismException, DecompositionProcedure.DecompositionNeeded
 	{
-		return computeTransientBackwardsProbs(model, targetMin, nonAbsMin, targetMax, nonAbsMax, t, multProbs, decompositionProcedure, null);
+		return computeTransientBackwardsProbs(model, targetMin, nonAbsMin, targetMax, nonAbsMax, t, multProbs, decompositionProcedure, null, false);
 	}
 
 	/**
@@ -615,7 +632,7 @@ public final class PSEModelChecker extends PrismComponent
 	public BoxRegionValues computeTransientBackwardsProbs(PSEModel model,
 			BitSet targetMin, BitSet nonAbsMin, BitSet targetMax, BitSet nonAbsMax,
 			double t, BoxRegionValues multProbs, DecompositionProcedure decompositionProcedure,
-			BoxRegionValues previousResult)
+			BoxRegionValues previousResult, boolean negate)
 					throws PrismException, DecompositionProcedure.DecompositionNeeded
 	{
 		BoxRegionValues regionValues = new BoxRegionValues(model);
@@ -730,7 +747,7 @@ public final class PSEModelChecker extends PrismComponent
 				if (iters >= left) {
 					for (i = 0; i < n; i++) {
 						sumMin[i] += weights[iters - left] * solnMin[i];
-						sumMax[i] += weights[iters - left] * solnMax[i];;
+						sumMax[i] += weights[iters - left] * solnMax[i];
 					}
 					decompositionProcedure.examineSingleIteration(region, sumMin, sumMax);
 				}
@@ -742,7 +759,14 @@ public final class PSEModelChecker extends PrismComponent
 			// Store result
 			regionValues.put(region, sumMin, sumMax);
 		}
-
+		if (negate) {
+			for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
+				entry.getValue().getMin().timesConstant(-1.0);
+				entry.getValue().getMin().plusConstant(1.0);
+				entry.getValue().getMax().timesConstant(-1.0);
+				entry.getValue().getMax().plusConstant(1.0);
+			}
+		}
 		decompositionProcedure.examineWholeComputation(regionValues);
 
 		// Finished bounded probabilistic reachability
