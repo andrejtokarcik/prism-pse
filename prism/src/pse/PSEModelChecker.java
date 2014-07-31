@@ -459,7 +459,6 @@ public final class PSEModelChecker extends PrismComponent
 			// i.e. the only top-level operators beyond the one temporal operator can be
 			// negations and/or parentheses.
 			else if (exprUnary.getOperator() == ExpressionUnaryOp.NOT) {
-				// Compute, then subtract from 1
 				regionValues = checkProbPathFormulaSimple(model, exprUnary.getOperand(), decompositionProcedure, !negate);
 			}
 		}
@@ -762,12 +761,13 @@ public final class PSEModelChecker extends PrismComponent
 
 		// Negate if necessary
 		if (negate) {
-			for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
-				entry.getValue().getMin().timesConstant(-1.0);
-				entry.getValue().getMin().plusConstant(1.0);
-				entry.getValue().getMax().timesConstant(-1.0);
-				entry.getValue().getMax().plusConstant(1.0);
-				entry.getValue().swap();
+			// Subtract all min/max values from 1
+			for (BoxRegionValues.StateValuesPair pair: regionValues.values()) {
+				pair.getMin().timesConstant(-1.0);
+				pair.getMin().plusConstant(1.0);
+				pair.getMax().timesConstant(-1.0);
+				pair.getMax().plusConstant(1.0);
+				pair.swap();
 			}
 		}
 
