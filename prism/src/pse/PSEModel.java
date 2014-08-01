@@ -53,8 +53,9 @@ public final class PSEModel extends ModelExplicit
 	private int numTotalTransitions;
 	/** begin and end of state transitions */
 	private int[] rows;
-	/** origins and targets of distribution branches */
+	/** origins of distribution branches */
 	private int[] colsFrom;
+	/** targets of distribution branches */
 	private int[] colsTo;
 	/** */
 	private Expression[] rateParams;
@@ -327,6 +328,7 @@ public final class PSEModel extends ModelExplicit
 	}
 
 	/**
+	 * Returns the predecessor state of the given transition.
 	 */
 	int fromState(int trans)
 	{
@@ -566,7 +568,7 @@ public final class PSEModel extends ModelExplicit
 		}
 	}
 
-	public void setRegion(BoxRegion region) throws PrismException
+	public void configureParameterSpace(BoxRegion region) throws PrismException
 	{
 		for (int trans = 0; trans < numTotalTransitions; trans++) {
 			rateParamsLowers[trans] = rateParams[trans].evaluateDouble(region.getLowerBounds());

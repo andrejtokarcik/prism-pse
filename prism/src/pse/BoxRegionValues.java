@@ -31,12 +31,12 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
-import explicit.Model;
-import explicit.StateValues;
 import parser.type.TypeDouble;
 import prism.Pair;
 import prism.PrismException;
 import prism.PrismLog;
+import explicit.Model;
+import explicit.StateValues;
 
 @SuppressWarnings("serial")
 public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateValuesPair> implements Iterable<Entry<BoxRegion, BoxRegionValues.StateValuesPair>>
@@ -60,7 +60,8 @@ public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateVal
 			return second;
 		}
 
-		public void swap() {
+		public void swap()
+		{
 			StateValues tmpFirst = first; 
 			first = second;
 			second = tmpFirst;

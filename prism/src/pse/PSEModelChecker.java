@@ -35,6 +35,7 @@ import java.util.Map.Entry;
 import parser.Values;
 import parser.ast.Expression;
 import parser.ast.ExpressionFilter;
+import parser.ast.ExpressionFilter.FilterOperator;
 import parser.ast.ExpressionLabel;
 import parser.ast.ExpressionProb;
 import parser.ast.ExpressionTemporal;
@@ -42,7 +43,6 @@ import parser.ast.ExpressionUnaryOp;
 import parser.ast.ModulesFile;
 import parser.ast.PropertiesFile;
 import parser.ast.RelOp;
-import parser.ast.ExpressionFilter.FilterOperator;
 import parser.type.TypeBool;
 import parser.type.TypeDouble;
 import prism.ModelType;
@@ -54,7 +54,7 @@ import prism.Result;
 import explicit.FoxGlynn;
 import explicit.StateModelChecker;
 import explicit.StateValues;
-import static explicit.Utils.bitsetToDoubleArray;
+import explicit.Utils;
 
 public final class PSEModelChecker extends PrismComponent
 {
@@ -657,8 +657,8 @@ public final class PSEModelChecker extends PrismComponent
 		if (((nonAbsMin != null && nonAbsMin.isEmpty()) || t == 0) &&
 				((nonAbsMax != null && nonAbsMax.isEmpty()) || t == 0) &&
 				multProbs == null) {
-			solnMin = bitsetToDoubleArray(targetMin, n);
-			solnMax = bitsetToDoubleArray(targetMax, n);
+			solnMin = Utils.bitsetToDoubleArray(targetMin, n);
+			solnMax = Utils.bitsetToDoubleArray(targetMax, n);
 			return new BoxRegionValues(model, regionFactory.completeSpace(), solnMin, solnMax);
 		}
 
@@ -701,7 +701,7 @@ public final class PSEModelChecker extends PrismComponent
 			double[] multProbsMax = entry.getValue().getMax().getDoubleArray();
 
 			// Configure parameter space
-			model.setRegion(region);
+			model.configureParameterSpace(region);
 			mainLog.println("Computing probabilities for parameter region " + region);
 
 			// Create solution vectors
@@ -888,7 +888,7 @@ public final class PSEModelChecker extends PrismComponent
 
 			// Configure parameter space
 			BoxRegion region = regions.remove();
-			model.setRegion(region);
+			model.configureParameterSpace(region);
 			mainLog.println("Computing probabilities for parameter region " + region);
 
 			try {

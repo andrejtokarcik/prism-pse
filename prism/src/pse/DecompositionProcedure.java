@@ -63,7 +63,8 @@ abstract class DecompositionProcedure
 			return regionsToDecompose.keySet();
 		}
 
-		public void printRegionsToDecompose(PrismLog log) {
+		public void printRegionsToDecompose(PrismLog log)
+		{
 			log.print("The following " + regionsToDecompose.size() + " regions are to be decomposed");
 			log.println(" because " + reason + ":");
 			regionsToDecompose.print(log);
@@ -100,13 +101,15 @@ abstract class DecompositionProcedure
 		return propExpr;
 	}
 
-	public void examineSingleIteration(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded, PrismException {
+	public void examineSingleIteration(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded, PrismException
+	{
 		verifySingleRegion(region, probsMin, probsMax);
 	}
 
 	protected void verifySingleRegion(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded, PrismException {}
 
-	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded, PrismException {
+	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded, PrismException
+	{
 		try {
 			verifyRegionValues(regionValues);
 		} catch (DecompositionNeeded e) {
@@ -117,11 +120,13 @@ abstract class DecompositionProcedure
 
 	protected void verifyRegionValues(BoxRegionValues regionValues) throws DecompositionNeeded, PrismException {}
 
-	public void printSolution(PrismLog log) {
+	public void printSolution(PrismLog log)
+	{
 		// The default filter added above takes care of printing the solution
 	}
 
-	protected void printIntro(PrismLog log) {
+	protected void printIntro(PrismLog log)
+	{
 		log.println("\nSolution of " + toString() + " for property " + propExpr + ":");
 	}
 }

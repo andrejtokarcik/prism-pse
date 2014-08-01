@@ -124,7 +124,7 @@ public final class ModelBuilder extends PrismComponent
 		time = System.currentTimeMillis();
 		modulesFile = (ModulesFile) modulesFile.deepCopy().replaceConstants(modulesFile.getConstantValues()).simplify();
 		model = constructModel(modulesFile);
-		model.setRegion(regionFactory.completeSpace());
+		model.configureParameterSpace(regionFactory.completeSpace());
 		time = System.currentTimeMillis() - time;
 
 		mainLog.println("\nTime for model construction: " + time / 1000.0 + " seconds.");
@@ -237,7 +237,7 @@ public final class ModelBuilder extends PrismComponent
 	}
 
 	/**
-	 * Construct model once function factory etc. has been allocated.
+	 * Construct model once modules file etc. has been prepared.
 	 * 
 	 * @param modulesFile modules file of which to construct parametric model
 	 * @return parametric model constructed
@@ -279,13 +279,13 @@ public final class ModelBuilder extends PrismComponent
 		for (State state : statesList) {
 			TransitionList tranlist = transitionsCache.get(state);
 			int numChoices = tranlist.getNumChoices();
-			Expression sumOut = Expression.Double(0);
+			Expression sumOut = Expression.Double(0.0);
 			for (int choiceNr = 0; choiceNr < numChoices; choiceNr++) {
 				ChoiceListFlexi choice = tranlist.getChoice(choiceNr);
 				int a = tranlist.getTransitionModuleOrActionIndex(tranlist.getTotalIndexOfTransition(choiceNr, 0));
 				String action = a < 0 ? null : modulesFile.getSynch(a - 1);
 
-				// CTMCs should only have a single nondeterministic choice per state
+				// CTMCs should have only a single nondeterministic choice per state
 				assert choice.size() == 1;
 
 				State stateNew = choice.computeTarget(0, state);

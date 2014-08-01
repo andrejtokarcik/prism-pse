@@ -28,11 +28,11 @@ package pse;
 
 import java.util.Map.Entry;
 
-import explicit.CTMC;
-import explicit.CTMCModelChecker;
 import parser.ast.Expression;
 import prism.PrismException;
 import simulator.SimulatorEngine;
+import explicit.CTMC;
+import explicit.CTMCModelChecker;
 
 public final class MaxSynthesisSampling extends MaxSynthesis
 {

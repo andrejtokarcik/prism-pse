@@ -27,11 +27,11 @@
 package pse;
 
 import java.util.HashSet;
-import java.util.Set;
 import java.util.Random;
+import java.util.Set;
 
 import parser.Values;
-import static explicit.Utils.powerSet;
+import explicit.Utils;
 
 final class BoxRegion implements Comparable<BoxRegion>
 {
@@ -78,7 +78,7 @@ final class BoxRegion implements Comparable<BoxRegion>
 			allIndices.add(i);
 		}
 
-		for (Set<Integer> indices : powerSet(allIndices)) {
+		for (Set<Integer> indices : Utils.powerSet(allIndices)) {
 			Values newLowerBounds = new Values();
 			Values newUpperBounds = new Values();
 			for (int i = 0; i < midBounds.getNumValues(); i++) {
@@ -152,7 +152,8 @@ final class BoxRegion implements Comparable<BoxRegion>
 	}
 
 	@Override
-	public int hashCode() {
+	public int hashCode()
+	{
 		final int prime = 31;
 		int result = 1;
 		result = prime * result
@@ -163,7 +164,8 @@ final class BoxRegion implements Comparable<BoxRegion>
 	}
 
 	@Override
-	public boolean equals(Object obj) {
+	public boolean equals(Object obj)
+	{
 		if (this == obj)
 			return true;
 		if (obj == null)
@@ -185,7 +187,8 @@ final class BoxRegion implements Comparable<BoxRegion>
 	}
 
 	@Override
-	public String toString() {
+	public String toString()
+	{
 		StringBuilder builder = new StringBuilder();
 		for (int i = 0; i < lowerBounds.getNumValues(); i++) {
 			if (i != 0) builder.append(",");
