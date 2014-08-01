@@ -44,13 +44,7 @@ final class LabelledBoxRegions extends HashMap<BoxRegion, Collection<String>>
 	public LabelledBoxRegions(BoxRegion region, String label)
 	{
 		super();
-		initialiseLabels(region);
-		get(region).add(label);
-	}
-
-	private void initialiseLabels(BoxRegion region)
-	{
-		put(region, new LinkedList<String>());
+		add(region, label);
 	}
 
 	public Collection<String> add(BoxRegion region)
@@ -61,7 +55,7 @@ final class LabelledBoxRegions extends HashMap<BoxRegion, Collection<String>>
 	public Collection<String> add(BoxRegion region, String label)
 	{
 		if (!containsKey(region)) {
-			initialiseLabels(region);
+			put(region, new LinkedList<String>());
 		}
 		Collection<String> labels = get(region);
 		if (label != null) {

@@ -52,10 +52,10 @@ abstract class DecompositionProcedure
 			this.regionsToDecompose = regionsToDecompose;
 		}
 
-		public DecompositionNeeded(String reason, BoxRegion region, String explanation)
+		public DecompositionNeeded(String reason, BoxRegion region, String regionLabel)
 		{
 			this.reason = reason;
-			this.regionsToDecompose = new LabelledBoxRegions(region, explanation);
+			this.regionsToDecompose = new LabelledBoxRegions(region, regionLabel);
 		}
 
 		public Set<BoxRegion> getRegionsToDecompose()
@@ -65,9 +65,9 @@ abstract class DecompositionProcedure
 
 		public void printRegionsToDecompose(PrismLog log)
 		{
-			log.print("The following " + regionsToDecompose.size() + " regions are to be decomposed");
-			log.println(" because " + reason + ":");
+			log.println("\nThe following " + regionsToDecompose.size() + " regions are to be decomposed:");
 			regionsToDecompose.print(log);
+			log.println("Reason: " + reason);
 		}
 
 		public void setExaminedRegionValues(BoxRegionValues examinedRegionValues)

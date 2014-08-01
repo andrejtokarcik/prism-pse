@@ -42,7 +42,7 @@ public final class SimpleDecompositionProcedure extends DecompositionProcedure
 			return INSTANCE;
 		}
 	}
-	
+
 	public SimpleDecompositionProcedure(double accuracy, int numStates)
 	{
 		this.accuracy = accuracy;
@@ -54,9 +54,10 @@ public final class SimpleDecompositionProcedure extends DecompositionProcedure
 	{
 		for (int state = 0; state < numStates; state++) {
 			if (probsMax[state] - probsMin[state] > accuracy) {
-				throw new DecompositionNeeded(
-						probsMax[state] + " - " + probsMin[state] + " > " + accuracy + " in state " + state,
-						region, "significant inaccuracy");
+				throw new DecompositionNeeded("Significant inaccuracy was obtained " +
+						"in state " + state + ":" + model.getStatesList().get(state) + ",\n" +
+						probsMax[state] + " - " + probsMin[state] + " > " + accuracy,
+						region, "inaccurate region");
 			}
 		}
 	}
