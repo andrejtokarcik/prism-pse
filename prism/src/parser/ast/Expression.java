@@ -74,11 +74,6 @@ public abstract class Expression extends ASTElement
 	 */
 	public abstract Expression deepCopy();
 
-	/**
-	 */
-	public abstract int hashCode();
-	public abstract boolean equals(Object o);
-
 	// Utility methods:
 
 	/**
@@ -540,11 +535,6 @@ public abstract class Expression extends ASTElement
 		} else {
 			throw new PrismLangException("Unknown object type " + o.getClass());
 		}
-	}
-	
-	public static Expression ConstantDouble(String name)
-	{
-		return new ExpressionConstant(name, TypeDouble.getInstance());
 	}
 
 	public static Expression Not(Expression expr)
