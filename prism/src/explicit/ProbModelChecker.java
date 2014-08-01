@@ -685,17 +685,14 @@ public class ProbModelChecker extends NonProbModelChecker
 	 */
 	protected StateValues checkExpressionReward(Model model, ExpressionReward expr) throws PrismException
 	{
-		Object rs; // Reward struct index
-		RewardStruct rewStruct = null; // Reward struct object
 		Expression rb; // Reward bound (expression)
 		double r = 0; // Reward bound (actual value)
 		RelOp relOp; // Relational operator
 		StateValues rews = null;
 		Rewards rewards = null;
-		int i;
 
 		// Get info from R operator
-		rs = expr.getRewardStructIndex();
+		RewardStruct rewStruct = expr.getRewardStructByIndexObject(modulesFile, constantValues);
 		relOp = expr.getRelOp();
 		rb = expr.getReward();
 		if (rb != null) {
@@ -704,37 +701,9 @@ public class ProbModelChecker extends NonProbModelChecker
 				throw new PrismException("Invalid reward bound " + r + " in R[] formula");
 		}
 
-		// Get reward info
-		if (modulesFile == null)
-			throw new PrismException("No model file to obtain reward structures");
-		if (modulesFile.getNumRewardStructs() == 0)
-			throw new PrismException("Model has no rewards specified");
-		if (rs == null) {
-			rewStruct = modulesFile.getRewardStruct(0);
-		} else if (rs instanceof Expression) {
-			i = ((Expression) rs).evaluateInt(constantValues);
-			rs = new Integer(i); // for better error reporting below
-			rewStruct = modulesFile.getRewardStruct(i - 1);
-		} else if (rs instanceof String) {
-			rewStruct = modulesFile.getRewardStructByName((String) rs);
-		}
-		if (rewStruct == null)
-			throw new PrismException("Invalid reward structure index \"" + rs + "\"");
-
 		// Build rewards
 		mainLog.println("Building reward structure...");
-		ConstructRewards constructRewards = new ConstructRewards(mainLog);
-		switch (model.getModelType()) {
-		case CTMC:
-		case DTMC:
-			rewards = constructRewards.buildMCRewardStructure((DTMC) model, rewStruct, constantValues);
-			break;
-		case MDP:
-			rewards = constructRewards.buildMDPRewardStructure((MDP) model, rewStruct, constantValues);
-			break;
-		default:
-			throw new PrismException("Cannot build rewards for " + model.getModelType() + "s");
-		}
+		rewards = constructRewards(model, rewStruct);
 
 		// Compute rewards
 		MinMax minMax = (relOp.isLowerBound() || relOp.isMin()) ? MinMax.min() : MinMax.max();
@@ -758,6 +727,27 @@ public class ProbModelChecker extends NonProbModelChecker
 		}
 	}
 
+	/**
+	 * Construct rewards from a reward structure and a model.
+	 */
+	protected Rewards constructRewards(Model model, RewardStruct rewStruct) throws PrismException
+	{
+		Rewards rewards;
+		ConstructRewards constructRewards = new ConstructRewards(mainLog);
+		switch (model.getModelType()) {
+		case CTMC:
+		case DTMC:
+			rewards = constructRewards.buildMCRewardStructure((DTMC) model, rewStruct, constantValues);
+			break;
+		case MDP:
+			rewards = constructRewards.buildMDPRewardStructure((MDP) model, rewStruct, constantValues);
+			break;
+		default:
+			throw new PrismException("Cannot build rewards for " + model.getModelType() + "s");
+		}
+		return rewards;
+	}
+	
 	/**
 	 * Compute rewards for the contents of an R operator.
 	 */
