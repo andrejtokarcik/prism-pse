@@ -748,7 +748,7 @@ public final class PSEModelChecker extends PrismComponent
 						sumMin[i] += weights[iters - left] * solnMin[i];
 						sumMax[i] += weights[iters - left] * solnMax[i];
 					}
-					decompositionProcedure.examineSingleIteration(region, sumMin, sumMax);
+					decompositionProcedure.examineSingleIteration(regionValues, region, sumMin, sumMax);
 				}
 
 				iters++;
@@ -913,7 +913,7 @@ public final class PSEModelChecker extends PrismComponent
 							sumMin[i] += weights[iters - left] * solnMin[i];
 							sumMax[i] += weights[iters - left] * solnMax[i];
 						}
-						decompositionProcedure.examineSingleIteration(region, sumMin, sumMax);
+						decompositionProcedure.examineSingleIteration(regionValues, region, sumMin, sumMax);
 					}
 
 					iters++;

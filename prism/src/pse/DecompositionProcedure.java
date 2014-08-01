@@ -101,14 +101,24 @@ abstract class DecompositionProcedure
 		return propExpr;
 	}
 
-	public void examineSingleIteration(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded, PrismException
+	public void examineSingleIteration(BoxRegionValues regionValues, BoxRegion region, double probsMin[], double probsMax[])
+			throws DecompositionNeeded, PrismException
 	{
-		verifySingleRegion(region, probsMin, probsMax);
+		try {
+			verifySingleRegion(region, probsMin, probsMax);
+		} catch (DecompositionNeeded e) {
+			e.setExaminedRegionValues(regionValues);
+			throw e;
+		}
 	}
 
-	protected void verifySingleRegion(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded, PrismException {}
+	protected void verifySingleRegion(BoxRegion region, double probsMin[], double probsMax[])
+			throws DecompositionNeeded, PrismException
+	{
+	}
 
-	public void examineWholeComputation(BoxRegionValues regionValues) throws DecompositionNeeded, PrismException
+	public void examineWholeComputation(BoxRegionValues regionValues)
+			throws DecompositionNeeded, PrismException
 	{
 		try {
 			verifyRegionValues(regionValues);
@@ -118,7 +128,10 @@ abstract class DecompositionProcedure
 		}
 	}
 
-	protected void verifyRegionValues(BoxRegionValues regionValues) throws DecompositionNeeded, PrismException {}
+	protected void verifyRegionValues(BoxRegionValues regionValues)
+			throws DecompositionNeeded, PrismException
+	{
+	}
 
 	public void printSolution(PrismLog log)
 	{
