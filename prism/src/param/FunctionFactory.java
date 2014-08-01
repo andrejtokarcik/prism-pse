@@ -173,13 +173,4 @@ abstract class FunctionFactory {
 	Function fromLong(long from) {
 		return fromBigRational(new BigRational(from));
 	}
-
-	/**
-	 */
-	BigRational[] getLowerBounds() {
-		return lowerBounds;
-	}
-	BigRational[] getUpperBounds() {
-		 return upperBounds;
-	 }
 }
