@@ -58,6 +58,7 @@ import parser.ast.PropertiesFile;
 import parser.ast.Property;
 import pse.PSEModel;
 import pse.PSEModelChecker;
+import pse.DecompositionProcedure;
 import pse.MaxSynthesisNaive;
 import pse.MaxSynthesisSampling;
 import pse.MinSynthesisNaive;
@@ -3437,7 +3438,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		return builder;
 	}
 
-	private void printInitInfoPSE(PrismLog log, String intro, pse.BoxRegionFactory regionFactory, PropertiesFile propertiesFile)
+	private void printInitInfoPSE(PrismLog log, String intro, pse.BoxRegionFactory regionFactory, PropertiesFile propertiesFile, double accuracy)
 	{
 		log.printSeparator();
 		log.println("\n" + intro);
@@ -3449,134 +3450,57 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			if (definedPFConstants != null && definedPFConstants.getNumValues() > 0)
 				log.println("Property constants: " + definedPFConstants);
 		}
+		log.println("Accuracy/tolerance: " + accuracy);
 		log.println();
 	}
 
 	/**
 	 */
-	public Result modelCheckPSE(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double accuracy)
+	public Result modelCheckPSE(DecompositionProcedure.Type decompositionType, PropertiesFile propertiesFile, Property prop,
+			String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double accuracy)
 			throws PrismException
 	{
 		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
 		PSEModel model = builder.getModel();
 		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
+		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
+		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
 		// Allow the builder to be garbage-collected
 		builder = null;
 
-		printInitInfoPSE(mainLog, "PSE model checking: " + prop, regionFactory, propertiesFile);
-		
-		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
-		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
-		return mc.check(model, prop.getExpression(), new SimpleDecompositionProcedure(accuracy, model.getNumStates()));
-	}
+		// Determine the decomposition procedure
+		DecompositionProcedure decompositionProcedure;
+		switch (decompositionType) {
+		case SIMPLE:
+			printInitInfoPSE(mainLog, "PSE model checking: " + prop, regionFactory, propertiesFile, accuracy);
+			decompositionProcedure = new SimpleDecompositionProcedure(accuracy, model.getNumStates());
+			break;
+		case THRESHOLD:
+			printInitInfoPSE(mainLog, "PSE threshold synthesis: " + prop, regionFactory, propertiesFile, accuracy);
+			decompositionProcedure = new ThresholdSynthesis(accuracy, model.getFirstInitialState(), regionFactory.completeSpace());
+			break;
+		case MIN_NAIVE:
+			printInitInfoPSE(mainLog, "PSE min synthesis using the naive approach: " + prop, regionFactory, propertiesFile, accuracy);
+			decompositionProcedure = new MinSynthesisNaive(accuracy, model.getFirstInitialState());
+			break;
+		case MIN_SAMPLING:
+			printInitInfoPSE(mainLog, "PSE min synthesis using the sampling approach: " + prop, regionFactory, propertiesFile, accuracy);
+			decompositionProcedure = new MinSynthesisSampling(accuracy, model.getFirstInitialState(), getSimulator());
+			break;
+		case MAX_NAIVE:
+			printInitInfoPSE(mainLog, "PSE max synthesis using the naive approach: " + prop, regionFactory, propertiesFile, accuracy);
+			decompositionProcedure = new MaxSynthesisNaive(accuracy, model.getFirstInitialState());
+			break;
+		case MAX_SAMPLING:
+			printInitInfoPSE(mainLog, "PSE max synthesis using the sampling approach: " + prop, regionFactory, propertiesFile, accuracy);
+			decompositionProcedure = new MaxSynthesisSampling(accuracy, model.getFirstInitialState(), getSimulator());
+			break;
+		default:
+			throw new PrismException("Unrecognized decomposition type");
+		}
 
-	/**
-	 */
-	public Result doThresholdSynthesis(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double volumeTolerance)
-			throws PrismException
-	{
-		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
-		PSEModel model = builder.getModel();
-		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
-		// Allow the builder to be garbage-collected
-		builder = null;
-
-		printInitInfoPSE(mainLog, "PSE threshold synthesis: " + prop, regionFactory, propertiesFile);
-
-		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
-		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
-		if (model.getNumInitialStates() != 1)
-			throw new PrismException("Threshold synthesis requires exactly one initial state");
-		ThresholdSynthesis synth = new ThresholdSynthesis(volumeTolerance, model.getFirstInitialState(), regionFactory.completeSpace());
-		return mc.check(model, prop.getExpression(), synth);
-	}
-
-	/**
-	 */
-	public Result doMinSynthesisNaive(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double probTolerance)
-			throws PrismException
-	{
-		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
-		PSEModel model = builder.getModel();
-		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
-		// Allow the builder to be garbage-collected
-		builder = null;
-
-		printInitInfoPSE(mainLog, "PSE min synthesis using the naive approach: " + prop, regionFactory, propertiesFile);
-
-		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
-		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
-		Expression propExpr = prop.getExpression();
-		if (model.getNumInitialStates() != 1)
-			throw new PrismException("Min synthesis requires exactly one initial state");
-		MinSynthesisNaive synth = new MinSynthesisNaive(probTolerance, model.getFirstInitialState());
-		return mc.check(model, propExpr, synth);
-	}
-
-	/**
-	 */
-	public Result doMinSynthesisSampling(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double probTolerance)
-			throws PrismException
-	{
-		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
-		PSEModel model = builder.getModel();
-		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
-		// Allow the builder to be garbage-collected
-		builder = null;
-
-		printInitInfoPSE(mainLog, "PSE min synthesis using the sampling approach: " + prop, regionFactory, propertiesFile);
-
-		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
-		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
-		Expression propExpr = prop.getExpression();
-		if (model.getNumInitialStates() != 1)
-			throw new PrismException("Min synthesis requires exactly one initial state");
-		MinSynthesisSampling synth = new MinSynthesisSampling(probTolerance, model.getFirstInitialState(), getSimulator());
-		return mc.check(model, propExpr, synth);
-	}
-
-	/**
-	 */
-	public Result doMaxSynthesisNaive(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double probTolerance)
-			throws PrismException
-	{
-		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
-		PSEModel model = builder.getModel();
-		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
-		// Allow the builder to be garbage-collected
-		builder = null;
-
-		printInitInfoPSE(mainLog, "PSE max synthesis using the naive approach: " + prop, regionFactory, propertiesFile);
-
-		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
-		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
-		Expression propExpr = prop.getExpression();
-		if (model.getNumInitialStates() != 1)
-			throw new PrismException("Max synthesis requires exactly one initial state");
-		MaxSynthesisNaive synth = new MaxSynthesisNaive(probTolerance, model.getFirstInitialState());
-		return mc.check(model, propExpr, synth);
-	}
-
-	/**
-	 */
-	public Result doMaxSynthesisSampling(PropertiesFile propertiesFile, Property prop, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double probTolerance)
-			throws PrismException
-	{
-		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
-		PSEModel model = builder.getModel();
-		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
-		// Allow the builder to be garbage-collected
-		builder = null;
-
-		printInitInfoPSE(mainLog, "PSE max synthesis using the sampling approach: " + prop, regionFactory, propertiesFile);
-
-		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
-		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
-		Expression propExpr = prop.getExpression();
-		if (model.getNumInitialStates() != 1)
-			throw new PrismException("Max synthesis requires exactly one initial state");
-		MaxSynthesisSampling synth = new MaxSynthesisSampling(probTolerance, model.getFirstInitialState(), getSimulator());
-		return mc.check(model, propExpr, synth);
+		// Execute model checking
+		return mc.check(model, prop.getExpression(), decompositionProcedure);
 	}
 
 	/**
@@ -3600,7 +3524,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			if (timeDouble < 0)
 				throw new PrismException("Cannot perform parameter space exploration for negative time value");
 			
-			printInitInfoPSE(mainLog, "Performing parameter space exploration (time = " + time + ", accuracy = " + accuracy + ")...", regionFactory, null);
+			printInitInfoPSE(mainLog, "Performing parameter space exploration (time = " + time + ")...", regionFactory, null, accuracy);
 			
 			long l = System.currentTimeMillis();
 
@@ -3617,7 +3541,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 					new SimpleDecompositionProcedure(accuracy, model.getNumStates()));
 
 			// Results report
-			mainLog.println("\nPrinting transient probabilities w.r.t. the given parameter space:");
+			mainLog.println("\nPrinting minimised & maximised transient probabilities:");
 			// TODO: printing to other log files (search for tmpLog used elsewhere)
 
 			// print out or export probabilities

@@ -87,13 +87,9 @@ public class PrismCL implements PrismModelListener
 	private boolean simulate = false;
 	private boolean simpath = false;
 	private boolean param = false;
-	private boolean pse = false;
+	private boolean pseTransient = false;
 	private boolean pseCheck = false;
-	private boolean pseSynthThr = false;
-	private boolean pseSynthMinNaive = false;
-	private boolean pseSynthMinSampling = false;
-	private boolean pseSynthMaxNaive = false;
-	private boolean pseSynthMaxSampling = false;
+	private pse.DecompositionProcedure.Type pseCheckType;
 	private ModelType typeOverride = null;
 	private boolean orderingOverride = false;
 	private boolean explicitbuild = false;
@@ -249,7 +245,7 @@ public class PrismCL implements PrismModelListener
 					undefinedConstants[i].removeConstants(paramNames);
 				}
 			}
-			if (pse || pseCheck || pseSynthThr || pseSynthMinNaive || pseSynthMinSampling || pseSynthMaxNaive || pseSynthMaxSampling) {
+			if (pseTransient || pseCheck) {
 				undefinedMFConstants.removeConstants(pseNames);
 				for (i = 0; i < numPropertiesToCheck; i++) {
 					undefinedConstants[i].removeConstants(pseNames);
@@ -326,7 +322,7 @@ public class PrismCL implements PrismModelListener
 				continue;
 
 			// Do parameter space exploration, if required
-			doParamSpaceExplore();
+			doTransientPSE();
 			if (modelBuildFail)
 				continue;
 
@@ -358,32 +354,13 @@ public class PrismCL implements PrismModelListener
 								definedPFConstants = undefinedConstants[j].getPFConstantValues();
 								propertiesFile.setSomeUndefinedConstants(definedPFConstants);
 							}
-							// Parametric model checking
+							// Parametric model checking (param)
 							if (param) {
 								res = prism.modelCheckParametric(propertiesFile, propertiesToCheck.get(j), paramNames, paramLowerBounds, paramUpperBounds);
 							}
+							// Parametric model checking (PSE)
 							else if (pseCheck) {
-								res = prism.modelCheckPSE(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
-							}
-							else if (pseSynthThr) {
-								// pseAccuracy interpreted as volume tolerance
-								res = prism.doThresholdSynthesis(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
-							}
-							else if (pseSynthMinNaive) {
-								// pseAccuracy interpreted as probability tolerance
-								res = prism.doMinSynthesisNaive(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
-							}
-							else if (pseSynthMinSampling) {
-								// pseAccuracy interpreted as probability tolerance
-								res = prism.doMinSynthesisSampling(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
-							}
-							else if (pseSynthMaxNaive) {
-								// pseAccuracy interpreted as probability tolerance
-								res = prism.doMaxSynthesisNaive(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
-							}
-							else if (pseSynthMaxSampling) {
-								// pseAccuracy interpreted as probability tolerance
-								res = prism.doMaxSynthesisSampling(propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
+								res = prism.modelCheckPSE(pseCheckType, propertiesFile, propertiesToCheck.get(j), pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy);
 							}
 							// Approximate (simulation-based) model checking
 							else if (simulate) {
@@ -473,7 +450,7 @@ public class PrismCL implements PrismModelListener
 			}
 
 			// Explicitly request a build if necessary
-			if (propertiesToCheck.size() == 0 && !steadystate && !dotransient && !pse && !simpath && !nobuild && prism.modelCanBeBuilt() && !prism.modelIsBuilt()) {
+			if (propertiesToCheck.size() == 0 && !steadystate && !dotransient && !pseTransient && !simpath && !nobuild && prism.modelCanBeBuilt() && !prism.modelIsBuilt()) {
 				try {
 					prism.buildModel();
 				} catch (PrismException e) {
@@ -926,11 +903,11 @@ public class PrismCL implements PrismModelListener
 	/**
 	 * Do parameter space exploration (if required).
 	 */
-	private void doParamSpaceExplore()
+	private void doTransientPSE()
 	{
 		ModelType modelType;
 
-		if (pse) {
+		if (pseTransient) {
 			try {
 				// TODO: PSE results export
 
@@ -958,8 +935,6 @@ public class PrismCL implements PrismModelListener
 			}
 		}
 	}
-
-
 
 	/**
 	 * Close down.
@@ -1106,7 +1081,7 @@ public class PrismCL implements PrismModelListener
 				}
 				// explore parameter space with given ranges
 				else if (sw.equals("pse")) {
-					pse = true;
+					pseTransient = true;
 					if (i < args.length - 3) {
 						pseTime = args[++i];
 						pseSwitch = args[++i].trim();
@@ -1123,12 +1098,19 @@ public class PrismCL implements PrismModelListener
 				else if (sw.equals("psecheck") || sw.equals("psesynth-thr") ||
 						sw.equals("psesynth-min-naive") || sw.equals("psesynth-min-sampling") ||
 						sw.equals("psesynth-max-naive") || sw.equals("psesynth-max-sampling")) {
-					if (sw.equals("psecheck")) pseCheck = true;
-					else if (sw.equals("psesynth-thr")) pseSynthThr = true;
-					else if (sw.equals("psesynth-min-naive")) pseSynthMinNaive = true;
-					else if (sw.equals("psesynth-min-sampling")) pseSynthMinSampling = true;
-					else if (sw.equals("psesynth-max-naive")) pseSynthMaxNaive = true;
-					else if (sw.equals("psesynth-max-sampling")) pseSynthMaxSampling = true;
+					pseCheck = true;
+					if (sw.equals("psecheck"))
+						pseCheckType = pse.DecompositionProcedure.Type.SIMPLE;
+					else if (sw.equals("psesynth-thr"))
+						pseCheckType = pse.DecompositionProcedure.Type.THRESHOLD;
+					else if (sw.equals("psesynth-min-naive"))
+						pseCheckType = pse.DecompositionProcedure.Type.MIN_NAIVE;
+					else if (sw.equals("psesynth-min-sampling"))
+						pseCheckType = pse.DecompositionProcedure.Type.MIN_SAMPLING;
+					else if (sw.equals("psesynth-max-naive"))
+						pseCheckType = pse.DecompositionProcedure.Type.MAX_NAIVE;
+					else if (sw.equals("psesynth-max-sampling"))
+						pseCheckType = pse.DecompositionProcedure.Type.MAX_SAMPLING;
 
 					if (i < args.length - 2) {
 						pseSwitch = args[++i].trim();
@@ -2079,7 +2061,7 @@ public class PrismCL implements PrismModelListener
 		}
 
 		// process parameter space ranges
-		if (pse || pseCheck || pseSynthThr || pseSynthMinNaive || pseSynthMinSampling || pseSynthMaxNaive || pseSynthMaxSampling) {
+		if (pseTransient || pseCheck) {
 			String[] pseDefs = pseSwitch.split(",");
 			pseNames = new String[pseDefs.length];
 			pseLowerBounds = new double[pseDefs.length];

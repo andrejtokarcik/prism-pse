@@ -33,11 +33,16 @@ import parser.ast.ExpressionFilter;
 import prism.PrismException;
 import prism.PrismLog;
 
-abstract class DecompositionProcedure
+public abstract class DecompositionProcedure
 {
 	protected PSEModelChecker modelChecker;
 	protected PSEModel model;
 	protected Expression propExpr;
+
+	public enum Type
+	{
+		SIMPLE, THRESHOLD, MIN_NAIVE, MIN_SAMPLING, MAX_NAIVE, MAX_SAMPLING;
+	}
 
 	@SuppressWarnings("serial")
 	public static class DecompositionNeeded extends Exception
