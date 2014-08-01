@@ -39,23 +39,4 @@ public class Pair<X,Y>
 		this.first = first;
 		this.second = second;
 	}
-
-	public static class ComparablePair<X extends Comparable<X>, Y extends Comparable<Y>> extends Pair<X, Y> implements Comparable<Pair<X, Y>>
-	{
-		public ComparablePair(X first, Y second)
-		{
-			super(first, second);
-		}
-
-		/**
-		 * Lexicographical ordering.
-		 */
-		public int compareTo(Pair<X, Y> o)
-		{
-			int res = first != null ? first.compareTo(o.first) : (o.first != null ? -1 : 0);
-			if (res == 0)
-				res = second != null ? second.compareTo(o.second) : (o.second != null ? -1 : 0);
-			return res;
-		}
-	}
 }
