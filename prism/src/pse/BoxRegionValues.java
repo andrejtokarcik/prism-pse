@@ -110,11 +110,6 @@ public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateVal
 		return put(region, minValues, maxValues);
 	}
 
-	public StateValuesPair remove(BoxRegion region)
-	{
-		return remove(region);
-	}
-
 	public void decomposeRegion(BoxRegion region)
 	{
 		StateValuesPair oldValuesPair = remove(region);
