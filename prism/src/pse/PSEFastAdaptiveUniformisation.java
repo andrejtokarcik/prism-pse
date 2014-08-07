@@ -61,7 +61,7 @@ import pse.PSEModelExplorer.RateParametersAndPopulation;
 /**
  * Implementation of fast adaptive uniformisation (FAU).
  */
-public class PSEFastAdaptiveUniformisation extends PrismComponent
+public final class PSEFastAdaptiveUniformisation extends PrismComponent
 {
 	/**
 	 * Stores properties of states needed for fast adaptive method.
@@ -500,55 +500,55 @@ public class PSEFastAdaptiveUniformisation extends PrismComponent
 	}
 
 	/** model exploration component to generate new states */
-	protected PSEModelExplorer modelExplorer;
+	private PSEModelExplorer modelExplorer;
 	/** */
-	protected Values upperParams;
+	private Values upperParams;
 	/** probability allowed to drop birth process */
-	protected double epsilon;
+	private double epsilon;
 	/** probability threshold when to drop states in discrete-time process */
-	protected double delta;
+	private double delta;
 	/** number of intervals to divide time into */
-	protected int numIntervals;
+	private int numIntervals;
 	/** iterations after which switch to sparse matrix if no new/dropped states */
-	protected int arrayThreshold;
+	private int arrayThreshold;
 	
 	/** result value of analysis */
-	protected double value;
+	private double value;
 	/** model constants */
-	protected Values constantValues = null;
+	private Values constantValues = null;
 	/** maps from state (assignment of variable values) to property object */
-	protected LinkedHashMap<State,StateProp> states;
+	private LinkedHashMap<State,StateProp> states;
 	/** states for which successor rates are to be computed */
-	protected ArrayList<State> addDistr;
+	private ArrayList<State> addDistr;
 	/** states which are to be deleted */
-	protected ArrayList<State> deleteStates;
+	private ArrayList<State> deleteStates;
 	/** initial size of state hash map */
-	protected final int initSize = 3000;
+	private final int initSize = 3000;
 	/** maximal total leaving rate of all states alive */
-	protected double maxRate = 0.0;
+	private double maxRate = 0.0;
 	/** target state set - used for reachability (until or finally properties) */
-	protected Expression target;
+	private Expression target;
 	/** number of consecutive iterations without new states are state drops */
-	protected int itersUnchanged;
+	private int itersUnchanged;
 	/** sum of probabilities in stages of birth process seen so far */
-	protected double birthProbSum;
+	private double birthProbSum;
 	/** birth process used for time discretisation */
-	protected BirthProcess birthProc;
+	private BirthProcess birthProc;
 	/** states which fulfill this will be made absorbing - for until props */
-	protected Expression sink;
+	private Expression sink;
 	/** if true, don't drop further states.
 	 * Used to avoid excessive probability loss in some cases. */
-	protected boolean keepSumProb;
+	private boolean keepSumProb;
 	/** maximal number of states ever stored during analysis */
-	protected int maxNumStates;
+	private int maxNumStates;
 	/** list of special labels we need to maintain, like "init", "deadlock", etc. */
-	protected LabelList specialLabels;
+	private LabelList specialLabels;
 	/** set of initial states of the model */
-	protected HashSet<State> initStates;
+	private HashSet<State> initStates;
 	/** total loss of probability in discrete-time process */
-	protected double totalProbLoss;
+	private double totalProbLoss;
 	/** */
-	protected TransitionMap transitionMap = new TransitionMap();
+	private TransitionMap transitionMap = new TransitionMap();
 
 	/**
 	 * Constructor.
@@ -749,7 +749,7 @@ public class PSEFastAdaptiveUniformisation extends PrismComponent
 	 * @param interval duration of time interval
 	 * @throws PrismException
 	 */
-	protected void iterateAdaptiveInterval(double interval, VectorType vectorType) throws PrismException
+	private void iterateAdaptiveInterval(double interval, VectorType vectorType) throws PrismException
 	{
 		birthProc = new BirthProcess();
 		birthProc.setTime(interval);
@@ -811,7 +811,7 @@ public class PSEFastAdaptiveUniformisation extends PrismComponent
 	 * @return current iteration after termination of this method
 	 * @throws PrismException thrown if problems in underlying methods occur
 	 */
-//	protected int arrayIterate(int iters) throws PrismException
+//	private int arrayIterate(int iters) throws PrismException
 //	{
 //		/* build backwards matrix and map values */
 //		int numStates = states.size();
@@ -948,7 +948,7 @@ public class PSEFastAdaptiveUniformisation extends PrismComponent
 	 * 
 	 * @throws PrismException thrown if something goes wrong
 	 */
-	protected void updateStates() throws PrismException
+	private void updateStates() throws PrismException
 	{
 		maxRate = 0.0;
 		addDistr.clear();
@@ -982,7 +982,7 @@ public class PSEFastAdaptiveUniformisation extends PrismComponent
 	 * the given threshold, and do not have incoming transitions from states
 	 * with a relevant probability mass.
 	 */
-	protected void removeDeletedStates()
+	private void removeDeletedStates()
 	{
 		assert deleteStates.isEmpty();
 		for (Map.Entry<State,StateProp> statePair : states.entrySet()) {
@@ -1011,7 +1011,7 @@ public class PSEFastAdaptiveUniformisation extends PrismComponent
 	 * 
 	 * @throws PrismException
 	 */
-    protected void prepareInitialDistribution() throws PrismException
+    private void prepareInitialDistribution() throws PrismException
     {
     	initStates = new HashSet<State>();
 		State initState = modelExplorer.getDefaultInitialState();
@@ -1055,7 +1055,7 @@ public class PSEFastAdaptiveUniformisation extends PrismComponent
 	 * @param state state to add
 	 * @throws PrismException thrown if something wrong happens in underlying methods
 	 */
-	protected void addToModel(State state) throws PrismException
+	private void addToModel(State state) throws PrismException
 	{
 		StateProp prop = new StateProp();
 		states.put(state, prop);
@@ -1070,7 +1070,7 @@ public class PSEFastAdaptiveUniformisation extends PrismComponent
 	 * @param state state to compute successor rates and rewards for
 	 * @throws PrismException thrown if something goes wrong
 	 */
-	protected void computeStateRates(State state) throws PrismException
+	private void computeStateRates(State state) throws PrismException
 	{
 		modelExplorer.queryState(state);
 		Expression sumRates = Expression.Double(0.0);
@@ -1126,7 +1126,7 @@ public class PSEFastAdaptiveUniformisation extends PrismComponent
 	 * 
 	 * @param maxRate maximal total leaving rate sum in living states
 	 */
-	protected void vmMultMin(double maxRate)
+	private void vmMultMin(double maxRate)
 	{
 		for (StateProp state : states.values()) {
 			double prob = state.getProb();
@@ -1167,7 +1167,7 @@ public class PSEFastAdaptiveUniformisation extends PrismComponent
 		}
 	}
 
-	protected void vmMultMax(double maxRate)
+	private void vmMultMax(double maxRate)
 	{
 		for (StateProp state : states.values()) {
 			double prob = state.getProb();
