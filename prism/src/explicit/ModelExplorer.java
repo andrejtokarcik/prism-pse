@@ -28,7 +28,7 @@ package explicit;
 import parser.State;
 import prism.PrismException;
 
-public interface ModelExplorer
+public interface ModelExplorer<T>
 {
 	public State getDefaultInitialState() throws PrismException;
 	
@@ -57,7 +57,7 @@ public interface ModelExplorer
 	/**
 	 * Get the probability/rate of a transition within a choice, specified by its index/offset.
 	 */
-	public double getTransitionProbability(int i, int offset) throws PrismException;
+	public T getTransitionProbability(int i, int offset) throws PrismException;
 
 	/**
 	 * Get the action label of a transition as a string, specified by its index/offset.
@@ -80,12 +80,12 @@ public interface ModelExplorer
 	/**
 	 * Get the probability/rate of a transition, specified by its index.
 	 */
-	public double getTransitionProbability(int i) throws PrismException;
+	public T getTransitionProbability(int i) throws PrismException;
 	
 	/**
 	 * Get the sum of probabilities/rates for transitions.
 	 */
-//	public double getTransitionProbabilitySum() throws PrismException;
+//	public T getTransitionProbabilitySum() throws PrismException;
 	
 	/**
 	 * Get the target (as a new State object) of a transition within a choice, specified by its index/offset.
