@@ -86,7 +86,12 @@ public class SymbolicEngine
 			enabledModules[j] = new BitSet(numModules);
 		}
 	}
-	
+
+	public ModulesFile getModulesFile()
+	{
+		return modulesFile;
+	}
+
 	private void calculateUpdatesForModule(int m, State state) throws PrismLangException
 	{
 		Module module;
