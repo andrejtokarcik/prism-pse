@@ -40,12 +40,6 @@ public class Pair<X,Y>
 		this.second = second;
 	}
 
-	public Pair(Pair<X, Y> pair)
-	{
-		this.first = pair.first;
-		this.second = pair.second;
-	}
-
 	@Override
 	public int hashCode() {
 		final int prime = 31;

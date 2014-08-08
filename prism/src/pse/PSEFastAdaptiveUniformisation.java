@@ -83,9 +83,9 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		/** sum probability weighted with birth process distribution */
 		private double sumProb;
 		/** */
-		private double sumRates; 
+		private double sumRates;
 		/** number of incoming transitions of relevant states */
-		private int references;
+		private int references;	// TODO: get rid of once certain that preds/succs work properly
 		/** true if and only if state probability above relevance threshold */
 		private boolean alive;
 
@@ -231,7 +231,9 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		 */
 		void delete()
 		{
+			transitionMap.deleteSuccessors(this);
 			alive = false;
+			totalProbLoss += prob;
 			prob = 0.0;
 			nextProb = 0.0;
 		}
@@ -411,6 +413,16 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 			return result;
 		}
 
+		boolean hasPredecessors(StateProp state)
+		{
+			return !getPredecessors(state).isEmpty();
+		}
+
+		boolean hasSuccessors(StateProp state)
+		{
+			return !getSuccessors(state).isEmpty();
+		}
+
 		void addTransition(Transition trans)
 		{
 			StateProp state = trans.fromState();
@@ -445,40 +457,40 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 			succState.incReferences();
 		}
 
-		boolean hasSuccs(StateProp state) 
+		void deleteSuccessors(StateProp state)
 		{
-			return !getSuccessors(state).isEmpty();
-		}
+			HashSet<Pair<Transition, Transition>> toAdd = new HashSet<Pair<Transition, Transition>>();
+			HashSet<Pair<Transition, Transition>> toRemove = new HashSet<Pair<Transition, Transition>>();
 
-		void remove(StateProp state)
-		{
-			for (StateProp pred : getPredecessors(state)) {
-				for (Pair<Transition, Transition> innerPair : get(pred)) {
-					if (innerPair.second.toState().equals(state)) {
-						if (innerPair.first != null) {
-							Pair<Transition, Transition> newPair = new Pair<Transition, Transition>(innerPair);
-							newPair.second = null;
-							get(pred).add(newPair);
-						}
-						get(state).remove(innerPair);
-					}
-				}
-			}
 			for (StateProp succ : getSuccessors(state)) {
-				for (Pair<Transition, Transition> innerPair : get(succ)) {
-					if (innerPair.first.fromState().equals(state)) {
-						if (innerPair.second != null) {
-							Pair<Transition, Transition> newPair = new Pair<Transition, Transition>(innerPair);
-							newPair.first = null;
-							get(succ).add(newPair);
+				for (Pair<Transition, Transition> transPair : get(succ)) {
+					if (transPair.first != null && transPair.first.fromState().equals(state)) {
+						if (transPair.second != null) {
+							Pair<Transition, Transition> newPair = new Pair<Transition, Transition>(null, transPair.second);
+							toAdd.add(newPair);
 						}
-						get(state).remove(innerPair);
-	
+						toRemove.add(transPair);
+						succ.decReferences();
 					}
 				}
-				succ.decReferences();
+				get(succ).addAll(toAdd);
+				get(succ).removeAll(toRemove);
+				toAdd.clear();
+				toRemove.clear();
 			}
-			super.remove(state);
+
+			for (Pair<Transition, Transition> transPair : get(state)) {
+				if (transPair.second != null) {
+					assert transPair.second.fromState().equals(state);
+					if (transPair.first != null) {
+						Pair<Transition, Transition> newPair = new Pair<Transition, Transition>(transPair.first, null);
+						toAdd.add(newPair);
+					}
+					toRemove.add(transPair);
+				}
+			}
+			get(state).addAll(toAdd);
+			get(state).removeAll(toRemove);
 		}
 	}
 
@@ -546,7 +558,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	/** set of initial states of the model */
 	private HashSet<State> initStates;
 	/** total loss of probability in discrete-time process */
-	private double totalProbLoss;
+	private double totalProbLoss = 0.0;
 	/** */
 	private TransitionMap transitionMap = new TransitionMap();
 
@@ -775,14 +787,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 					prop.addToSumProb(prob);
 				}
 				
-			    switch (vectorType) {
-			    case MIN:
-					vmMultMin(maxRate);
-					break;
-			    case MAX:
-			    	vmMultMax(maxRate);
-			    	break;
-			    }
+			    vmMult(maxRate, vectorType);
 				for (StateProp prop : states.values()) {
 					prop.prepareNextIteration();
 				}
@@ -790,8 +795,6 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 				iters++;
 			//}
 		}
-
-		computeTotalDiscreteLoss();
 	}
 
 	/**
@@ -957,7 +960,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 			StateProp prop = statePair.getValue();
 			if (prop.getProb() > delta) {
 				prop.setAlive(true);
-				if (!transitionMap.hasSuccs(prop)) {
+				if (!transitionMap.hasSuccessors(prop)) {
 					itersUnchanged = 0;
 					addDistr.add(state);
 				} else {
@@ -984,7 +987,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	 */
 	private void removeDeletedStates()
 	{
-		assert deleteStates.isEmpty();
+		deleteStates.clear();
 		for (Map.Entry<State,StateProp> statePair : states.entrySet()) {
 			State state = statePair.getKey();
 			StateProp prop = statePair.getValue();
@@ -994,8 +997,12 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		}
 		if (!keepSumProb) {
 			for (int i = 0; i < deleteStates.size(); i++) {
-				states.remove(deleteStates.get(i));
-				transitionMap.remove(deleteStates.get(i));
+				State state = deleteStates.get(i);
+				StateProp prop = states.get(state);
+				assert !transitionMap.hasPredecessors(prop);
+				assert !transitionMap.hasSuccessors(prop);
+				transitionMap.remove(states.get(state));
+				states.remove(state);
 			}
 		}
 		if (!deleteStates.isEmpty()) {
@@ -1003,7 +1010,6 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		} else {
 			itersUnchanged = 0;
 		}
-		deleteStates.clear();
 	}
     
 	/**
@@ -1022,21 +1028,6 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		maxRate = states.get(initState).getSumRates() * 1.02;
 	}
 
-    /**
-     * Computes total sum of lost probabilities.
-     * 
-     * @return total probability still in model
-     */
-	public void computeTotalDiscreteLoss()
-	{
-		double totalProb = 0.0;
-		for (StateProp prop : states.values()) {
-			totalProb += prop.getSumProb();
-		}
-		// FIXME
-		totalProbLoss = 1.0 - totalProb;
-	}
-
 	/**
 	 * Returns the total probability loss.
 	 * 
@@ -1046,7 +1037,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	{
 		return totalProbLoss;
 	}
-	
+
 	/**
 	 * Adds @a state to model.
 	 * Computes reward for this states, creates entry in map of states,
@@ -1126,85 +1117,121 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	 * 
 	 * @param maxRate maximal total leaving rate sum in living states
 	 */
-	private void vmMultMin(double maxRate)
+	private void vmMult(double maxRate, VectorType vectorType)
 	{
 		for (StateProp state : states.values()) {
-			double prob = state.getProb();
-			state.addToNextProb(prob);
+			if (!state.isAlive()) {
+				continue;
+			}
+			state.addToNextProb(state.getProb());
 			for (Pair<Transition, Transition> transPair : transitionMap.get(state)) {
-				// Outgoing transitions
-				if (transPair.first == null) {
-					Transition trans = transPair.second;
-					assert trans.fromState() == state;
-					state.addToNextProb(- trans.getRateParamsUpper() * trans.getRatePopulation() * prob / maxRate);
-				}
 				// Incoming transitions
-				else if (transPair.second == null) {
+				if (transPair.second == null) {
 					Transition predTrans = transPair.first;
-					assert predTrans.toState() == state;
-					double predProb = predTrans.fromState().getProb();
-					state.addToNextProb(predTrans.getRateParamsLower() * predTrans.getRatePopulation() * predProb / maxRate);
+					/*
+					if (!predTrans.fromState().isAlive()) {
+						continue;
+					}
+					*/
+					state.addToNextProb(vmMultIn(predTrans, maxRate, vectorType));
 				}
+
+				// Outgoing transitions
+				else if (transPair.first == null) {
+					Transition trans = transPair.second;
+					double resProb = vmMultOut(trans, maxRate, vectorType);
+					/*
+					if (!trans.toState().isAlive()) {
+						totalProbLoss += resProb;
+						continue;
+					}
+					*/
+					state.addToNextProb(-resProb);
+				}
+
 				// Both incoming and outgoing
 				else {
 					Transition predTrans = transPair.first;
 					Transition trans = transPair.second;
-					assert predTrans.toState() == trans.fromState();
+
+					/*
+					boolean doLoss = false;
+					if (!predTrans.fromState().isAlive() && !trans.toState().isAlive()) {
+						totalProbLoss += vmMultOut(trans, maxRate, vectorType);
+						continue;
+					} else if (!predTrans.fromState().isAlive()) {
+						state.addToNextProb(-vmMultOut(trans, maxRate, vectorType));
+						continue;
+					} else if (!trans.toState().isAlive()) {
+						doLoss = true;
+						state.addToNextProb(vmMultIn(predTrans, maxRate, vectorType));
+					}
+					*/
+
 					double predProb = predTrans.fromState().getProb();
-					assert trans.fromState() == state;
+					double prob = trans.fromState().getProb();
 
 					assert predTrans.getRateParamsLower() == trans.getRateParamsLower();
 					assert predTrans.getRateParamsUpper() == trans.getRateParamsUpper();
-					
+
 					double midSumNumerator = predTrans.getRatePopulation() * predProb - trans.getRatePopulation() * prob;
+					double resProb = midSumNumerator / maxRate;
 					if (midSumNumerator > 0.0) {
-						state.addToNextProb(trans.getRateParamsLower() * midSumNumerator / maxRate);
+						switch (vectorType) {
+						case MIN:
+							resProb *= predTrans.getRateParamsLower();
+							break;
+						case MAX:
+							resProb *= predTrans.getRateParamsUpper();
+							break;
+						}
 					} else {
-						state.addToNextProb(trans.getRateParamsUpper() * midSumNumerator / maxRate);
+						switch (vectorType) {
+						case MIN:
+							resProb *= predTrans.getRateParamsUpper();
+							break;
+						case MAX:
+							resProb *= predTrans.getRateParamsLower();
+							break;
+						}
 					}
+					/*
+					if (doLoss) {
+						totalProbLoss += resProb;
+						continue;
+					}
+					*/
+					state.addToNextProb(resProb);
 				}
 			}
 		}
 	}
 
-	private void vmMultMax(double maxRate)
+	private double vmMultIn(Transition predTrans, double maxRate, VectorType vectorType)
 	{
-		for (StateProp state : states.values()) {
-			double prob = state.getProb();
-			state.addToNextProb(prob);
-			for (Pair<Transition, Transition> transPair : transitionMap.get(state)) {
-				// Outgoing transitions
-				if (transPair.first == null) {
-					Transition trans = transPair.second;
-					assert trans.fromState() == state;
-					state.addToNextProb(- trans.getRateParamsLower() * trans.getRatePopulation() * prob / maxRate);
-				}
-				// Incoming transitions
-				else if (transPair.second == null) {
-					Transition predTrans = transPair.first;
-					assert predTrans.toState() == state;
-					double predProb = predTrans.fromState().getProb();
-					state.addToNextProb(predTrans.getRateParamsUpper() * predTrans.getRatePopulation() * predProb / maxRate);
-				}
-				// Both incoming and outgoing
-				else {
-					Transition predTrans = transPair.first;
-					Transition trans = transPair.second;
-					assert predTrans.toState() == trans.fromState();
-					double predProb = predTrans.fromState().getProb();
-					assert trans.fromState() == state;
-
-					assert predTrans.getRateParamsLower() == trans.getRateParamsLower();
-					assert predTrans.getRateParamsUpper() == trans.getRateParamsUpper();
-					
-					double midSumNumerator = predTrans.getRatePopulation() * predProb - trans.getRatePopulation() * prob;
-					if (midSumNumerator > 0.0) {
-						state.addToNextProb(trans.getRateParamsUpper() * midSumNumerator / maxRate);
-					} else {
-						state.addToNextProb(trans.getRateParamsLower() * midSumNumerator / maxRate);
-					}
-				}
-			}
+		double result = predTrans.getRatePopulation() * predTrans.fromState().getProb() / maxRate;
+		switch (vectorType) {
+		case MIN:
+			result *= predTrans.getRateParamsLower();
+			break;
+		case MAX:
+			result *= predTrans.getRateParamsUpper();
+			break;
 		}
+		return result;
+	}
+
+	private double vmMultOut(Transition trans, double maxRate, VectorType vectorType)
+	{
+		double result = trans.getRatePopulation() * trans.fromState().getProb() / maxRate;
+		switch (vectorType) {
+		case MIN:
+			result *= trans.getRateParamsUpper();
+			break;
+		case MAX:
+			result *= trans.getRateParamsLower();
+			break;
+		}
+		return result;
 	}
 }
