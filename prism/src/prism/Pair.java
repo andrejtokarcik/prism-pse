@@ -70,4 +70,9 @@ public class Pair<X,Y>
 			return false;
 		return true;
 	}
+
+	@Override
+	public String toString() {
+		return "Pair [first=" + first + ", second=" + second + "]";
+	}
 }

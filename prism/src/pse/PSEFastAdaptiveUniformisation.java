@@ -176,6 +176,9 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		 */
 		void prepareNextIteration()
 		{
+			if (!alive) {
+				totalProbLoss += prob;
+			}
 			prob = nextProb;
 			nextProb = 0.0;
 		}
@@ -185,9 +188,12 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		 * 
 		 * @param alive whether state should be set to being alive
 		 */
-		void setAlive(boolean alive)
+		void makeAlive()
 		{
-			this.alive = alive;
+			if (!alive) {
+				alive = true;
+				totalProbLoss -= prob;
+			}
 		}
 
 		/**
@@ -256,8 +262,19 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		 */
 		double sumRates() throws PrismException
 		{
+			HashSet<Transition> outgoing = transitionMap.getOutgoingTransitions(this);
+			if (outgoing.isEmpty()) {
+				if (alive) {
+					// This workaround is necessary for self-loops
+					// aren't stored in transitionMap.
+					return 1.0;
+				} else {
+					return 0.0;
+				}
+			}
+
 			double sum = 0.0;
-			for (Transition trans : transitionMap.getOutgoingTransitions(this)) {
+			for (Transition trans : outgoing) {
 				sum += trans.getRatePopulation() * trans.getRateParamsUpper();
 			}
 			return sum;
@@ -361,6 +378,12 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 
 		private PSEFastAdaptiveUniformisation getOuterType() {
 			return PSEFastAdaptiveUniformisation.this;
+		}
+
+		@Override
+		public String toString() {
+			return "Transition [reaction=" + reaction + ", from=" + from
+					+ ", to=" + to + "]";
 		}
 	}
 
@@ -768,7 +791,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 			if (birthProbSum >= epsilon/2) {
 				keepSumProb = true;
 			}
-			
+
 			//if ((itersUnchanged == arrayThreshold)) {
 			//	iters = arrayIterate(iters);
 			//} else {
@@ -779,7 +802,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 				for (StateProp prop : states.values()) {
 					prop.addToSumProb(prob);
 				}
-				
+
 			    vmMult(maxRate, vectorType);
 				updateStates();
 				iters++;
@@ -807,7 +830,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 			State state = statePair.getKey();
 			StateProp prop = statePair.getValue();
 			if (prop.getProb() > delta) {
-				prop.setAlive(true);
+				prop.makeAlive();
 				if (!transitionMap.hasSuccessors(prop)) {
 					itersUnchanged = 0;
 					addDistr.add(state);
@@ -847,6 +870,8 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 			for (int i = 0; i < deleteStates.size(); i++) {
 				State state = deleteStates.get(i);
 				StateProp prop = states.get(state);
+				// TODO: remove once we are sure about references being
+				// consistent with transitionMap
 				assert !transitionMap.hasPredecessors(prop);
 				assert !transitionMap.hasSuccessors(prop);
 				transitionMap.remove(states.get(state));
@@ -964,9 +989,6 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	private void vmMult(double maxRate, VectorType vectorType)
 	{
 		for (StateProp state : states.values()) {
-			if (!state.isAlive()) {
-				continue;
-			}
 			state.addToNextProb(state.getProb());
 			for (Pair<Transition, Transition> transPair : transitionMap.get(state)) {
 				// Incoming transitions
