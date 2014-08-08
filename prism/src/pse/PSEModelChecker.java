@@ -685,6 +685,7 @@ public final class PSEModelChecker extends PrismComponent
 		for (i = left; i <= right; i++)
 			weights[i - left] /= totalWeight;
 		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
+		mainLog.println();
 
 		totalIters = 0;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : multProbs) {
@@ -861,6 +862,7 @@ public final class PSEModelChecker extends PrismComponent
 		for (i = left; i <= right; i++)
 			weights[i - left] /= totalWeight;
 		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
+		mainLog.println();
 
 		totalIters = 0;
 		while (regions.size() != 0) {

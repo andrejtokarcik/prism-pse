@@ -241,6 +241,7 @@ public final class PSEFastAdaptiveUniformisationModelChecker extends PrismCompon
 		// Start bounded probabilistic reachability
 		long timer = System.currentTimeMillis();
 		mainLog.println("\nStarting PSE+FAU transient probability computation...");
+		mainLog.println();
 
 		BoxRegionValues regionValues = new BoxRegionValues();
 		PSEFastAdaptiveUniformisation fau = new PSEFastAdaptiveUniformisation(this, modelExplorer);
