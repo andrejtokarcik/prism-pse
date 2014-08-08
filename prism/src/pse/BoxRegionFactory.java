@@ -30,18 +30,18 @@ import parser.Values;
 
 public final class BoxRegionFactory
 {
-	private Values paramsLower;
-	private Values paramsUpper;
+	private Values lowerParams;
+	private Values upperParams;
 
 	public BoxRegionFactory(Values paramsLower, Values paramsUpper)
 	{
 		assert paramsLower.getNumValues() == paramsUpper.getNumValues();
-		this.paramsLower = paramsLower;
-		this.paramsUpper = paramsUpper;
+		this.lowerParams = paramsLower;
+		this.upperParams = paramsUpper;
 	}
 
 	public BoxRegion completeSpace()
 	{
-		return new BoxRegion(paramsLower, paramsUpper);
+		return new BoxRegion(lowerParams, upperParams);
 	}
 }

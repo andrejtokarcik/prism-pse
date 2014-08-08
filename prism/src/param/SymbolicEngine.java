@@ -40,7 +40,6 @@ import parser.ast.ModulesFile;
 import parser.ast.Update;
 import parser.ast.Updates;
 import prism.ModelType;
-import prism.PrismException;
 import prism.PrismLangException;
 
 /**
@@ -58,7 +57,8 @@ public class SymbolicEngine
 	protected BitSet enabledModules[];
 	protected int synchModuleCounts[];
 
-	public SymbolicEngine(ModulesFile modulesFile) {
+	public SymbolicEngine(ModulesFile modulesFile)
+	{
 		this.modulesFile = modulesFile;
 		modelType = modulesFile.getModelType();
 		numModules = modulesFile.getNumModules();
@@ -111,24 +111,7 @@ public class SymbolicEngine
 		Expression p = ups.getProbability(i);
 		return (p == null) ? Expression.Double(1.0) : p.deepCopy();
 	}
-	
-	static boolean hasMoreThanOneVariable(Expression exp)
-	{
-		int varNum = 0;
-		try {
-			varNum = exp.getAllVars().size();
-			//System.out.println("varNum = " + varNum);
-		} catch(PrismLangException e) {
-			
-		}
-		
-		if (varNum >1) {
-			return true;
-		} else {
-			return false;	   
-		}
-	}
-	
+
 	/**
 	 * Create a new Choice object (currently ChoiceListFlexi) based on an Updates object
 	 * and a (global) state. Check for negative probabilities/rates.
@@ -163,7 +146,7 @@ public class SymbolicEngine
 		return ch;
 	}
 	
-	public TransitionList calculateTransitions(State state) throws PrismException
+	public TransitionList calculateTransitions(State state) throws PrismLangException
 	{
 		List<ChoiceListFlexi> chs;
 		int i, j, k, l, n, count;
