@@ -29,7 +29,6 @@ package pse;
 public final class SimpleDecompositionProcedure extends DecompositionProcedure
 {
 	private double accuracy;
-	private int numStates;
 
 	public static final class NoDecomposing extends DecompositionProcedure
 	{
@@ -43,19 +42,19 @@ public final class SimpleDecompositionProcedure extends DecompositionProcedure
 		}
 	}
 
-	public SimpleDecompositionProcedure(double accuracy, int numStates)
+	public SimpleDecompositionProcedure(double accuracy)
 	{
 		this.accuracy = accuracy;
-		this.numStates = numStates;
 	}
 
 	@Override
-	public void verifySingleRegion(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded
+	protected void verifySingleRegion(BoxRegion region, double probsMin[], double probsMax[]) throws DecompositionNeeded
 	{
-		for (int state = 0; state < numStates; state++) {
+		assert probsMin.length == probsMax.length;
+		for (int state = 0; state < probsMin.length; state++) {
 			if (probsMax[state] - probsMin[state] > accuracy) {
 				throw new DecompositionNeeded("Significant inaccuracy was obtained " +
-						"in state " + state + ":" + model.getStatesList().get(state) + ",\n" +
+						"in state " + state  + ",\n" +
 						probsMax[state] + " - " + probsMin[state] + " > " + accuracy,
 						region, "inaccurate region");
 			}

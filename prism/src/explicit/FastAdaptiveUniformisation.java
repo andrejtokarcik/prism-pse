@@ -413,7 +413,7 @@ public class FastAdaptiveUniformisation extends PrismComponent
 	}
 
 	/** model exploration component to generate new states */
-	private ModelExplorer modelExplorer;
+	private ModelExplorer<Double> modelExplorer;
 	/** probability allowed to drop birth process */
 	private double epsilon;
 	/** probability threshold when to drop states in discrete-time process */
@@ -466,7 +466,7 @@ public class FastAdaptiveUniformisation extends PrismComponent
 	/**
 	 * Constructor.
 	 */
-	public FastAdaptiveUniformisation(PrismComponent parent, ModelExplorer modelExplorer) throws PrismException
+	public FastAdaptiveUniformisation(PrismComponent parent, ModelExplorer<Double> modelExplorer) throws PrismException
 	{
 		super(parent);
 		

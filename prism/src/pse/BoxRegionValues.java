@@ -68,8 +68,20 @@ public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateVal
 		}
 	}
 
+	public BoxRegionValues()
+	{
+		super();
+	}
+
+	public BoxRegionValues(BoxRegion region, StateValues minValues, StateValues maxValues)
+	{
+		this();
+		put(region, minValues, maxValues);
+	}
+
 	public BoxRegionValues(Model model)
 	{
+		super();
 		this.model = model;
 	}
 

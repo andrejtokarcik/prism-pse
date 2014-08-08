@@ -30,7 +30,7 @@ import parser.ast.ModulesFile;
 import prism.PrismException;
 import explicit.ModelExplorer;
 
-public class PrismModelExplorer implements ModelExplorer
+public class PrismModelExplorer implements ModelExplorer<Double>
 {
 	private SimulatorEngine simEngine;
 	private ModulesFile modulesFile;
@@ -92,13 +92,13 @@ public class PrismModelExplorer implements ModelExplorer
 	}
 	
 	@Override
-	public double getTransitionProbability(int i, int offset) throws PrismException
+	public Double getTransitionProbability(int i, int offset) throws PrismException
 	{
 		return simEngine.getTransitionProbability(i, offset);
 	}
 	
 	@Override
-	public double getTransitionProbability(int i) throws PrismException
+	public Double getTransitionProbability(int i) throws PrismException
 	{
 		return simEngine.getTransitionProbability(i);
 	}

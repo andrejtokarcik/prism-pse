@@ -158,6 +158,53 @@ public class StateValues implements StateVector
 	}
 
 	/**
+	 * Construct a new state values vector of the given type and size,
+	 * initialising all values to {@code init}.
+	 * Throws an exception of {@code init} is of the wrong type.
+	 * @param type Value type
+	 * @param size Vector size
+	 * @param init Initial value for all states (as an appropriate Object)
+	 */
+	public StateValues(Type type, Object[] initValues, List<State> statesList) throws PrismLangException
+	{
+		super();
+		int i;
+		this.type = type;
+		if (initValues != null) {
+			size = initValues.length;
+		} else {
+			size = 0;
+		}
+		// Create/initialise array of appropriate type
+		if (type instanceof TypeInt) {
+			valuesI = new int[size];
+			for (i = 0; i < size; i++) {
+				Integer objI = ((TypeInt) type).castValueTo(initValues[i]);
+				int initI = objI.intValue();
+				valuesI[i] = initI;
+			}
+		} else if (type instanceof TypeDouble) {
+			valuesD = new double[size];
+			for (i = 0; i < size; i++) {
+				Double objD = ((TypeDouble) type).castValueTo(initValues[i]);
+				double initD = objD.doubleValue();
+				valuesD[i] = initD;
+			}
+		} else if (type instanceof TypeBool) {
+			valuesB = new BitSet(size);
+			for (i = 0; i < size; i++) {
+				Boolean objB = ((TypeBool) type).castValueTo(initValues[i]);
+				boolean initB = objB.booleanValue();
+				if (initB)
+					valuesB.set(i);
+			}
+		} else {
+			throw new PrismLangException("Cannot create a vector of type " + type);
+		}
+		this.statesList = statesList;
+	}
+
+	/**
 	 * Create a new (double-valued) state values vector from an existing array of doubles.
 	 * The array is stored directly, not copied.
 	 * Also set associated model (whose state space size should match vector size).

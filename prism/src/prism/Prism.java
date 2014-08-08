@@ -56,13 +56,17 @@ import parser.ast.LabelList;
 import parser.ast.ModulesFile;
 import parser.ast.PropertiesFile;
 import parser.ast.Property;
-import pse.PSEModel;
-import pse.PSEModelChecker;
 import pse.DecompositionProcedure;
 import pse.MaxSynthesisNaive;
 import pse.MaxSynthesisSampling;
 import pse.MinSynthesisNaive;
 import pse.MinSynthesisSampling;
+import pse.PSEFastAdaptiveUniformisationModelChecker;
+import pse.PSEModel;
+import pse.PSEModelBuilder;
+import pse.PSEModelChecker;
+import pse.PSEModelExplorer;
+import pse.PSEFastAdaptiveUniformisation;
 import pse.SimpleDecompositionProcedure;
 import pse.ThresholdSynthesis;
 import pta.DigitalClocks;
@@ -74,9 +78,9 @@ import simulator.method.SimulationMethod;
 import sparse.PrismSparse;
 import strat.Strategy;
 import dv.DoubleVector;
-import explicit.ConstructModel;
 import explicit.CTMC;
 import explicit.CTMCModelChecker;
+import explicit.ConstructModel;
 import explicit.DTMC;
 import explicit.DTMCModelChecker;
 import explicit.FastAdaptiveUniformisation;
@@ -3414,30 +3418,6 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 	// PSE methods
 
-	private pse.ModelBuilder setupPSE(String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds) throws PrismException
-	{
-		// Some checks
-		if (paramNames == null) {
-			throw new PrismException("Must specify some parameters in order to perform the PSE-based techniques");
-		}
-		if (currentModelType != ModelType.CTMC)
-			throw new PrismException("PSE-based techniques supported for CTMCs only");
-		//if (!getExplicit())
-		//	throw new PrismException("Parameter space exploration supported for the explicit engine only");
-
-		Values constlist = currentModulesFile.getConstantValues();
-		for (int pnr = 0; pnr < paramNames.length; pnr++) {
-			constlist.removeValue(paramNames[pnr]);
-		}
-
-		// Build model
-		pse.ModelBuilder builder = new pse.ModelBuilder(this);
-		builder.setModulesFile(currentModulesFile);
-		builder.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
-		builder.build();
-		return builder;
-	}
-
 	private void printInitInfoPSE(PrismLog log, String intro, pse.BoxRegionFactory regionFactory, PropertiesFile propertiesFile, double accuracy)
 	{
 		log.printSeparator();
@@ -3452,6 +3432,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		}
 		log.println("Accuracy/tolerance: " + accuracy);
 		log.println();
+		log.flush();
 	}
 
 	/**
@@ -3460,20 +3441,38 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double accuracy)
 			throws PrismException
 	{
-		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
+		if (paramNames == null) {
+			throw new PrismException("Must specify some parameters in order to perform the PSE-based techniques");
+		}
+		if (currentModelType != ModelType.CTMC) {
+			throw new PrismException("PSE-based techniques supported for CTMCs only");
+		}
+
+		Values constlist = currentModulesFile.getConstantValues();
+		for (int pnr = 0; pnr < paramNames.length; pnr++) {
+			constlist.removeValue(paramNames[pnr]);
+		}
+
+		// Build model
+		PSEModelExplorer modelExplorer = new PSEModelExplorer(currentModulesFile);
+		modelExplorer.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
+		pse.BoxRegionFactory regionFactory = modelExplorer.getRegionFactory();
+
+		PSEModelBuilder builder = new PSEModelBuilder(this, modelExplorer);
+		builder.build();
 		PSEModel model = builder.getModel();
-		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
-		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
-		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
 		// Allow the builder to be garbage-collected
 		builder = null;
+
+		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
+		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
 
 		// Determine the decomposition procedure
 		DecompositionProcedure decompositionProcedure;
 		switch (decompositionType) {
 		case SIMPLE:
 			printInitInfoPSE(mainLog, "PSE model checking: " + prop, regionFactory, propertiesFile, accuracy);
-			decompositionProcedure = new SimpleDecompositionProcedure(accuracy, model.getNumStates());
+			decompositionProcedure = new SimpleDecompositionProcedure(accuracy);
 			break;
 		case THRESHOLD:
 			printInitInfoPSE(mainLog, "PSE threshold synthesis: " + prop, regionFactory, propertiesFile, accuracy);
@@ -3508,37 +3507,66 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	public void doTransientPSE(UndefinedConstants times, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double accuracy, File fileIn)
 			throws PrismException
 	{
-		pse.ModelBuilder builder = setupPSE(paramNames, paramLowerBounds, paramUpperBounds);
-		PSEModel model = builder.getModel();
-		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
-		// Allow the builder to be garbage-collected
-		builder = null;
+		if (paramNames == null) {
+			throw new PrismException("Must specify some parameters in order to perform the PSE-based techniques");
+		}
+		if (currentModelType != ModelType.CTMC) {
+			throw new PrismException("PSE-based techniques supported for CTMCs only");
+		}
+
+		Values constlist = currentModulesFile.getConstantValues();
+		for (int pnr = 0; pnr < paramNames.length; pnr++) {
+			constlist.removeValue(paramNames[pnr]);
+		}
+
+		PSEModelExplorer modelExplorer = new PSEModelExplorer(currentModulesFile);
+		modelExplorer.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
+		pse.BoxRegionFactory regionFactory = modelExplorer.getRegionFactory();
+
+		PSEModel model = null;
+		boolean doFAU = settings.getString(PrismSettings.PRISM_TRANSIENT_METHOD).equals("Fast adaptive uniformisation");
+		if (!doFAU) {
+			PSEModelBuilder builder = new pse.PSEModelBuilder(this, modelExplorer);
+			builder.build();
+			model = builder.getModel();
+			// Allow the builder to be garbage-collected
+			builder = null;
+		}
 
 		// Step through required time points
-		double initTimeDouble = 0;
+		double initTimeDouble = 0.0;
 		explicit.StateValues initDistExplMin = null, initDistExplMax = null;
 		for (int i = 0; i < times.getNumPropertyIterations(); i++) {
 			// Get time, check non-negative
 			Object time = times.getPFConstantValues().getValue(0);
 			double timeDouble = ((Double) time).doubleValue();
-			if (timeDouble < 0)
+			if (timeDouble < 0.0) {
 				throw new PrismException("Cannot perform parameter space exploration for negative time value");
-			
+			}
+
 			printInitInfoPSE(mainLog, "Performing parameter space exploration (time = " + time + ")...", regionFactory, null, accuracy);
-			
+
 			long l = System.currentTimeMillis();
 
-			PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
-			/*
 			// TODO
+			/*
 			if (i == 0) {
 				initDistExplMin = mc.readDistributionFromFile(fileIn, modelExpl);
 				initDistExplMax = mc.readDistributionFromFile(fileIn, modelExpl);
 				initTimeDouble = 0;
 			}
 			*/
-			pse.BoxRegionValues regionValues = mc.doTransient(model, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax,
-					new SimpleDecompositionProcedure(accuracy, model.getNumStates()));
+
+			pse.BoxRegionValues regionValues;
+			if (doFAU) {
+				PSEFastAdaptiveUniformisationModelChecker mc = new PSEFastAdaptiveUniformisationModelChecker(this, regionFactory);
+				regionValues = mc.doTransient(modelExplorer, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax,
+						new SimpleDecompositionProcedure(accuracy));
+			} else {
+				PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
+				regionValues = mc.doTransient(model, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax,
+						new SimpleDecompositionProcedure(accuracy));
+			}
 
 			// Results report
 			mainLog.println("\nPrinting minimised & maximised transient probabilities:");
