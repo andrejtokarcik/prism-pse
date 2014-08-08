@@ -41,7 +41,7 @@ abstract class MaxSynthesis extends AbstractMinMaxSynthesis
 	protected abstract double getMaximalLowerBound(BoxRegionValues regionValues) throws PrismException;
 
 	@Override
-	public void determineOptimisingRegions(BoxRegionValues regionValues) throws PrismException
+	protected void determineOptimisingRegions(BoxRegionValues regionValues) throws PrismException
 	{
 		// Determine the maximal lower bound
 		double maximalLowerBound = getMaximalLowerBound(regionValues);
