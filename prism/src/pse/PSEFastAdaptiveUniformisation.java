@@ -82,8 +82,6 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		private double nextProb;
 		/** sum probability weighted with birth process distribution */
 		private double sumProb;
-		/** */
-		private double sumRates;
 		/** number of incoming transitions of relevant states */
 		private int references;	// TODO: get rid of once certain that preds/succs work properly
 		/** true if and only if state probability above relevance threshold */
@@ -231,7 +229,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		 */
 		void delete()
 		{
-			transitionMap.deleteSuccessors(this);
+			transitionMap.removeOutgoingTransitions(this);
 			alive = false;
 			totalProbLoss += prob;
 			prob = 0.0;
@@ -250,20 +248,19 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		{
 			return !alive && references == 0;
 		}
-		
-		void setSumRates(double sumRates)
-		{
-			this.sumRates = sumRates;
-		}
-		
+
 		/**
 		 * Returns the sum of all rates leaving to successor states.
 		 * 
 		 * @return sum of all rates leaving to successor states
 		 */
-		double getSumRates() throws PrismException
+		double sumRates() throws PrismException
 		{
-			return sumRates;
+			double sum = 0.0;
+			for (Transition trans : transitionMap.getOutgoingTransitions(this)) {
+				sum += trans.getRatePopulation() * trans.getRateParamsUpper();
+			}
+			return sum;
 		}
 	}
 
@@ -271,22 +268,28 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		int reaction;
 		StateProp from;
 		StateProp to;
+		Expression rateParams;
 		double rateParamsLower;
 		double rateParamsUpper;
 		double ratePopulation;
 		boolean parametrised = false;
 
-		Transition(int rateIndex, int reaction, StateProp from, StateProp to, double rateParamsLower, double rateParamsUpper, double ratePopulation)
+		Transition(int reaction, StateProp from, StateProp to, Expression rateParams, double ratePopulation)
+				throws PrismException
 		{
 			this.reaction = reaction;
 			this.from = from;
 			this.to = to;
-			this.rateParamsLower = rateParamsLower;
-			this.rateParamsUpper = rateParamsUpper;
+			this.rateParams = rateParams;
 			this.ratePopulation = ratePopulation;
-			if (rateParamsLower != rateParamsUpper) {
-				this.parametrised = true;  
-			}
+			evaluateRateParams(currentRegion);
+		}
+
+		void evaluateRateParams(BoxRegion region) throws PrismException
+		{
+			rateParamsLower = rateParams.evaluateDouble(region.getLowerBounds());
+			rateParamsUpper = rateParams.evaluateDouble(region.getUpperBounds());
+			parametrised = rateParamsLower != rateParamsUpper;
 		}
 
 		int getReaction()
@@ -391,7 +394,19 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 			return result;
 		}
 
-		HashSet<Transition> filterTransitionsFrom(StateProp state, int reaction)
+		HashSet<Transition> getOutgoingTransitions(StateProp state)
+		{
+			HashSet<Transition> result = new HashSet<Transition>();
+			for (Pair<Transition, Transition> transPair : get(state)) {
+				if (transPair.second != null) {
+					result.add(transPair.second);
+				}
+			}
+			return result;
+		}
+
+		// TODO: delete, use getOutgoingTransitions(state) + manual check instead
+		HashSet<Transition> filterOutgoingTransitions(StateProp state, int reaction)
 		{
 			HashSet<Transition> result = new HashSet<Transition>();
 			for (Pair<Transition, Transition> transPair : get(state)) {
@@ -402,7 +417,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 			return result;
 		}
 		
-		HashSet<Transition> filterTransitionsTo(StateProp state, int reaction)
+		HashSet<Transition> filterIncomingTransitions(StateProp state, int reaction)
 		{
 			HashSet<Transition> result = new HashSet<Transition>();
 			for (Pair<Transition, Transition> transPair : get(state)) {
@@ -435,7 +450,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 			}
 
 			boolean done = false;
-			for (Transition transTo : filterTransitionsTo(state, trans.getReaction())) {
+			for (Transition transTo : filterIncomingTransitions(state, trans.getReaction())) {
 				done = true;
 				get(state).add(new Pair<Transition, Transition>(transTo, trans));
 				get(state).remove(new Pair<Transition, Transition>(transTo, null));
@@ -445,7 +460,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 			}
 
 			done = false;
-			for (Transition transFrom : filterTransitionsFrom(succState, trans.getReaction())) {
+			for (Transition transFrom : filterOutgoingTransitions(succState, trans.getReaction())) {
 				done = true;
 				get(succState).add(new Pair<Transition, Transition>(trans, transFrom));
 				get(succState).remove(new Pair<Transition, Transition>(null, transFrom));
@@ -457,7 +472,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 			succState.incReferences();
 		}
 
-		void deleteSuccessors(StateProp state)
+		void removeOutgoingTransitions(StateProp state)
 		{
 			HashSet<Pair<Transition, Transition>> toAdd = new HashSet<Pair<Transition, Transition>>();
 			HashSet<Pair<Transition, Transition>> toRemove = new HashSet<Pair<Transition, Transition>>();
@@ -514,7 +529,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	/** model exploration component to generate new states */
 	private PSEModelExplorer modelExplorer;
 	/** */
-	private Values upperParams;
+	private BoxRegion currentRegion;
 	/** probability allowed to drop birth process */
 	private double epsilon;
 	/** probability threshold when to drop states in discrete-time process */
@@ -558,7 +573,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	/** set of initial states of the model */
 	private HashSet<State> initStates;
 	/** total loss of probability in discrete-time process */
-	private double totalProbLoss = 0.0;
+	private double totalProbLoss;
 	/** */
 	private TransitionMap transitionMap = new TransitionMap();
 
@@ -570,7 +585,6 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		super(parent);
 
 		this.modelExplorer = modelExplorer;
-		maxNumStates = 0;
 
 		epsilon = settings.getDouble(PrismSettings.PRISM_FAU_EPSILON);
 		delta = settings.getDouble(PrismSettings.PRISM_FAU_DELTA);
@@ -581,18 +595,18 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		specialLabels = new LabelList();
 		specialLabels.addLabel(new ExpressionIdent("deadlock"), new ExpressionIdent("deadlock"));
 		specialLabels.addLabel(new ExpressionIdent("init"), new ExpressionIdent("init"));
-		
-		// TODO param space scaling
-		upperParams = modelExplorer.getRegionFactory().completeSpace().getUpperBounds();
 	}
 
-	/**
-	 * 
-	 * @param target
-	 */
-	public void setTarget(Expression target)
+	public void configureParameterSpace(BoxRegion region) throws PrismException
 	{
-		this.target = target;
+		currentRegion = region;
+		for (HashSet<Pair<Transition, Transition>> transPairs : transitionMap.values()) {
+			for (Pair<Transition, Transition> transPair : transPairs) {
+				if (transPair.second != null) {
+					transPair.second.evaluateRateParams(region);
+				}
+			}
+		}
 	}
 
 	/**
@@ -603,21 +617,6 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	public int getMaxNumStates()
 	{
 		return maxNumStates;
-	}
-
-	/**
-	 * Returns the value of the analysis.
-	 * For reachability analyses, this is the probability to reach state in
-	 * the reach set, for instantaneous reward properties this is the
-	 * instantaneous reward and for cumulative reward analysis it is the
-	 * cumulative reward. For the computation of transient probabilities
-	 * without doing model checking, this value is not significant.
-	 * 
-	 * @return value of the analysis
-	 */
-	public double getValue()
-	{
-		return value;
 	}
 
 	/**
@@ -651,14 +650,6 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	*/
 
 	/**
-	 * Get the number of states in the current window.
-	 */
-	public int getNumStates()
-	{
-		return states.size();
-	}
-
-	/**
 	 * Compute transient probability distribution (forwards).
 	 * Start from initial state (or uniform distribution over multiple initial states).
 	 */
@@ -678,9 +669,11 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	public StateValues doTransient(double time, StateValues initDist, VectorType vectorType)
 			throws PrismException
 	{
-		mainLog.println("\nComputing " + vectorType + " probabilities (fast adaptive uniformisation)...");
+		totalProbLoss = 0.0;
+		maxNumStates = 0;
+		//mainLog.println("\nComputing " + vectorType + " probabilities (PSE+FAU)...");
 
-		// TODO initDist currently ignored
+		// TODO: initDist currently ignored
 		addDistr = null;
 
 		/* run fast adaptive uniformisation */
@@ -697,8 +690,8 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		}
 		StateValues probs = new StateValues(TypeDouble.getInstance(), probsArr, statesList);
 
-		mainLog.println("\nTotal probability lost is : " + getTotalDiscreteLoss());
-		mainLog.println("Maximal number of states stored during analysis : " + getMaxNumStates());
+		//mainLog.println("\nTotal probability lost is : " + getTotalDiscreteLoss());
+		//mainLog.println("Maximal number of states stored during analysis : " + getMaxNumStates());
 		
 		return probs;
 	}
@@ -788,158 +781,13 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 				}
 				
 			    vmMult(maxRate, vectorType);
-				for (StateProp prop : states.values()) {
-					prop.prepareNextIteration();
-				}
 				updateStates();
 				iters++;
 			//}
 		}
 	}
 
-	/**
-	 * Transforms the current submodel to array form.
-	 * In case there are no further changes in the states discovered, or
-	 * further states only become relevant after a large number of
-	 * iterations, this allows the analysis to be performed much faster.
-	 * After the analysis has finished or after it has to be terminated as
-	 * formerly irrelevant states become relevant, results are mapped back
-	 * to the original data structure. The method returns the current
-	 * iteration.
-	 * 
-	 * In case border states become
-	 * relevant, this data structure can 
-	 * 
-	 * @param iters current iteration number
-	 * @return current iteration after termination of this method
-	 * @throws PrismException thrown if problems in underlying methods occur
-	 */
-//	private int arrayIterate(int iters) throws PrismException
-//	{
-//		/* build backwards matrix and map values */
-//		int numStates = states.size();
-//		int numTransitions = 0;
-//		for (StateProp prop : states.values()) {
-//			numTransitions += prop.getNumSuccs() + 1;
-//		}
-//		int stateNr = 0;
-//		HashMap<StateProp,Integer> stateToNumber = new HashMap<StateProp,Integer>(numStates);
-//		StateProp[] numberToState = new StateProp[numStates];
-//		for (StateProp prop : states.values()) {
-//			if (prop.isAlive()) {
-//				stateToNumber.put(prop, stateNr);
-//				numberToState[stateNr] = prop;
-//				stateNr++;
-//			}
-//		}
-//		int numAlive = stateNr;
-//		for (StateProp prop : states.values()) {
-//			if (!prop.isAlive()) {
-//				stateToNumber.put(prop, stateNr);
-//				numberToState[stateNr] = prop;
-//				stateNr++;
-//			}
-//		}
-//
-//		double[] inProbs = new double[numTransitions];
-//		int[] rows = new int[numStates + 1];
-//		int[] cols = new int[numTransitions];
-//		double[] outRates = new double[numStates];
-//		for (StateProp prop : states.values()) {
-//			StateProp[] succStates = prop.getSuccStates();
-//			if (succStates != null) {
-//				for (StateProp succ : succStates) {
-//					rows[stateToNumber.get(succ) + 1]++;
-//				}
-//			}
-//			rows[stateToNumber.get(prop) + 1]++;
-//		}
-//		for (stateNr = 0; stateNr < numStates; stateNr++) {
-//			rows[stateNr + 1] += rows[stateNr];
-//		}
-//
-//		for (StateProp prop : states.values()) {
-//			int stateNumber = stateToNumber.get(prop);
-//			StateProp[] succStates = prop.getSuccStates();
-//			double[] succRates = prop.getSuccRates();
-//			if (succStates != null) {
-//				for (int i = 0; i < succStates.length; i++) {
-//					StateProp succState = succStates[i];
-//					int succStateNumber = stateToNumber.get(succState);
-//					double succRate = succRates[i];
-//					cols[rows[succStateNumber]] = stateNumber;
-//					inProbs[rows[succStateNumber]] = succRate / maxRate;
-//					rows[succStateNumber]++;
-//					outRates[stateNumber] += succRate;
-//				}
-//			}
-//		}
-//
-//		for (stateNr = 0; stateNr < numStates; stateNr++) {
-//			cols[rows[stateNr]] = stateNr;
-//			inProbs[rows[stateNr]] = (maxRate - outRates[stateNr]) / maxRate;
-//		}
-//
-//		Arrays.fill(rows, 0);
-//		for (StateProp prop : states.values()) {
-//			StateProp[] succStates = prop.getSuccStates();
-//			if (succStates != null) {
-//				for (StateProp succ : succStates) {
-//					rows[stateToNumber.get(succ) + 1]++;
-//				}
-//			}
-//			rows[stateToNumber.get(prop) + 1]++;
-//		}
-//		for (stateNr = 0; stateNr < numStates; stateNr++) {
-//			rows[stateNr + 1] += rows[stateNr];
-//		}
-//
-//		double[] rewards = new double[numStates];
-//		double[] probs = new double[numStates];
-//		double[] nextProbs = new double[numStates];
-//		double[] sum = new double[numStates];
-//		for (stateNr = 0; stateNr < numberToState.length; stateNr++) {
-//			StateProp prop = numberToState[stateNr];
-//			probs[stateNr] = prop.getProb();
-//			sum[stateNr] = prop.getSumProb();
-//		}
-//
-//		/* iterate using matrix */
-//		boolean canArray = true;
-//		while (birthProbSum < (1 - epsilon) && canArray) {
-//			//			timer2 = System.currentTimeMillis();
-//			double prob = birthProc.calculateNextProb(maxRate);
-//			birthProbSum += prob;
-//			double mixed = (1.0 - birthProbSum) / maxRate;
-//			for (stateNr = 0; stateNr < numStates; stateNr++) {
-//				value += probs[stateNr] * mixed * rewards[stateNr];
-//				sum[stateNr] += prob * probs[stateNr];
-//				nextProbs[stateNr] = 0.0;
-//				for (int succNr = rows[stateNr]; succNr < rows[stateNr+1]; succNr++) {
-//					nextProbs[stateNr] += inProbs[succNr] * probs[cols[succNr]];
-//				}
-//				if ((stateNr < numAlive) != (nextProbs[stateNr] > delta)) {
-//					canArray = false;
-//				} else if (stateNr >= numAlive) {
-//				    nextProbs[stateNr] = 0.0;
-//				}
-//			}
-//			double[] swap = probs;
-//			probs = nextProbs;
-//			nextProbs = swap;
-//
-//			iters++;
-//		}
-//		
-//		/* map back, update states and return current iteration */
-//		for (stateNr = 0; stateNr < numberToState.length; stateNr++) {
-//			StateProp prop = numberToState[stateNr];
-//			prop.setProb(probs[stateNr]);
-//			prop.setSumProb(sum[stateNr]);
-//		}
-//		updateStates();
-//		return iters;
-//	}
+	// TODO arrayIterate
 
 	/**
 	 * Updates state values once a transient analysis of time interval finished.
@@ -964,7 +812,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 					itersUnchanged = 0;
 					addDistr.add(state);
 				} else {
-					maxRate = Math.max(maxRate, prop.getSumRates());
+					maxRate = Math.max(maxRate, prop.sumRates());
 				}
 			} else {
 				prop.delete();
@@ -972,7 +820,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		}
 		for (int stateNr = 0; stateNr < addDistr.size(); stateNr++) {
 			computeStateRates(addDistr.get(stateNr));
-			maxRate = Math.max(maxRate, states.get(addDistr.get(stateNr)).getSumRates());
+			maxRate = Math.max(maxRate, states.get(addDistr.get(stateNr)).sumRates());
 		}
 		maxRate *= 1.02;
 
@@ -1025,7 +873,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		addToModel(initState);
 		computeStateRates(initState);
 		states.get(initState).setProb(1.0);
-		maxRate = states.get(initState).getSumRates() * 1.02;
+		maxRate = states.get(initState).sumRates() * 1.02;
 	}
 
 	/**
@@ -1064,7 +912,6 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	private void computeStateRates(State state) throws PrismException
 	{
 		modelExplorer.queryState(state);
-		Expression sumRates = Expression.Double(0.0);
 		/*
 		specialLabels.setLabel(0, modelExplorer.getNumTransitions() == 0 ? Expression.True() : Expression.False());
 		specialLabels.setLabel(1, initStates.contains(state) ? Expression.True() : Expression.False());
@@ -1087,17 +934,15 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 					modelExplorer.queryState(state);
 					succProp = states.get(succState);
 				}
-				Expression rateExpr = modelExplorer.getTransitionProbability(i);
-				sumRates = Expression.Plus(sumRates, rateExpr);
-				RateParametersAndPopulation paramsPop = modelExplorer.extractRateParametersAndPopulation(rateExpr);
 
+				Expression rateExpr = modelExplorer.getTransitionProbability(i);
 				int reaction = modelExplorer.getReaction(i);
+				RateParametersAndPopulation paramsPop = modelExplorer.extractRateParametersAndPopulation(rateExpr);
 				Expression rateParams = paramsPop.getParameters();
 				double ratePop = paramsPop.getPopulation();
-				// FIXME
-				double rateParamsLower = rateParams.evaluateDouble(modelExplorer.getRegionFactory().completeSpace().getLowerBounds());
-				double rateParamsUpper = rateParams.evaluateDouble(modelExplorer.getRegionFactory().completeSpace().getUpperBounds());
-				transitionMap.addTransition(new Transition(i, reaction, states.get(state), succProp, rateParamsLower, rateParamsUpper, ratePop));
+
+				Transition newTrans = new Transition(reaction, states.get(state), succProp, rateParams, ratePop);
+				transitionMap.addTransition(newTrans);
 			}
 			/*
 			// XXX: Do we need deadlocks? PSEModelBuilder ignores them, too.
@@ -1109,7 +954,6 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 			}
 			*/
 		}
-		states.get(state).setSumRates(sumRates.evaluateDouble(upperParams));
 	}
 
 	/**
@@ -1204,6 +1048,9 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 					state.addToNextProb(resProb);
 				}
 			}
+		}
+		for (StateProp prop : states.values()) {
+			prop.prepareNextIteration();
 		}
 	}
 

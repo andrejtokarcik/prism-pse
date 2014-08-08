@@ -61,6 +61,7 @@ import pse.MaxSynthesisNaive;
 import pse.MaxSynthesisSampling;
 import pse.MinSynthesisNaive;
 import pse.MinSynthesisSampling;
+import pse.PSEFastAdaptiveUniformisationModelChecker;
 import pse.PSEModel;
 import pse.PSEModelBuilder;
 import pse.PSEModelChecker;
@@ -3453,24 +3454,25 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		}
 
 		// Build model
-		PSEModelBuilder builder = new pse.PSEModelBuilder(this);
-		builder.createExplorer(currentModulesFile);
-		builder.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
-		builder.build();
+		PSEModelExplorer modelExplorer = new PSEModelExplorer(currentModulesFile);
+		modelExplorer.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
+		pse.BoxRegionFactory regionFactory = modelExplorer.getRegionFactory();
 
+		PSEModelBuilder builder = new PSEModelBuilder(this, modelExplorer);
+		builder.build();
 		PSEModel model = builder.getModel();
-		pse.BoxRegionFactory regionFactory = builder.getRegionFactory();
-		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
-		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
 		// Allow the builder to be garbage-collected
 		builder = null;
+
+		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
+		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
 
 		// Determine the decomposition procedure
 		DecompositionProcedure decompositionProcedure;
 		switch (decompositionType) {
 		case SIMPLE:
 			printInitInfoPSE(mainLog, "PSE model checking: " + prop, regionFactory, propertiesFile, accuracy);
-			decompositionProcedure = new SimpleDecompositionProcedure(accuracy, model.getNumStates());
+			decompositionProcedure = new SimpleDecompositionProcedure(accuracy);
 			break;
 		case THRESHOLD:
 			printInitInfoPSE(mainLog, "PSE threshold synthesis: " + prop, regionFactory, propertiesFile, accuracy);
@@ -3517,23 +3519,16 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			constlist.removeValue(paramNames[pnr]);
 		}
 
-		boolean doFAU = settings.getString(PrismSettings.PRISM_TRANSIENT_METHOD).equals("Fast adaptive uniformisation");
-		PSEFastAdaptiveUniformisation fau = null;
+		PSEModelExplorer modelExplorer = new PSEModelExplorer(currentModulesFile);
+		modelExplorer.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
+		pse.BoxRegionFactory regionFactory = modelExplorer.getRegionFactory();
+
 		PSEModel model = null;
-		pse.BoxRegionFactory regionFactory;
-		if (doFAU) {
-			PSEModelExplorer explorer = new PSEModelExplorer(currentModulesFile);
-			explorer.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
-			fau = new PSEFastAdaptiveUniformisation(this, explorer);
-			regionFactory = explorer.getRegionFactory();
-		} else {
-			// Build model
-			PSEModelBuilder builder = new pse.PSEModelBuilder(this);
-			builder.createExplorer(currentModulesFile);
-			builder.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
+		boolean doFAU = settings.getString(PrismSettings.PRISM_TRANSIENT_METHOD).equals("Fast adaptive uniformisation");
+		if (!doFAU) {
+			PSEModelBuilder builder = new pse.PSEModelBuilder(this, modelExplorer);
 			builder.build();
 			model = builder.getModel();
-			regionFactory = builder.getRegionFactory();
 			// Allow the builder to be garbage-collected
 			builder = null;
 		}
@@ -3550,27 +3545,27 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			}
 
 			printInitInfoPSE(mainLog, "Performing parameter space exploration (time = " + time + ")...", regionFactory, null, accuracy);
-			
+
 			long l = System.currentTimeMillis();
+
+			// TODO
+			/*
+			if (i == 0) {
+				initDistExplMin = mc.readDistributionFromFile(fileIn, modelExpl);
+				initDistExplMax = mc.readDistributionFromFile(fileIn, modelExpl);
+				initTimeDouble = 0;
+			}
+			*/
 
 			pse.BoxRegionValues regionValues;
 			if (doFAU) {
-				explicit.StateValues probsExplMin, probsExplMax;
-				probsExplMin = fau.doTransient(timeDouble - initTimeDouble, initDistExplMin, PSEFastAdaptiveUniformisation.VectorType.MIN);
-				probsExplMax = fau.doTransient(timeDouble - initTimeDouble, initDistExplMin, PSEFastAdaptiveUniformisation.VectorType.MAX);
-				regionValues = new pse.BoxRegionValues(regionFactory.completeSpace(), probsExplMin, probsExplMax);
+				PSEFastAdaptiveUniformisationModelChecker mc = new PSEFastAdaptiveUniformisationModelChecker(this, regionFactory);
+				regionValues = mc.doTransient(modelExplorer, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax,
+						new SimpleDecompositionProcedure(accuracy));
 			} else {
 				PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
-				/*
-				// TODO
-				if (i == 0) {
-					initDistExplMin = mc.readDistributionFromFile(fileIn, modelExpl);
-					initDistExplMax = mc.readDistributionFromFile(fileIn, modelExpl);
-					initTimeDouble = 0;
-				}
-				*/
 				regionValues = mc.doTransient(model, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax,
-						new SimpleDecompositionProcedure(accuracy, model.getNumStates()));
+						new SimpleDecompositionProcedure(accuracy));
 			}
 
 			// Results report
