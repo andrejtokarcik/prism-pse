@@ -106,8 +106,9 @@ final class BoxRegion implements Comparable<BoxRegion>
 		for (int i = 0; i < lowerBounds.getNumValues(); i++) {
 			double lowerValue = (Double) lowerBounds.getValue(i);
 			double upperValue = (Double) upperBounds.getValue(i);
-			if (lowerValue != upperValue)
+			if (lowerValue != upperValue) {
 				volume *= upperValue - lowerValue;
+			}
 		}
 		return volume;
 	}
@@ -121,7 +122,7 @@ final class BoxRegion implements Comparable<BoxRegion>
 	{
 		Set<Point> samples = new HashSet<Point>();
 		Random r = new Random();
-		while(samples.size() != numSamples) {
+		while (samples.size() != numSamples) {
 			Values dimensions = new Values();
 			for (int i = 0; i < lowerBounds.getNumValues(); i++) {
 				double lowerValue = (Double) lowerBounds.getValue(i);

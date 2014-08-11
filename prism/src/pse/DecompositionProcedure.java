@@ -72,7 +72,7 @@ public abstract class DecompositionProcedure
 		{
 			log.println("\nThe following " + regionsToDecompose.size() + " regions are to be decomposed:");
 			regionsToDecompose.print(log);
-			log.println("Reason: " + reason);
+			log.println("Reason: " + reason + "\n");
 		}
 
 		public void setExaminedRegionValues(BoxRegionValues examinedRegionValues)
@@ -106,7 +106,7 @@ public abstract class DecompositionProcedure
 		return propExpr;
 	}
 
-	public void examineSingleIteration(BoxRegionValues regionValues, BoxRegion region, double probsMin[], double probsMax[])
+	public void examinePartialComputation(BoxRegionValues regionValues, BoxRegion region, double probsMin[], double probsMax[])
 			throws DecompositionNeeded, PrismException
 	{
 		try {

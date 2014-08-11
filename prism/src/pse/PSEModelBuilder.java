@@ -48,36 +48,10 @@ public final class PSEModelBuilder extends PrismComponent
 	/**
 	 * Constructor
 	 */
-	public PSEModelBuilder(PrismComponent parent) throws PrismException
+	public PSEModelBuilder(PrismComponent parent, PSEModelExplorer explorer) throws PrismException
 	{
 		super(parent);
-	}
-
-	// setters and getters
-
-	/**
-	 * Set modules file to be transformed to parametric Markov model.
-	 * 
-	 * @param modulesFile modules file to be transformed to parametric Markov model
-	 */
-	public void createExplorer(ModulesFile modulesFile) throws PrismException
-	{
-		this.explorer = new PSEModelExplorer(modulesFile);
-	}
-
-	/**
-	 * Set parameter informations.
-	 * Obviously, all of {@code paramNames}, {@code lower}, {@code} upper
-	 * must have the same length, and {@code lower} bounds of parameters must
-	 * not be higher than {@code upper} bounds.
-	 * 
-	 * @param paramNames names of parameters
-	 * @param lower lower bounds of parameters
-	 * @param upper upper bounds of parameters
-	 */
-	public void setParameters(String[] paramNames, double[] lower, double[] upper)
-	{
-		explorer.setParameters(paramNames, lower, upper);
+		this.explorer = explorer;
 	}
 
 	/**
@@ -104,13 +78,6 @@ public final class PSEModelBuilder extends PrismComponent
 		mainLog.flush();
 	}
 
-	/**
-	 */
-	public BoxRegionFactory getRegionFactory()
-	{
-		return explorer.getRegionFactory();
-	}
-	
 	/**
 	 * Returns the constructed PSE model.
 	 * 

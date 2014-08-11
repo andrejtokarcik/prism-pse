@@ -61,6 +61,8 @@ public final class PSEModelChecker extends PrismComponent
 	// Log for output (default to System.out)
 	private PrismLog mainLog = new PrismPrintStreamLog(System.out);
 
+	private BoxRegionFactory regionFactory;
+
 	// Model file (for instantiating)
 	private ModulesFile modulesFile = null;
 
@@ -71,8 +73,6 @@ public final class PSEModelChecker extends PrismComponent
 	private Values constantValues;
 
 	private StateModelChecker stateChecker;
-
-	private BoxRegionFactory regionFactory;
 
 	/**
 	 * Constructor
@@ -664,7 +664,7 @@ public final class PSEModelChecker extends PrismComponent
 
 		// Start backwards transient computation
 		timer = System.currentTimeMillis();
-		mainLog.println("\nStarting backwards transient probability computation...");
+		mainLog.println("\nStarting PSE backwards transient probability computation...");
 
 		// Compute the in, out, inout sets of reactions
 		model.computeInOutReactions();
@@ -685,6 +685,7 @@ public final class PSEModelChecker extends PrismComponent
 		for (i = left; i <= right; i++)
 			weights[i - left] /= totalWeight;
 		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
+		mainLog.println();
 
 		totalIters = 0;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : multProbs) {
@@ -748,7 +749,7 @@ public final class PSEModelChecker extends PrismComponent
 						sumMin[i] += weights[iters - left] * solnMin[i];
 						sumMax[i] += weights[iters - left] * solnMax[i];
 					}
-					decompositionProcedure.examineSingleIteration(regionValues, region, sumMin, sumMax);
+					decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
 				}
 
 				iters++;
@@ -775,7 +776,7 @@ public final class PSEModelChecker extends PrismComponent
 
 		// Finished bounded probabilistic reachability
 		timer = System.currentTimeMillis() - timer;
-		mainLog.print("Backwards transient probability computation");
+		mainLog.print("\nPSE backwards transient probability computation");
 		mainLog.print(" took " + totalIters + " iters");
 		mainLog.println(" and " + timer / 1000.0 + " seconds.");
 
@@ -831,13 +832,13 @@ public final class PSEModelChecker extends PrismComponent
 		int left, right;
 		double termCritParam, q, qt, acc, weights[], totalWeight;
 
-		// For decomposing the parameter space
+		// For decomposing of the parameter space
 		LinkedList<BoxRegion> regions = new LinkedList<BoxRegion>();
 		regions.add(regionFactory.completeSpace());
 
 		// Start bounded probabilistic reachability
 		timer = System.currentTimeMillis();
-		mainLog.println("\nStarting transient probability computation...");
+		mainLog.println("\nStarting PSE transient probability computation...");
 
 		// Compute the in, out, inout sets of reactions
 		model.computeInOutReactions();
@@ -861,6 +862,7 @@ public final class PSEModelChecker extends PrismComponent
 		for (i = left; i <= right; i++)
 			weights[i - left] /= totalWeight;
 		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
+		mainLog.println();
 
 		totalIters = 0;
 		while (regions.size() != 0) {
@@ -913,7 +915,7 @@ public final class PSEModelChecker extends PrismComponent
 							sumMin[i] += weights[iters - left] * solnMin[i];
 							sumMax[i] += weights[iters - left] * solnMax[i];
 						}
-						decompositionProcedure.examineSingleIteration(regionValues, region, sumMin, sumMax);
+						decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
 					}
 
 					iters++;
@@ -934,7 +936,7 @@ public final class PSEModelChecker extends PrismComponent
 
 		// Finished bounded probabilistic reachability
 		timer = System.currentTimeMillis() - timer;
-		mainLog.print("Transient probability computation");
+		mainLog.print("\nPSE transient probability computation");
 		mainLog.print(" took " + totalIters + " iters");
 		mainLog.print(" and " + timer / 1000.0 + " seconds");
 		mainLog.println(" (producing " + regionValues.getNumRegions() + " final regions).");
