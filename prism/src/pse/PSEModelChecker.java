@@ -191,7 +191,7 @@ public final class PSEModelChecker extends PrismComponent
 			throw new PrismException("Filter satisfies no states");
 		}
 		if (!filterInit) {
-			mainLog.println("\nStates satisfying filter " + filter + ":");
+			mainLog.println("\nNumber of states satisfying filter " + filter + ":");
 			mainLog.println("min = " + bsFilterMin.cardinality());
 			mainLog.println("max = " + bsFilterMax.cardinality());
 		}
@@ -238,7 +238,7 @@ public final class PSEModelChecker extends PrismComponent
 			case MAX:
 			case ARGMIN:
 			case ARGMAX:
-				throw new UnsupportedOperationException();
+				throw new PrismException("Operation not implemented for PSE models");
 			case COUNT:
 				resObjMin = new Integer(subRgnValsMin.countOverBitSet(bsFilterMin));
 				resObjMax = new Integer(subRgnValsMax.countOverBitSet(bsFilterMax));
@@ -253,7 +253,7 @@ public final class PSEModelChecker extends PrismComponent
 				break;
 			case SUM:
 			case AVG:
-				throw new PrismException("Operation not implemented for parametric models");
+				throw new PrismException("Operation not implemented for PSE models");
 			case FIRST:
 				resObjMin = subRgnValsMin.firstFromBitSet(bsFilterMin);
 				resObjMax = subRgnValsMax.firstFromBitSet(bsFilterMax);
@@ -555,7 +555,7 @@ public final class PSEModelChecker extends PrismComponent
 			probsMax = StateValues.createFromBitSetAsDoubles(b2Max, model);
 			regionValues = new BoxRegionValues(model, regionFactory.completeSpace(), probsMin, probsMax);
 		} else {
-			BoxRegionValues onesMultProbs = BoxRegionValues.createWithOnes(model, regionFactory.completeSpace());
+			BoxRegionValues onesMultProbs = BoxRegionValues.createWithAllOnes(model, regionFactory.completeSpace());
 
 			// >= lTime
 			if (uTime == -1) {
@@ -654,12 +654,19 @@ public final class PSEModelChecker extends PrismComponent
 		n = model.getNumStates();
 
 		// Optimisations: If (nonAbs is empty or t = 0) and multProbs is null, this is easy.
-		if (((nonAbsMin != null && nonAbsMin.isEmpty()) || t == 0) &&
-				((nonAbsMax != null && nonAbsMax.isEmpty()) || t == 0) &&
-				multProbs == null) {
-			solnMin = Utils.bitsetToDoubleArray(targetMin, n);
-			solnMax = Utils.bitsetToDoubleArray(targetMax, n);
-			return new BoxRegionValues(model, regionFactory.completeSpace(), solnMin, solnMax);
+		if ((nonAbs != null && nonAbs.isEmpty()) || (t == 0)) {
+			if (multProbs.isAllOnes()) {
+				for (BoxRegion region : multProbs.keySet()) {
+					if (previousResult.hasRegion(region)) {
+						regionValues.put(region, previousResult.getMin(region), previousResult.getMax(region));
+						continue;
+					}
+					solnMin = Utils.bitsetToDoubleArray(targetMin, n);
+					solnMax = Utils.bitsetToDoubleArray(targetMax, n);
+					regionValues.put(region, solnMin, solnMax);
+				}
+				return regionValues;
+			}
 		}
 
 		// Start backwards transient computation

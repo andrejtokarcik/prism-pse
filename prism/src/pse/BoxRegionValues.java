@@ -26,6 +26,7 @@
 
 package pse;
 
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
 import java.util.Map.Entry;
@@ -85,12 +86,26 @@ public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateVal
 		put(region, minValues, maxValues);
 	}
 
-	public static BoxRegionValues createWithOnes(Model model, BoxRegion region) throws PrismException
+	public static BoxRegionValues createWithAllOnes(Model model, BoxRegion region) throws PrismException
 	{
 		StateValues ones = new StateValues(TypeDouble.getInstance(), new Double(1.0), model);
 		return new BoxRegionValues(model, region, ones, ones);
 	}
-	
+
+	public boolean isAllOnes() throws PrismException
+	{
+		double[] onesD = new StateValues(TypeDouble.getInstance(), new Double(1.0), model).getDoubleArray();
+		for (BoxRegionValues.StateValuesPair valuesPair : values()) {
+			if (!Arrays.equals(valuesPair.getMin().getDoubleArray(), onesD)) {
+				return false;
+			}
+			if (!Arrays.equals(valuesPair.getMax().getDoubleArray(), onesD)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	public StateValuesPair put(BoxRegion region, StateValues minValues, StateValues maxValues)
 	{
 		return put(region, new StateValuesPair(minValues, maxValues));
