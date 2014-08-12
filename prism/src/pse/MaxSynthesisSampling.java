@@ -36,19 +36,25 @@ import explicit.CTMCModelChecker;
 
 public final class MaxSynthesisSampling extends MaxSynthesis
 {
+	private SimulatorEngine simulatorEngine;
 	private explicit.ConstructModel constructModel;
+	private CTMCModelChecker ctmcModelChecker;
 	private double lastMaximalSampleProb;
 
 	public MaxSynthesisSampling(double probTolerance, int initState, SimulatorEngine simulatorEngine)
 	{
 		super(probTolerance, initState);
-		constructModel = new explicit.ConstructModel(modelChecker, simulatorEngine);
+		this.simulatorEngine = simulatorEngine;
 	}
 
 	@Override
-	public void initialise(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
+	public void initialise(PSEModelChecker modelChecker, PSEModel model, Expression propExpr)
+			throws PrismException
 	{
 		super.initialise(modelChecker, model, propExpr);
+		constructModel = new explicit.ConstructModel(modelChecker, simulatorEngine);
+		ctmcModelChecker = new CTMCModelChecker(modelChecker);
+		ctmcModelChecker.setModulesFileAndPropertiesFile(modelChecker.getModulesFile(), modelChecker.getPropertiesFile());
 		lastMaximalSampleProb = Double.NEGATIVE_INFINITY;
 	}
 
@@ -71,7 +77,6 @@ public final class MaxSynthesisSampling extends MaxSynthesis
 		double maximalSampleProb = Double.NEGATIVE_INFINITY;
 		for (Point sample : maximalLowerBoundRegion.generateSamplePoints()) {
 			CTMC ctmc = model.instantiate(sample, modelChecker.getModulesFile(), constructModel);
-			CTMCModelChecker ctmcModelChecker = new CTMCModelChecker(modelChecker);
 			double currentSampleProb = (Double) ctmcModelChecker.checkExpression(ctmc, propExpr).getValue(initState);
 			if (currentSampleProb > maximalSampleProb)
 				maximalSampleProb = currentSampleProb;

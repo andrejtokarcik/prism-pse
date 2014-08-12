@@ -97,8 +97,9 @@ public final class PSEModelChecker extends PrismComponent
 		// Get combined constant values from model/properties
 		constantValues = new Values();
 		constantValues.addValues(modulesFile.getConstantValues());
-		if (propertiesFile != null)
+		if (propertiesFile != null) {
 			constantValues.addValues(propertiesFile.getConstantValues());
+		}
 
 		stateChecker.setModulesFileAndPropertiesFile(modulesFile, propertiesFile);
 	}
@@ -106,6 +107,11 @@ public final class PSEModelChecker extends PrismComponent
 	public ModulesFile getModulesFile()
 	{
 		return modulesFile;
+	}
+
+	public PropertiesFile getPropertiesFile()
+	{
+		return propertiesFile;
 	}
 
 	public Values getConstantValues()
@@ -647,8 +653,9 @@ public final class PSEModelChecker extends PrismComponent
 
 		assert nonAbsMin.equals(nonAbsMax);
 		BitSet nonAbs = nonAbsMin;
-		if (previousResult == null)
+		if (previousResult == null) {
 			previousResult = new BoxRegionValues(model);
+		}
 
 		// Store num states
 		n = model.getNumStates();
