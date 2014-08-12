@@ -73,6 +73,11 @@ public final class MaxSynthesisSampling extends MaxSynthesis
 				maximalLowerBoundRegion = entry.getKey();
 			}
 		}
+		/* TODO: If the region found above is the same as the previously found region
+		 * for the X-th time (where X is a PRISM setting, configurable via CLI), then
+		 * don't even attempt to generate more samples, and simply return the last
+		 * maximal sample probability.
+		 */
 
 		double maximalSampleProb = Double.NEGATIVE_INFINITY;
 		for (Point sample : maximalLowerBoundRegion.generateSamplePoints()) {
