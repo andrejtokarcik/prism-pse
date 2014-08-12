@@ -2074,7 +2074,7 @@ public class PrismCL implements PrismModelListener
 					pseNames[pdNr] = pseDefSplit[0].trim();
 					String[] upperLower = pseDefSplit[1].split(":");
 					if (upperLower.length != 2)
-						throw new PrismException("Not a range \"" + pseDefSplit[1] + "\" for parameter " + pseNames[pdNr]);
+						throw new PrismException("\"" + pseDefSplit[1] + "\" cannot be used as range for parameter " + pseNames[pdNr]);
 
 					try {
 						pseLowerBounds[pdNr] = Double.parseDouble(upperLower[0].trim());
