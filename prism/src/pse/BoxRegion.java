@@ -97,7 +97,7 @@ final class BoxRegion implements Comparable<BoxRegion>
 		return subregions;
 	}
 
-	public double getVolume()
+	public double volume()
 	{
 		if (volume > 0.0)
 			return volume;

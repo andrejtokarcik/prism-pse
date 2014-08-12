@@ -55,7 +55,7 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 	{
 		this.volumeTolerance = volumeTolerance;
 		this.initState = initState;
-		this.completeSpaceVolume = completeSpace.getVolume();
+		this.completeSpaceVolume = completeSpace.volume();
 	}
 
 	@Override
@@ -105,7 +105,7 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 				belowRegions.add(entry.getKey(), "upper prob bound = " + upperProbBound);
 			} else {
 				undecidedRegions.add(entry.getKey());
-				double currentVolume = entry.getKey().getVolume();
+				double currentVolume = entry.getKey().volume();
 				undecidedVolume += currentVolume;
 				if (currentVolume > greatestVolume) {
 					greatestVolume = currentVolume;
