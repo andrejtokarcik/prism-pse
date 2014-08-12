@@ -1096,8 +1096,8 @@ public class PrismCL implements PrismModelListener
 				}
 				// PSE-based model checking techniques
 				else if (sw.equals("psecheck") || sw.equals("psesynth-thr") ||
-						sw.equals("psesynth-min-naive") || sw.equals("psesynth-min-sampling") ||
-						sw.equals("psesynth-max-naive") || sw.equals("psesynth-max-sampling")) {
+						sw.equals("psesynth-min-naive") || sw.equals("psesynth-min-sample") ||
+						sw.equals("psesynth-max-naive") || sw.equals("psesynth-max-sample")) {
 					pseCheck = true;
 					if (sw.equals("psecheck"))
 						pseCheckType = pse.DecompositionProcedure.Type.SIMPLE;
@@ -1105,11 +1105,11 @@ public class PrismCL implements PrismModelListener
 						pseCheckType = pse.DecompositionProcedure.Type.THRESHOLD;
 					else if (sw.equals("psesynth-min-naive"))
 						pseCheckType = pse.DecompositionProcedure.Type.MIN_NAIVE;
-					else if (sw.equals("psesynth-min-sampling"))
+					else if (sw.equals("psesynth-min-sample"))
 						pseCheckType = pse.DecompositionProcedure.Type.MIN_SAMPLING;
 					else if (sw.equals("psesynth-max-naive"))
 						pseCheckType = pse.DecompositionProcedure.Type.MAX_NAIVE;
-					else if (sw.equals("psesynth-max-sampling"))
+					else if (sw.equals("psesynth-max-sample"))
 						pseCheckType = pse.DecompositionProcedure.Type.MAX_SAMPLING;
 
 					if (i < args.length - 2) {

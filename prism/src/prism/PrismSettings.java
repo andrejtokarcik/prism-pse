@@ -119,8 +119,6 @@ public class PrismSettings implements Observer
 	public static final	String PRISM_PARAM_SUBSUME_REGIONS			= "prism.param.subsumeRegions";
 	public static final String PRISM_PARAM_DAG_MAX_ERROR			= "prism.param.functionDagMaxError";
 
-	public static final	String PRISM_PSE_ENABLED					= "prism.pse.enabled";
-
 	public static final String PRISM_FAU_EPSILON					= "prism.fau.epsilon";
 	public static final String PRISM_FAU_DELTA						= "prism.fau.delta";
 	public static final String PRISM_FAU_INTERVALS					= "prism.fau.intervals";
@@ -315,13 +313,6 @@ public class PrismSettings implements Observer
 			{ DOUBLE_TYPE,		PRISM_PARAM_DAG_MAX_ERROR,				"Parametric model checking max. DAG error",	"4.1",			new Double(1E-100),															"",
 																			"Maximal error probability (i.e. maximum probability of of a wrong result) in DAG function representation used for parametric model checking." },
 
-
-			// PARAMETER SPACE EXPLORATION
-
-			{ BOOLEAN_TYPE,		PRISM_PSE_ENABLED,					"Parameter space exploration",			"4.1",			new Boolean(false),															"",
-																			"Perform parameter space exploration." },
-
-			
 			// FAST ADAPTIVE UNIFORMISATION																
 			{ DOUBLE_TYPE,      PRISM_FAU_EPSILON,						"FAU epsilon",		 					"4.1",   	 	new Double(1E-6),     													"",
 																			"For fast adaptive uniformisation (FAU), decides how much probability may be lost due to truncation of birth process." },
@@ -1323,14 +1314,6 @@ public class PrismSettings implements Observer
 			}
 		}
 
-
-		// PARAMETER SPACE EXPLORATION:
-		
-		else if (sw.equals("pse")) {
-			set(PRISM_PSE_ENABLED, true);
-		}
-
-
 		// FAST ADAPTIVE UNIFORMISATION:
 		
 		// Epsilon for fast adaptive uniformisation
@@ -1506,9 +1489,14 @@ public class PrismSettings implements Observer
 		mainLog.println("-paramsubsumeregions <b> ....... Subsume adjacent regions during analysis [default: true]");
 		mainLog.println("-paramdagmaxerror <b> .......... Maximal error probability allowed for DAG function representation [default: 1E-100]");
 		mainLog.println();
-		mainLog.println("PARAMETER SPACE EXPLORATION OPTIONS:");
-		mainLog.println("-pse <time> <vals> <acc> ....... Perform parameter space exploration with parameter ranges <vals> and accuracy <acc>");
-		// TODO: add -psecheck, -psesynth-*
+		mainLog.println("PARAMETER SPACE EXPLORATION (PSE) OPTIONS:");
+		mainLog.println("-pse <time> <s> <acc> .......... Perform transient analysis with parameter space <s> and accuracy <acc> for time <time>");
+		mainLog.println("-psecheck <s> <acc> ............ Perform model checking with parameter space <s> and accuracy <acc>");
+		mainLog.println("-psesynth-thr <s> <tol> ........ Perform threshold synthesis with parameter space <s> and volume tolerance <tol>");
+		mainLog.println("-psesynth-min-naive <s> <tol> .. Perform min synthesis (naive approach) with parameter space <s> and probability tolerance <tol>");
+		mainLog.println("-psesynth-min-sample <s> <tol> . Perform min synthesis (sampling approach) with parameter space <s> and probability tolerance <tol>");
+		mainLog.println("-psesynth-max-naive <s> <tol> .. Perform max synthesis (naive approach) with parameter space <s> and probability tolerance <tol>");
+		mainLog.println("-psesynth-max-sample <s> <tol> . Perform max synthesis (sampling approach) with parameter space <s> and probability tolerance <tol>");
 		mainLog.println();
 		mainLog.println("FAST ADAPTIVE UNIFORMISATION (FAU) OPTIONS:");
 		mainLog.println("-fauepsilon <x> ................ Set probability threshold of birth process in FAU [default: 1e-6]");
