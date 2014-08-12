@@ -2076,12 +2076,19 @@ public class PrismCL implements PrismModelListener
 					if (upperLower.length != 2)
 						throw new PrismException("Not a range \"" + pseDefSplit[1] + "\" for parameter " + pseNames[pdNr]);
 
-					pseLowerBounds[pdNr] = Double.parseDouble(upperLower[0].trim());
-					pseUpperBounds[pdNr] = Double.parseDouble(upperLower[1].trim());
-					if (pseLowerBounds[pdNr] > pseUpperBounds[pdNr])
+					try {
+						pseLowerBounds[pdNr] = Double.parseDouble(upperLower[0].trim());
+						pseUpperBounds[pdNr] = Double.parseDouble(upperLower[1].trim());
+					} catch (NumberFormatException e) {
+						throw new PrismException(
+								"Invalid range \"" + pseDefSplit[1] + "\" for parameter " + pseNames[pdNr] +
+								" (bounds must be doubles)");
+					}
+					if (pseLowerBounds[pdNr] > pseUpperBounds[pdNr]) {
 						throw new PrismException(
 								"Invalid range \"" + pseDefSplit[1] + "\" for parameter " + pseNames[pdNr] +
 								" (lower bound greater than upper)");
+					}
 				}
 			}
 		}
