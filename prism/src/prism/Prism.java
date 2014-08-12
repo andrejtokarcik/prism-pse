@@ -56,17 +56,10 @@ import parser.ast.LabelList;
 import parser.ast.ModulesFile;
 import parser.ast.PropertiesFile;
 import parser.ast.Property;
-import pse.DecompositionProcedure;
-import pse.MaxSynthesisNaive;
-import pse.MaxSynthesisSampling;
-import pse.MinSynthesisNaive;
-import pse.MinSynthesisSampling;
 import pse.PSEModel;
 import pse.PSEModelBuilder;
 import pse.PSEModelChecker;
 import pse.PSEModelExplorer;
-import pse.SimpleDecompositionProcedure;
-import pse.ThresholdSynthesis;
 import pta.DigitalClocks;
 import pta.PTAModelChecker;
 import simulator.GenerateSimulationPath;
@@ -3435,7 +3428,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 	/**
 	 */
-	public Result modelCheckPSE(DecompositionProcedure.Type decompositionType, PropertiesFile propertiesFile, Property prop,
+	public Result modelCheckPSE(pse.DecompositionProcedure.Type decompositionType, PropertiesFile propertiesFile, Property prop,
 			String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double accuracy)
 			throws PrismException
 	{
@@ -3466,31 +3459,31 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
 
 		// Determine the decomposition procedure
-		DecompositionProcedure decompositionProcedure;
+		pse.DecompositionProcedure decompositionProcedure;
 		switch (decompositionType) {
 		case SIMPLE:
 			printInitInfoPSE(mainLog, "PSE model checking: " + prop, regionFactory, propertiesFile, accuracy);
-			decompositionProcedure = new SimpleDecompositionProcedure(accuracy);
+			decompositionProcedure = new pse.SimpleDecompositionProcedure(accuracy);
 			break;
 		case THRESHOLD:
 			printInitInfoPSE(mainLog, "PSE threshold synthesis: " + prop, regionFactory, propertiesFile, accuracy);
-			decompositionProcedure = new ThresholdSynthesis(accuracy, model.getFirstInitialState(), regionFactory.completeSpace());
+			decompositionProcedure = new pse.ThresholdSynthesis(accuracy, model.getFirstInitialState(), regionFactory.completeSpace());
 			break;
 		case MIN_NAIVE:
 			printInitInfoPSE(mainLog, "PSE min synthesis using the naive approach: " + prop, regionFactory, propertiesFile, accuracy);
-			decompositionProcedure = new MinSynthesisNaive(accuracy, model.getFirstInitialState());
+			decompositionProcedure = new pse.MinSynthesisNaive(accuracy, model.getFirstInitialState());
 			break;
 		case MIN_SAMPLING:
 			printInitInfoPSE(mainLog, "PSE min synthesis using the sampling approach: " + prop, regionFactory, propertiesFile, accuracy);
-			decompositionProcedure = new MinSynthesisSampling(accuracy, model.getFirstInitialState(), getSimulator());
+			decompositionProcedure = new pse.MinSynthesisSampling(accuracy, model.getFirstInitialState(), getSimulator());
 			break;
 		case MAX_NAIVE:
 			printInitInfoPSE(mainLog, "PSE max synthesis using the naive approach: " + prop, regionFactory, propertiesFile, accuracy);
-			decompositionProcedure = new MaxSynthesisNaive(accuracy, model.getFirstInitialState());
+			decompositionProcedure = new pse.MaxSynthesisNaive(accuracy, model.getFirstInitialState());
 			break;
 		case MAX_SAMPLING:
 			printInitInfoPSE(mainLog, "PSE max synthesis using the sampling approach: " + prop, regionFactory, propertiesFile, accuracy);
-			decompositionProcedure = new MaxSynthesisSampling(accuracy, model.getFirstInitialState(), getSimulator());
+			decompositionProcedure = new pse.MaxSynthesisSampling(accuracy, model.getFirstInitialState(), getSimulator());
 			break;
 		default:
 			throw new PrismException("Unrecognized decomposition type");
@@ -3553,7 +3546,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 			PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
 			pse.BoxRegionValues regionValues = mc.doTransient(model, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax,
-					new SimpleDecompositionProcedure(accuracy));
+					new pse.SimpleDecompositionProcedure(accuracy));
 
 			// Results report
 			mainLog.println("\nPrinting minimised & maximised transient probabilities:");
