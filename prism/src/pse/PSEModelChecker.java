@@ -51,6 +51,7 @@ import prism.PrismException;
 import prism.PrismLog;
 import prism.PrismPrintStreamLog;
 import prism.Result;
+import prism.PrismSettings;
 import explicit.FoxGlynn;
 import explicit.StateModelChecker;
 import explicit.StateValues;
@@ -878,6 +879,9 @@ public final class PSEModelChecker extends PrismComponent
 		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
 		mainLog.println();
 
+		// Get number of iterations for partial examination
+		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
+
 		totalIters = 0;
 		while (regions.size() != 0) {
 			// Create solution vectors
@@ -929,12 +933,18 @@ public final class PSEModelChecker extends PrismComponent
 							sumMin[i] += weights[iters - left] * solnMin[i];
 							sumMax[i] += weights[iters - left] * solnMax[i];
 						}
-						decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
+						// After a number of iters (default 50), examine the partially computed result
+						if (iters % numItersExaminePartial == 0) {
+							decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
+						}
 					}
 
 					iters++;
 					totalIters++;
 				}
+
+				// Examine this region's result after all the iters have been finished
+				decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
 
 				// Store result
 				regionValues.put(region, sumMin, sumMax);
