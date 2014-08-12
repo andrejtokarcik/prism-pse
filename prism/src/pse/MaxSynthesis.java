@@ -30,7 +30,7 @@ import java.util.Map.Entry;
 
 import prism.PrismException;
 
-abstract class MaxSynthesis extends AbstractMinMaxSynthesis
+abstract class MaxSynthesis extends OptimisingSynthesis
 {
 	public MaxSynthesis(double probTolerance, int initState)
 	{
