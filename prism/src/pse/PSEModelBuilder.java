@@ -152,7 +152,6 @@ public final class PSEModelBuilder extends PrismComponent
 		long timer = System.currentTimeMillis();
 
 		model = new PSEModel();
-		model.setModelType(modelType);
 
 		if (modulesFile.getInitialStates() != null) {
 			throw new PrismException("Explicit model construction does not support multiple initial states");
