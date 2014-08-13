@@ -59,9 +59,9 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 	}
 
 	@Override
-	public void initialise(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
+	public void initialiseModelChecking(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
 	{
-		super.initialise(modelChecker, model, propExpr);
+		super.initialiseModelChecking(modelChecker, model, propExpr);
 		belowRegions = new LabelledBoxRegions();
 		aboveRegions = new LabelledBoxRegions();
 		undecidedRegions = new LabelledBoxRegions();

@@ -139,7 +139,7 @@ public final class PSEModelChecker extends PrismComponent
 		//expr = (Expression) expr.replaceConstants(constantValues);
 
 		// Initialise decomposition procedure before model checking starts
-		decompositionProcedure.initialise(this, model, expr);
+		decompositionProcedure.initialiseModelChecking(this, model, expr);
 
 		// Let decomposition procedure adjust the property, if needed
 		expr = decompositionProcedure.getPropertyExpression();

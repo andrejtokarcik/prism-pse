@@ -48,10 +48,10 @@ public final class MaxSynthesisSampling extends MaxSynthesis
 	}
 
 	@Override
-	public void initialise(PSEModelChecker modelChecker, PSEModel model, Expression propExpr)
+	public void initialiseModelChecking(PSEModelChecker modelChecker, PSEModel model, Expression propExpr)
 			throws PrismException
 	{
-		super.initialise(modelChecker, model, propExpr);
+		super.initialiseModelChecking(modelChecker, model, propExpr);
 		constructModel = new explicit.ConstructModel(modelChecker, simulatorEngine);
 		ctmcModelChecker = new CTMCModelChecker(modelChecker);
 		ctmcModelChecker.setModulesFileAndPropertiesFile(modelChecker.getModulesFile(), modelChecker.getPropertiesFile());

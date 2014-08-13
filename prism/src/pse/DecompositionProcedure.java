@@ -86,7 +86,7 @@ public abstract class DecompositionProcedure
 		}
 	}
 
-	public void initialise(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
+	public void initialiseModelChecking(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
 	{
 		this.modelChecker = modelChecker;
 		this.model = model;
