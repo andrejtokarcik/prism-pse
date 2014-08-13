@@ -36,8 +36,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdd.JDD;
-
 import parser.State;
 import parser.Values;
 import parser.ast.Expression;
@@ -114,7 +112,7 @@ public class StateModelChecker extends PrismComponent
 	/**
 	 * Create a new StateModelChecker, inherit basic state from parent (unless null).
 	 */
-	public StateModelChecker(PrismComponent parent) throws PrismException
+	public StateModelChecker(PrismComponent parent)
 	{
 		super(parent);
 		

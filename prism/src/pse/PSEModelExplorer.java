@@ -1,7 +1,7 @@
 //==============================================================================
 //	
 //	Authors:
-//	* Dave Parker <david.parker@comlab.ox.ac.uk> (University of Oxford)
+//	* Andrej Tokarcik <andrejtokarcik@gmail.com> (Masaryk University)
 //	
 //------------------------------------------------------------------------------
 //	
@@ -42,17 +42,32 @@ import prism.Pair;
 import prism.PrismException;
 import explicit.ModelExplorer;
 
+/**
+ * Class providing means for exploration of structures arising from modules
+ * files, i.e. state space and action-annotated transition graph with rates.
+ * It is useful for separate prior model building (as in {@link PSEModelBuilder})
+ * as well as for on-the-fly querying of model data (as in FAU).
+ */
 public final class PSEModelExplorer implements ModelExplorer<Expression>
 {
+	/** symbolic engine providing essential methods */
 	private SymbolicEngine engine;
+	/** last queried state */
 	private State currentState;
+	/** transition list of last queried state */
 	private TransitionList transitionList;
-
+	/** parameter region factory */
 	private BoxRegionFactory regionFactory;
-
+	/** map from rate expression to respective rate parameters and population,
+	 *  the latter having been extracted from the former */
 	private Map<Expression, RateParametersAndPopulation> rateDataCache = new HashMap<Expression, RateParametersAndPopulation>();
+	/** map from state to its transition list */
 	private Map<State, TransitionList> transitionsCache = new HashMap<State, TransitionList>();
 
+	/**
+	 * Special data structure for holding a pair consisting of rate parameters
+	 * and rate population.
+	 */
 	protected static class RateParametersAndPopulation extends Pair<Expression, Double>
 	{
 		public RateParametersAndPopulation(Expression first, Double second) {
@@ -70,12 +85,28 @@ public final class PSEModelExplorer implements ModelExplorer<Expression>
 		}
 	}
 
+	/**
+	 * Constructor.
+	 * 
+	 * @param modulesFile modules file whose structures are to be explored
+	 * @throws PrismException in case {@code modulesFile} cannot be processed
+	 */
 	public PSEModelExplorer(ModulesFile modulesFile) throws PrismException
 	{
 		modulesFile = (ModulesFile) modulesFile.deepCopy().replaceConstants(modulesFile.getConstantValues()).simplify();
 		engine = new SymbolicEngine(modulesFile);
 	}
 
+	/**
+	 * Sets parameter information.
+	 * Obviously, all of {@code paramNames}, {@code lower}, {@code} upper
+	 * must have the same length, and {@code lower} bounds of parameters must
+	 * not be higher than {@code upper} bounds.
+	 * 
+	 * @param paramNames names of parameters
+	 * @param lower lower bounds of parameters' ranges
+	 * @param upper upper bounds of parameters' ranges
+	 */
 	public void setParameters(String[] paramNames, double[] lower, double[] upper)
 	{
 		Values lowerParams = new Values();
@@ -87,12 +118,28 @@ public final class PSEModelExplorer implements ModelExplorer<Expression>
 		regionFactory = new BoxRegionFactory(lowerParams, upperParams);
 	}
 
+	/**
+	 * Gets the parameter region factory.
+	 * 
+	 * @return parameter region factory
+	 */
 	public BoxRegionFactory getRegionFactory()
 	{
 		return regionFactory;
 	}
 
-	protected RateParametersAndPopulation extractRateParametersAndPopulation(Expression rateExpression) throws PrismException
+	/**
+	 * Extracts parameters and the transition origin's species population
+	 * from the given rate expression.
+	 * 
+	 * @param rateExpression rate expression to extract parameters
+	 * and population from
+	 * @return special pair of rate parameters and population
+	 * @throws PrismException in case of an error during handling of 
+	 * of {@code rateExpression}
+	 */
+	protected RateParametersAndPopulation extractRateParametersAndPopulation(Expression rateExpression)
+			throws PrismException
 	{
 		if (rateDataCache.containsKey(rateExpression)) {
 			return rateDataCache.get(rateExpression);
@@ -121,6 +168,16 @@ public final class PSEModelExplorer implements ModelExplorer<Expression>
 		return result;
 	}
 
+	/**
+	 * Generalisation of {@link #extractRateParametersAndPopulation(Expression)}
+	 * for arrays of rate expressions, one output parameters/population pair
+	 * per one input rate expression.
+	 * 
+	 * @param rateExpressions array of rate expressions
+	 * @return array of special pairs of rate parameters and population
+	 * @throws PrismException in case of an error during handling of 
+	 * of a {@code rateExpressions} item
+	 */
 	protected RateParametersAndPopulation[] extractRateParametersAndPopulation(Expression[] rateExpressions) throws PrismException
 	{
 		if (rateExpressions == null) {

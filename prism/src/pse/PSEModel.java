@@ -78,11 +78,11 @@ public final class PSEModel extends ModelExplicit
 	private double[] exitRates;
 	/** set of hash codes for deciding whether state has predecessors via reaction */
 	private Set<Integer> predecessorsViaReaction;
-	/** map from state to transitions exclusively coming into it */
+	/** map from state to transitions coming into the state (not outgoing) */
 	private Map<Integer, List<Integer>> inTransitions;
-	/** map from state to transitions both incoming in and outgoing from it */
+	/** map from state to transitions both incoming in and outgoing from the state */
 	private Map<Integer, List<Pair<Integer, Integer>>> inoutTransitions;
-	/** map from state to transitions exclusively going out from it */
+	/** map from state to transitions going out from the state (not incoming) */
 	private Map<Integer, List<Integer>> outTransitions;
 	
 	/**
@@ -388,9 +388,7 @@ public final class PSEModel extends ModelExplicit
 	 */
 	double getMaxExitRate()
 	{
-		BitSet allStates = new BitSet(numStates);
-		allStates.set(0, numStates - 1);
-		return getMaxExitRate(allStates);
+		return getMaxExitRate(null);
 	}
 
 	/**
@@ -402,10 +400,16 @@ public final class PSEModel extends ModelExplicit
 	 */
 	double getMaxExitRate(BitSet subset)
 	{
+		if (subset == null) {
+			// Will loop over all states
+			subset = new BitSet(numStates);
+			subset.set(0, numStates - 1);
+		}
 		double max = Double.NEGATIVE_INFINITY;
 		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
-			if (exitRates[state] > max)
+			if (exitRates[state] > max) {
 				max = exitRates[state];
+			}
 		}
 		return max;
 	}
@@ -593,15 +597,15 @@ public final class PSEModel extends ModelExplicit
 	 * @param resultMin vector to store minimised result in
 	 * @param vectMax vector to multiply by when computing maximised result
 	 * @param resultMax vector to store maximised result in
-	 * @param subset Only do multiplication for these rows (ignored if null)
-	 * @param complement If true, {@code subset} is taken to be its complement
+	 * @param subset only do multiplication for these rows (null means "all")
+	 * @param complement if true, {@code subset} is taken to be its complement
 	 * @param q uniformisation rate
 	 */
 	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], BitSet subset, boolean complement, double q)
 			throws PrismException
 	{
 		if (subset == null) {
-			// Loop over all states
+			// Will loop over all states
 			subset = new BitSet(numStates);
 			subset.set(0, numStates - 1);
 		}
@@ -685,7 +689,7 @@ public final class PSEModel extends ModelExplicit
 	 * the given point of the parameter space of this parametrised CTMC.
 	 * 
 	 * @param point point of parameter space determining the parameters' values
-	 * @param modulesFile model file
+	 * @param modulesFile modules file
 	 * @param constructModel object conducting construction of {@code explicit.CTMC}
 	 * models
 	 * @return non-parametrised CTMC obtained by substituting {@code point}
@@ -697,7 +701,7 @@ public final class PSEModel extends ModelExplicit
 			throws PrismException
 	{
 		modulesFile = (ModulesFile) modulesFile.deepCopy();
-		// Add point dimensions to constants of the model file
+		// Add point dimensions to constants of the modules file
 		modulesFile.getConstantValues().addValues(point.getDimensions());
 		return (CTMC) constructModel.constructModel(modulesFile);
 	}

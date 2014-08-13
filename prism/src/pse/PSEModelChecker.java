@@ -4,7 +4,6 @@
 //	Authors:
 //	* Andrej Tokarcik <andrejtokarcik@gmail.com> (Masaryk University)
 //	* Dave Parker <david.parker@comlab.ox.ac.uk> (University of Oxford)
-//	* Ernst Moritz Hahn <emhahn@cs.ox.ac.uk> (University of Oxford)
 //	
 //------------------------------------------------------------------------------
 //	
@@ -48,37 +47,43 @@ import parser.type.TypeDouble;
 import prism.ModelType;
 import prism.PrismComponent;
 import prism.PrismException;
-import prism.PrismLog;
-import prism.PrismPrintStreamLog;
 import prism.Result;
 import prism.PrismSettings;
+import pse.DecompositionProcedure.DecompositionNeeded;
 import explicit.FoxGlynn;
 import explicit.StateModelChecker;
 import explicit.StateValues;
 import explicit.Utils;
 
+/**
+ * Model checker for {@link PSEModel}.
+ * Covering such functionality as forwards/backwards transient
+ * computations and checking of unnested CSL formulae.
+ * The results are examined for accuracy by invocations
+ * of passed-in decomposition procedures.
+ */
 public final class PSEModelChecker extends PrismComponent
 {
-	// Log for output (default to System.out)
-	private PrismLog mainLog = new PrismPrintStreamLog(System.out);
-
+	/** parameter region factory */
 	private BoxRegionFactory regionFactory;
 
-	// Model file (for instantiating)
+	/** modules file, for instantiating of the PSE model */
 	private ModulesFile modulesFile = null;
 
-	// Properties file (for labels, constants, etc.)
+	/** properties file (for labels, constants, etc.) */
 	private PropertiesFile propertiesFile = null;
 
-	// Constants (extracted from model/properties)
+	/** constants (extracted from modules & properties) */
 	private Values constantValues;
 
+	/** state model checker, used as fall-back for checking
+	 *  of those expressions that PSE isn't concerned with */
 	private StateModelChecker stateChecker;
 
 	/**
-	 * Constructor
+	 * Constructor.
 	 */
-	public PSEModelChecker(PrismComponent parent, BoxRegionFactory regionFactory) throws PrismException
+	public PSEModelChecker(PrismComponent parent, BoxRegionFactory regionFactory)
 	{
 		super(parent);
 		this.regionFactory = regionFactory;
@@ -88,7 +93,7 @@ public final class PSEModelChecker extends PrismComponent
 	// Setters/getters
 
 	/**
-	 * Set the attached model file (for e.g. reward structures when model checking)
+	 * Sets the attached model file (for e.g. reward structures when model checking)
 	 * and the attached properties file (for e.g. constants/labels when model checking)
 	 */
 	public void setModulesFileAndPropertiesFile(ModulesFile modulesFile, PropertiesFile propertiesFile)
@@ -123,10 +128,18 @@ public final class PSEModelChecker extends PrismComponent
 	// Model checking functions
 
 	/**
-	 * Model check an expression, process and return the result.
-	 * Information about states and model constants should be attached to the model.
+	 * Prepares for and performs model checking of the given property expression.
+	 * Prints and returns the result.
+	 * 
+	 * @param model model to check
+	 * @param expr property to check
+	 * @param decompositionProcedure decomposition procedure to verify accuracy
+	 * of results
+	 * @return very final result of model checking
+	 * @throws PrismException
 	 */
-	public Result check(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure) throws PrismException
+	public Result check(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure)
+			throws PrismException
 	{
 		long timer = 0;
 
@@ -157,7 +170,19 @@ public final class PSEModelChecker extends PrismComponent
 		return result;
 	}
 
-	public BoxRegionValues checkExpression(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure) throws PrismException
+	/**
+	 * Performs model checking of the given property expression.
+	 * 
+	 * @param model model to check
+	 * @param expr property to check
+	 * @param decompositionProcedure decomposition procedure to verify accuracy
+	 * of results
+	 * @return minimised & maximised values per state and region, as returned
+	 * by model checking sub-procedures
+	 * @throws PrismException
+	 */
+	public BoxRegionValues checkExpression(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure)
+			throws PrismException
 	{
 		if (expr instanceof ExpressionFilter) {
 			return checkExpressionFilter(model, (ExpressionFilter) expr, decompositionProcedure);
@@ -165,15 +190,16 @@ public final class PSEModelChecker extends PrismComponent
 		if (expr instanceof ExpressionProb) {
 			return checkExpressionProb(model, (ExpressionProb) expr, decompositionProcedure);
 		}
-		// Let explicit.StateModelChecker take care of other expressions
+		// Let explicit.StateModelChecker take care of other kinds of expressions
 		StateValues vals = stateChecker.checkExpression(model, expr);
 		return new BoxRegionValues(model, regionFactory.completeSpace(), vals, vals);
 	}
 
 	/**
-	 * Model check a filter.
+	 * Checks a filter.
 	 */
-	protected BoxRegionValues checkExpressionFilter(PSEModel model, ExpressionFilter expr, DecompositionProcedure decompositionProcedure) throws PrismException
+	protected BoxRegionValues checkExpressionFilter(PSEModel model, ExpressionFilter expr, DecompositionProcedure decompositionProcedure)
+			throws PrismException
 	{
 		Object resObjMin, resObjMax;
 		StateValues resRgnValsMin, resRgnValsMax;
@@ -381,7 +407,7 @@ public final class PSEModelChecker extends PrismComponent
 	}
 
 	/**
-	 * Model check a P operator expression and return the values for all states.
+	 * Checks a P operator expression and returns the values for all states.
 	 */
 	protected BoxRegionValues checkExpressionProb(PSEModel model, ExpressionProb expr, DecompositionProcedure decompositionProcedure) throws PrismException
 	{
@@ -426,7 +452,7 @@ public final class PSEModelChecker extends PrismComponent
 	}
 
 	/**
-	 * Compute probabilities for the contents of a P operator.
+	 * Computes probabilities for the contents of a P operator.
 	 */
 	protected BoxRegionValues checkProbPathFormula(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure) throws PrismException
 	{
@@ -440,7 +466,7 @@ public final class PSEModelChecker extends PrismComponent
 	}
 
 	/**
-	 * Compute probabilities for a simple, non-LTL path operator.
+	 * Computes probabilities for a simple, non-LTL path operator.
 	 */
 	protected BoxRegionValues checkProbPathFormulaSimple(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure)
 			throws PrismException
@@ -448,6 +474,11 @@ public final class PSEModelChecker extends PrismComponent
 		return checkProbPathFormulaSimple(model, expr, decompositionProcedure, false);
 	}
 
+	/**
+	 * Computes probabilities for a simple, non-LTL path operator,
+	 * possibly with need to negate the results in a sub-procedure
+	 * (as indicated by {@code negate}).
+	 */
 	protected BoxRegionValues checkProbPathFormulaSimple(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure, boolean negate)
 			throws PrismException
 	{
@@ -463,8 +494,8 @@ public final class PSEModelChecker extends PrismComponent
 			}
 			// Negation
 			// NB: Handling of negations depends on the formula's being unnested/simple,
-			// i.e. the only top-level operators beyond the one temporal operator can be
-			// negations and/or parentheses.
+			// viz. on the fact that the only top-level operators beyond the one temporal
+			// operator can be negations and/or parentheses.
 			else if (exprUnary.getOperator() == ExpressionUnaryOp.NOT) {
 				regionValues = checkProbPathFormulaSimple(model, exprUnary.getOperand(), decompositionProcedure, !negate);
 			}
@@ -496,15 +527,17 @@ public final class PSEModelChecker extends PrismComponent
 		return regionValues;
 	}
 
-	/**
-	 * Model check a time-bounded until operator; return vector of probabilities for all states.
-	 */
 	protected BoxRegionValues checkProbBoundedUntil(PSEModel model, ExpressionTemporal expr, DecompositionProcedure decompositionProcedure)
 			throws PrismException
 	{
 		return checkProbBoundedUntil(model, expr, decompositionProcedure, false);
 	}
 
+	/**
+	 * Checks a time-bounded until operator, possibly with need
+	 * to negate the results in a sub-procedure (as indicated
+	 * by {@code negate}). 
+	 */
 	protected BoxRegionValues checkProbBoundedUntil(PSEModel model, ExpressionTemporal expr, DecompositionProcedure decompositionProcedure, boolean negate)
 			throws PrismException
 	{
@@ -618,7 +651,7 @@ public final class PSEModelChecker extends PrismComponent
 			}
 		}
 
-		mainLog.print("\nThe backwards transient probability computations produced ");
+		mainLog.print("\nThe PSE backwards transient probability computations altogether produced ");
 		mainLog.println(regionValues.getNumRegions() + " final regions.");
 		return regionValues;
 	}
@@ -632,8 +665,39 @@ public final class PSEModelChecker extends PrismComponent
 	}
 
 	/**
+	 * Performs backwards transient probability computation as required for CSL
+	 * model checking.
+	 * Computes, for each state, the sum over {@code target} states of the probability
+	 * of being in that state at time {@code t} multiplied by the corresponding
+	 * probability in the vector {@code multProbs}, assuming that all states
+	 * <i>not</i> in {@code nonAbs} are made absorbing. This holds for both
+	 * {@code *Min} and {@code *Max} variant, as they are in fact computed
+	 * independently of each other.
+	 * <p>
 	 * NB: Decompositions of the parameter space must be performed explicitly,
-	 * DecompositionNeeded is not handled within the method.
+	 * {@link DecompositionNeeded} is not handled within the method.
+	 * 
+	 * @param model model to check
+	 * @param targetMin target states when producing minimised probabilities
+	 * @param nonAbsMin states <i>not</i> to be made absorbing when producing
+	 * minimised probabilities (null means "all")
+	 * @param targetMax target states when producing maximised probabilities
+	 * @param nonAbsMax  states <i>not</i> to be made absorbing when producing
+	 * maximised probabilities (null means "all")
+	 * @param t time bound
+	 * @param multProbs vector containing minimised & maximised multiplication
+	 * factors per region
+	 * @param decompositionProcedure decomposition procedure to verify accuracy
+	 * of results
+	 * @param previousResult previous result, from which finished regions are to
+	 * be re-used
+	 * @param negate if true, results are subtracted from 1.0 and swapped before
+	 * returning
+	 * @return minimised & maximised probabilities per state and region
+	 * @throws PrismException
+	 * @throws DecompositionProcedure.DecompositionNeeded thrown by decomposition
+	 * procedure if it found the results to be too inaccurate
+	 * @see PSEModel#mvMult
 	 */
 	public BoxRegionValues computeTransientBackwardsProbs(PSEModel model,
 			BitSet targetMin, BitSet nonAbsMin, BitSet targetMax, BitSet nonAbsMax,
@@ -661,7 +725,7 @@ public final class PSEModelChecker extends PrismComponent
 		// Store num states
 		n = model.getNumStates();
 
-		// Optimisations: If (nonAbs is empty or t = 0) and multProbs is null, this is easy.
+		// Optimisations: If (nonAbs is empty or t = 0) and multProbs is all ones, this is easy.
 		if ((nonAbs != null && nonAbs.isEmpty()) || (t == 0)) {
 			if (multProbs.isAllOnes()) {
 				for (BoxRegion region : multProbs.keySet()) {
@@ -701,6 +765,9 @@ public final class PSEModelChecker extends PrismComponent
 			weights[i - left] /= totalWeight;
 		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
 		mainLog.println();
+
+		// Get number of iterations for partial examination
+		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
 
 		totalIters = 0;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : multProbs) {
@@ -764,12 +831,18 @@ public final class PSEModelChecker extends PrismComponent
 						sumMin[i] += weights[iters - left] * solnMin[i];
 						sumMax[i] += weights[iters - left] * solnMax[i];
 					}
-					decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
+					// After a number of iters (default 50), examine the partially computed result
+					if (iters % numItersExaminePartial == 0) {
+						decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
+					}
 				}
 
 				iters++;
 				totalIters++;
 			}
+
+			// Examine this region's result after all the iters have been finished
+			decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
 
 			// Store result
 			regionValues.put(region, sumMin, sumMax);
@@ -777,7 +850,7 @@ public final class PSEModelChecker extends PrismComponent
 
 		// Negate if necessary
 		if (negate) {
-			// Subtract all min/max values from 1
+			// Subtract all min/max values from 1 and swap
 			for (BoxRegionValues.StateValuesPair pair: regionValues.values()) {
 				pair.getMin().timesConstant(-1.0);
 				pair.getMin().plusConstant(1.0);
@@ -787,6 +860,7 @@ public final class PSEModelChecker extends PrismComponent
 			}
 		}
 
+		// Examine the whole computation after it's completely finished
 		decompositionProcedure.examineWholeComputation(regionValues);
 
 		// Finished bounded probabilistic reachability
@@ -800,7 +874,15 @@ public final class PSEModelChecker extends PrismComponent
 
 	// Transient analysis
 
-	public BoxRegionValues doTransient(PSEModel model, double t, StateValues initDistMin, StateValues initDistMax, DecompositionProcedure decompositionProcedure) throws PrismException
+	/**
+	 * Computes transient probability distribution (forwards).
+	 * Optionally, uses the passed in vectors {@code initDistMin} and {@code initDistMax}
+	 * as the initial probability distribution (time 0).
+	 * If the vectors are null, starts from initial state (or uniform distribution
+	 * over multiple initial states).
+	 */
+	public BoxRegionValues doTransient(PSEModel model, double t, StateValues initDistMin, StateValues initDistMax, DecompositionProcedure decompositionProcedure)
+			throws PrismException
 	{
 		StateValues initDistMinNew = null, initDistMaxNew = null;
 
@@ -829,7 +911,22 @@ public final class PSEModelChecker extends PrismComponent
 	}
 
 	/**
+	 * Performs forwards transient probability computation.
+	 * Computes the minimised & maximised probability of being in each state
+	 * at time {@code t}, assuming the initial distribution {@code initDistMin}
+	 * & {@code initDistMax}, respectively.
+	 * <p>
 	 * NB: Decompositions of the parameter space are performed implicitly.
+	 * 
+	 * @param model model to be analysed
+	 * @param t time point
+	 * @param initDistMin initial distribution for minimised probabilities
+	 * @param initDistMax initial distribution for maximised probabilities
+	 * @param decompositionProcedure decomposition procedure to verify accuracy
+	 * of results
+	 * @return minimised & maximised probabilities per state and region
+	 * @throws PrismException
+	 * @see PSEModel#vmMult
 	 */
 	// TODO: Perform decompositions explicitly from doTransient analogically to backwards transient computation,
 	// i.e. replace the double arrays initDist{Min,Max} with BoxRegionValues.
@@ -956,7 +1053,7 @@ public final class PSEModelChecker extends PrismComponent
 			}
 		}
 
-		// TODO call decompositionProcedure.examineWholeComputation()?
+		// TODO: Call decompositionProcedure.examineWholeComputation()?
 
 		// Finished bounded probabilistic reachability
 		timer = System.currentTimeMillis() - timer;
