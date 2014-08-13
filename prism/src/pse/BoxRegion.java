@@ -33,13 +33,28 @@ import java.util.Set;
 import parser.Values;
 import explicit.Utils;
 
+/**
+ * Box (hyper-rectangle) representation of a parameter region.
+ * Each parameter is associated with a lower and upper bound, and
+ * the region contains all bounds so that the corresponding dimensions
+ * are (not strictly) between these lower and upper bounds.
+ * 
+ * @see BoxRegionFactory
+ */
 final class BoxRegion implements Comparable<BoxRegion>
 {
 	private Values lowerBounds;
 	private Values upperBounds;
-
+	/** volume of the region, not yet computed if zero,
+	 *  the actual value is always greater than zero */
 	private double volume = 0.0;
 
+	/**
+	 * Constructs a new box region.
+	 * 
+	 * @param boundsLower region's lower bounds
+	 * @param boundsUpper region's upper bounds
+	 */
 	public BoxRegion(Values boundsLower, Values boundsUpper)
 	{
 		assert boundsLower.compareTo(boundsUpper) <= 0;
@@ -47,17 +62,32 @@ final class BoxRegion implements Comparable<BoxRegion>
 		this.upperBounds = boundsUpper;
 	}
 
-
+	/**
+	 * Gets the region's lower bounds.
+	 * 
+	 * @return region's lower bounds
+	 */
 	public Values getLowerBounds()
 	{
 		return lowerBounds;
 	}
 
+	/**
+	 * Gets the region's upper bounds.
+	 * 
+	 * @return region's upper bounds
+	 */
 	public Values getUpperBounds()
 	{
 		return upperBounds;
 	}
 
+	/**
+	 * Computes middle bounds by taking an average of the lower and upper
+	 * bound of all the parameters' ranges.
+	 * 
+	 * @return middle bounds
+	 */
 	private Values computeMidBounds()
 	{
 		Values midBounds = new Values();
@@ -69,6 +99,16 @@ final class BoxRegion implements Comparable<BoxRegion>
 		return midBounds;
 	}
 
+	/**
+	 * Decomposes the region into several mutually disjoint subregions
+	 * (with the only exception of the subregions' upper/lower bounds
+	 * that may be shared among multiple subregions).
+	 * The subregions are also collectively exhaustive in the sense that
+	 * their union is precisely the region that is being decomposed.
+	 * The corresponding set-theoretical notion is a partition of a set.
+	 * 
+	 * @return set of subregions forming a decomposition of this region
+	 */
 	public Set<BoxRegion> decompose()
 	{
 		Set<BoxRegion> subregions = new HashSet<BoxRegion>();
@@ -97,6 +137,12 @@ final class BoxRegion implements Comparable<BoxRegion>
 		return subregions;
 	}
 
+	/**
+	 * Returns volume of the region.
+	 * (The value gets computed if not yet known.)
+	 * 
+	 * @return volume of the region
+	 */
 	public double volume()
 	{
 		if (volume > 0.0)
@@ -113,11 +159,25 @@ final class BoxRegion implements Comparable<BoxRegion>
 		return volume;
 	}
 
+	/**
+	 * Returns a set of two randomly generated sample points belonging
+	 * to this region.
+	 * 
+	 * @return set of two randomly generated sample points of this region
+	 * @see BoxRegion#generateSamplePoints(int)
+	 */
 	public Set<Point> generateSamplePoints()
 	{
 		return generateSamplePoints(2);
 	}
 
+	/**
+	 * Returns a set of {@code numSamples} randomly generated sample points
+	 * belonging to this region.
+	 * 
+	 * @return set of {@code numSamples} randomly generated sample points
+	 * of this region
+	 */
 	public Set<Point> generateSamplePoints(int numSamples)
 	{
 		Set<Point> samples = new HashSet<Point>();
