@@ -130,7 +130,7 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 		// Evaluate whether a decomposition is needed
 		undecidedVsComplete = undecidedVolume / completeSpaceVolume;
 		if (undecidedVolume / completeSpaceVolume > volumeTolerance) {
-			throw new DecompositionNeeded("The volume of undecided regions is too large, " +
+			throw new DecompositionNeeded("The volume of undecided regions is too large,\n" +
 					undecidedVolume + " / " + completeSpaceVolume + " > " + volumeTolerance,
 					regionToDecompose, "largest undecided region");
 		}

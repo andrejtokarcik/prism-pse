@@ -48,8 +48,8 @@ import explicit.CTMC;
 import explicit.ModelExplicit;
 
 /**
- * Represents a parametrised CTMC model to be used for PSE-based methods
- * of analysis.
+ * Represents a parametrised CTMC model to be used for PSE-based
+ * techniques of analysis.
  * 
  * @see PSEModelBuilder
  */
@@ -87,7 +87,7 @@ public final class PSEModel extends ModelExplicit
 	private Map<Integer, List<Pair<Integer, Integer>>> inoutTransitions;
 	/** map from state to transitions going out from the state (not incoming) */
 	private Map<Integer, List<Integer>> outTransitions;
-	
+
 	/**
 	 * Constructs a new parametric model.
 	 */

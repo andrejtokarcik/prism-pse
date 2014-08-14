@@ -130,7 +130,7 @@ abstract class OptimisingSynthesis extends DecompositionProcedure
 			LabelledBoxRegions regionsToDecompose = new LabelledBoxRegions();
 			regionsToDecompose.add(regionToDecomposeMin, "min lower prob bound");
 			regionsToDecompose.add(regionToDecomposeMax, "max upper prob bound");
-			throw new DecompositionNeeded("Probability tolerance was not satisfied, " +
+			throw new DecompositionNeeded("Probability tolerance was not satisfied,\n" +
 					maximalUpperProbBoundOfOptimising + " - " + minimalLowerProbBoundOfOptimising + " > " + probTolerance,
 					regionsToDecompose);
 		}

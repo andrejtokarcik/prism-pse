@@ -97,7 +97,7 @@ public abstract class DecompositionProcedure
 		{
 			log.println("\nThe following " + regionsToDecompose.size() + " regions are to be decomposed:");
 			regionsToDecompose.print(log);
-			log.println("Reason: " + reason + "\n");
+			log.println("Reason: " + reason);
 		}
 
 		/**

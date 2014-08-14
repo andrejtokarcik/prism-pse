@@ -3409,7 +3409,10 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 	// PSE methods
 
-	private void printInitInfoPSE(PrismLog log, String intro, pse.BoxRegionFactory regionFactory, PropertiesFile propertiesFile, double accuracy)
+	/**
+	 * Print introductory information for PSE methods.
+	 */
+	private void printPSEIntro(PrismLog log, String intro, pse.BoxRegionFactory regionFactory, PropertiesFile propertiesFile, double accuracy)
 	{
 		log.printSeparator();
 		log.println("\n" + intro);
@@ -3427,6 +3430,19 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	}
 
 	/**
+	 * Perform model checking or parameter synthesis of a property
+	 * on the current PSE model and return result.
+	 * 
+	 * @param decompositionType type of procedure to use for decomposing
+	 * of the parameter space, e.g. a synthesis technique
+	 * @param propertiesFile file containing all properties
+	 * @param prop property to check
+	 * @param paramNames names of parameters
+	 * @param paramLowerBounds lower bounds of parameters
+	 * @param paramUpperBounds upper bounds of parameters
+	 * @param accuracy accuracy/tolerance value
+	 * @return result of model checking or parameter synthesis
+	 * @throws PrismException in case inputs were invalid or an inner method failed
 	 */
 	public Result modelCheckPSE(pse.DecompositionProcedure.Type decompositionType, PropertiesFile propertiesFile, Property prop,
 			String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double accuracy)
@@ -3462,27 +3478,27 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		pse.DecompositionProcedure decompositionProcedure;
 		switch (decompositionType) {
 		case SIMPLE:
-			printInitInfoPSE(mainLog, "PSE model checking: " + prop, regionFactory, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE model checking: " + prop, regionFactory, propertiesFile, accuracy);
 			decompositionProcedure = new pse.SimpleDecompositionProcedure(accuracy);
 			break;
 		case THRESHOLD:
-			printInitInfoPSE(mainLog, "PSE threshold synthesis: " + prop, regionFactory, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE threshold synthesis: " + prop, regionFactory, propertiesFile, accuracy);
 			decompositionProcedure = new pse.ThresholdSynthesis(accuracy, model.getFirstInitialState(), regionFactory.completeSpace());
 			break;
 		case MIN_NAIVE:
-			printInitInfoPSE(mainLog, "PSE min synthesis using the naive approach: " + prop, regionFactory, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE min synthesis (naive): " + prop, regionFactory, propertiesFile, accuracy);
 			decompositionProcedure = new pse.MinSynthesisNaive(accuracy, model.getFirstInitialState());
 			break;
 		case MIN_SAMPLING:
-			printInitInfoPSE(mainLog, "PSE min synthesis using the sampling approach: " + prop, regionFactory, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE min synthesis (sampling): " + prop, regionFactory, propertiesFile, accuracy);
 			decompositionProcedure = new pse.MinSynthesisSampling(accuracy, model.getFirstInitialState(), getSimulator());
 			break;
 		case MAX_NAIVE:
-			printInitInfoPSE(mainLog, "PSE max synthesis using the naive approach: " + prop, regionFactory, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE max synthesis (naive): " + prop, regionFactory, propertiesFile, accuracy);
 			decompositionProcedure = new pse.MaxSynthesisNaive(accuracy, model.getFirstInitialState());
 			break;
 		case MAX_SAMPLING:
-			printInitInfoPSE(mainLog, "PSE max synthesis using the sampling approach: " + prop, regionFactory, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE max synthesis (sampling): " + prop, regionFactory, propertiesFile, accuracy);
 			decompositionProcedure = new pse.MaxSynthesisSampling(accuracy, model.getFirstInitialState(), getSimulator());
 			break;
 		default:
@@ -3494,6 +3510,22 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	}
 
 	/**
+	 * Compute transient probabilities (forwards) for the current PSE model, i.e. CTMC
+	 * with parameters specified in {@code paramNames}, {@code paramLowerBounds}
+	 * and {@code paramUpperBounds}. Ensure that the results are accurate enough,
+	 * according to the user-specified {@code accuracy} value.
+	 * Optionally (if non-null), read in the initial probability distribution from a file.
+	 * Output probability distribution to the main log.
+	 * 
+	 * @param times time points
+	 * @param paramNames names of parameters
+	 * @param paramLowerBounds lower bounds of parameters
+	 * @param paramUpperBounds upper bounds of parameters
+	 * @param accuracy accuracy value
+	 * @param fileIn file containing initial distribution
+	 * @throws PrismException in case inputs were invalid or an inner method failed
+	 * @see PSEModelChecker
+	 * @see SimpleDecompositionProcedure
 	 */
 	public void doTransientPSE(UndefinedConstants times, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double accuracy, File fileIn)
 			throws PrismException
@@ -3531,7 +3563,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 				throw new PrismException("Cannot perform parameter space exploration for negative time value");
 			}
 
-			printInitInfoPSE(mainLog, "Performing parameter space exploration (time = " + time + ")...", regionFactory, null, accuracy);
+			printPSEIntro(mainLog, "Performing parameter space exploration (time = " + time + ")...", regionFactory, null, accuracy);
 
 			long l = System.currentTimeMillis();
 
