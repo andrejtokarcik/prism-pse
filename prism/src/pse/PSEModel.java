@@ -81,11 +81,11 @@ public final class PSEModel extends ModelExplicit
 	private double[] exitRates;
 	/** set of hash codes for deciding whether state has predecessors via reaction */
 	private Set<Integer> predecessorsViaReaction;
-	/** map from state to transitions coming into the state (not outgoing) */
+	/** map from state to transitions coming into the state (and not outgoing) */
 	private Map<Integer, List<Integer>> inTransitions;
 	/** map from state to transitions both incoming in and outgoing from the state */
 	private Map<Integer, List<Pair<Integer, Integer>>> inoutTransitions;
-	/** map from state to transitions going out from the state (not incoming) */
+	/** map from state to transitions going out from the state (and not incoming) */
 	private Map<Integer, List<Integer>> outTransitions;
 
 	/**
@@ -440,7 +440,7 @@ public final class PSEModel extends ModelExplicit
 	 * of particular states. The results are stored in {@code inTransitions},
 	 * {@code outTransitions} and {@code inoutTransitions}, respectively.
 	 */
-	public void computeInOutReactions()
+	public void computeInOutTransitions()
 	{
 		if (inTransitions != null && inoutTransitions != null && outTransitions != null)
 			return;

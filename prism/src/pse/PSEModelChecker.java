@@ -746,7 +746,7 @@ public final class PSEModelChecker extends PrismComponent
 		mainLog.println("\nStarting PSE backwards transient probability computation...");
 
 		// Compute the in, out, inout sets of reactions
-		model.computeInOutReactions();
+		model.computeInOutTransitions();
 
 		// Get uniformisation rate; do Fox-Glynn
 		q = model.getDefaultUniformisationRate(nonAbs);
@@ -955,7 +955,7 @@ public final class PSEModelChecker extends PrismComponent
 		mainLog.println("\nStarting PSE transient probability computation...");
 
 		// Compute the in, out, inout sets of reactions
-		model.computeInOutReactions();
+		model.computeInOutTransitions();
 
 		// Store num states
 		n = model.getNumStates();
