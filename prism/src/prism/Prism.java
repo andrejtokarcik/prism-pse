@@ -3522,7 +3522,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 		// Step through required time points
 		double initTimeDouble = 0.0;
-		explicit.StateValues initDistExplMin = null, initDistExplMax = null;
+		pse.BoxRegionValues initDist = null;
 		for (int i = 0; i < times.getNumPropertyIterations(); i++) {
 			// Get time, check non-negative
 			Object time = times.getPFConstantValues().getValue(0);
@@ -3535,17 +3535,14 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 			long l = System.currentTimeMillis();
 
-			// TODO
-			/*
-			if (i == 0) {
-				initDistExplMin = mc.readDistributionFromFile(fileIn, modelExpl);
-				initDistExplMax = mc.readDistributionFromFile(fileIn, modelExpl);
-				initTimeDouble = 0;
-			}
-			*/
-
 			PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
-			pse.BoxRegionValues regionValues = mc.doTransient(model, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax,
+
+			if (i == 0) {
+				initDist = mc.readDistributionFromFile(fileIn, model);
+				initTimeDouble = 0.0;
+			}
+
+			pse.BoxRegionValues regionValues = mc.doTransient(model, timeDouble - initTimeDouble, initDist,
 					new pse.SimpleDecompositionProcedure(accuracy));
 
 			// Results report
@@ -3560,8 +3557,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			mainLog.println("\nTime for parameter space exploration: " + l / 1000.0 + " seconds.");
 
 			// Prepare for next iteration
-			initDistExplMin = null;
-			initDistExplMax = null;
+			initDist = regionValues;
 			initTimeDouble = timeDouble;
 			times.iterateProperty();
 		}

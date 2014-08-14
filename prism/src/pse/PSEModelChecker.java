@@ -27,8 +27,8 @@
 
 package pse;
 
+import java.io.File;
 import java.util.BitSet;
-import java.util.LinkedList;
 import java.util.Map.Entry;
 
 import parser.Values;
@@ -123,8 +123,8 @@ public final class PSEModelChecker extends PrismComponent
 	{
 		return constantValues;
 	}
-
-	// Model checking functions
+	
+	// Model checking functions, including backwards transient analysis
 
 	/**
 	 * Prepares for and performs model checking of the given property expression.
@@ -872,55 +872,59 @@ public final class PSEModelChecker extends PrismComponent
 		return regionValues;
 	}
 
-	// Transient analysis
+	// Transient analysis (forwards)
 
 	/**
 	 * Computes transient probability distribution (forwards).
-	 * Optionally, uses the passed in vectors {@code initDistMin} and {@code initDistMax}
+	 * Optionally, uses the passed in region values {@code initDist}
 	 * as the initial probability distribution (time 0).
-	 * If the vectors are null, starts from initial state (or uniform distribution
-	 * over multiple initial states).
+	 * If the initial distribution is null, starts from initial state
+	 * (or uniform distribution over multiple initial states).
 	 */
-	public BoxRegionValues doTransient(PSEModel model, double t, StateValues initDistMin, StateValues initDistMax, DecompositionProcedure decompositionProcedure)
+	public BoxRegionValues doTransient(PSEModel model, double t, BoxRegionValues initDist, DecompositionProcedure decompositionProcedure)
 			throws PrismException
 	{
-		StateValues initDistMinNew = null, initDistMaxNew = null;
-
 		// Build initial distribution (if not specified)
-		if (initDistMin == null) {
-			initDistMinNew = new StateValues(TypeDouble.getInstance(), new Double(0.0), model);
-			double initVal = 1.0 / model.getNumInitialStates();
-			for (int in : model.getInitialStates()) {
-				initDistMinNew.setDoubleValue(in, initVal);
-			}
-		} else {
-			initDistMinNew = initDistMin;
-		}
-		if (initDistMax == null) {
-			initDistMaxNew = new StateValues(TypeDouble.getInstance(), new Double(0.0), model);
-			double initVal = 1.0 / model.getNumInitialStates();
-			for (int in : model.getInitialStates()) {
-				initDistMaxNew.setDoubleValue(in, initVal);
-			}
-		} else {
-			initDistMaxNew = initDistMax;
+		if (initDist == null) {
+			initDist = buildInitialDistribution(model);
 		}
 
 		// Compute transient probabilities
-		return computeTransientProbs(model, t, initDistMinNew.getDoubleArray(), initDistMaxNew.getDoubleArray(), decompositionProcedure);
+		BoxRegionValues regionValues = null;
+		BoxRegionValues previousResult = null;
+		while (true) {
+			try {
+				regionValues = computeTransientProbs(model, t, initDist, decompositionProcedure, previousResult);
+				break;
+			} catch (DecompositionProcedure.DecompositionNeeded e) {
+				e.printRegionsToDecompose(mainLog);
+				for (BoxRegion region : e.getRegionsToDecompose()) {
+					initDist.decomposeRegion(region);
+				}
+				previousResult = e.getExaminedRegionValues(); 
+			}
+		}
+
+		return regionValues;
+	}
+
+	public BoxRegionValues computeTransientProbs(PSEModel model, double t, BoxRegionValues initDist, DecompositionProcedure decompositionProcedure)
+			throws PrismException, DecompositionProcedure.DecompositionNeeded
+	{
+		return computeTransientProbs(model, t, initDist, decompositionProcedure, null);
 	}
 
 	/**
 	 * Performs forwards transient probability computation.
 	 * Computes the minimised & maximised probability of being in each state
-	 * at time {@code t}, assuming the initial distribution {@code initDistMin}
-	 * & {@code initDistMax}, respectively.
+	 * at time {@code t}, assuming the initial distribution {@code initDist}.
 	 * <p>
-	 * NB: Decompositions of the parameter space are performed implicitly.
+	 * NB: Decompositions of the parameter space must be performed explicitly,
+	 * {@code DecompositionNeeded} is not handled within the method.
 	 * 
 	 * @param model model to be analysed
 	 * @param t time point
-	 * @param initDistMin initial distribution for minimised probabilities
+	 * @param initDistMin initial distribution
 	 * @param initDistMax initial distribution for maximised probabilities
 	 * @param decompositionProcedure decomposition procedure to verify accuracy
 	 * of results
@@ -928,10 +932,8 @@ public final class PSEModelChecker extends PrismComponent
 	 * @throws PrismException
 	 * @see PSEModel#vmMult
 	 */
-	// TODO: Perform decompositions explicitly from doTransient analogically to backwards transient computation,
-	// i.e. replace the double arrays initDist{Min,Max} with BoxRegionValues.
-	public BoxRegionValues computeTransientProbs(PSEModel model, double t, double initDistMin[], double initDistMax[], DecompositionProcedure decompositionProcedure)
-			throws PrismException
+	public BoxRegionValues computeTransientProbs(PSEModel model, double t, BoxRegionValues initDist, DecompositionProcedure decompositionProcedure, BoxRegionValues previousResult)
+			throws PrismException, DecompositionProcedure.DecompositionNeeded
 	{
 		BoxRegionValues regionValues = new BoxRegionValues(model);
 		int i, n, iters, totalIters;
@@ -944,9 +946,9 @@ public final class PSEModelChecker extends PrismComponent
 		int left, right;
 		double termCritParam, q, qt, acc, weights[], totalWeight;
 
-		// For decomposing of the parameter space
-		LinkedList<BoxRegion> regions = new LinkedList<BoxRegion>();
-		regions.add(regionFactory.completeSpace());
+		if (previousResult == null) {
+			previousResult = new BoxRegionValues(model);
+		}
 
 		// Start bounded probabilistic reachability
 		timer = System.currentTimeMillis();
@@ -980,20 +982,25 @@ public final class PSEModelChecker extends PrismComponent
 		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
 
 		totalIters = 0;
-		while (regions.size() != 0) {
-			// Create solution vectors
-			solnMin = new double[n];
-			soln2Min = new double[n];
-			sumMin = new double[n];
-			solnMax = new double[n];
-			soln2Max = new double[n];
-			sumMax = new double[n];
+		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : initDist) {
+			BoxRegion region = entry.getKey();
+			
+			// If the previous region values contain probs for this region, i.e. the region
+			// has not been decomposed, then just use the previous result directly.
+			if (previousResult.hasRegion(region)) {
+				regionValues.put(region, previousResult.getMin(region), previousResult.getMax(region));
+				continue;
+			}
 
-			// Initialise solution vectors.
+			// Create and initialise solution vectors.
 			// Don't need to do soln2 since will be immediately overwritten.
 			// Vector sum is all zeros (done by array creation).
-			solnMin = initDistMin.clone();
-			solnMax = initDistMax.clone();
+			solnMin = entry.getValue().getMin().getDoubleArray().clone();
+			soln2Min = new double[n];
+			sumMin = new double[n];
+			solnMax = entry.getValue().getMax().getDoubleArray().clone();
+			soln2Max = new double[n];
+			sumMax = new double[n];
 
 			// If necessary, do 0th element of summation (doesn't require any matrix powers)
 			if (left == 0) {
@@ -1004,56 +1011,49 @@ public final class PSEModelChecker extends PrismComponent
 			}
 
 			// Configure parameter space
-			BoxRegion region = regions.remove();
 			model.configureParameterSpace(region);
 			mainLog.println("Computing probabilities for parameter region " + region);
 
-			try {
-				// Start iterations
-				iters = 1;
-				totalIters++;
-				while (iters <= right) {
-					// Vector-matrix multiply
-					model.vmMult(solnMin, soln2Min, solnMax, soln2Max, q);
+			// Start iterations
+			iters = 1;
+			totalIters++;
+			while (iters <= right) {
+				// Vector-matrix multiply
+				model.vmMult(solnMin, soln2Min, solnMax, soln2Max, q);
 
-					// Swap vectors for next iter
-					tmpsoln = solnMin;
-					solnMin = soln2Min;
-					soln2Min = tmpsoln;
-					tmpsoln = solnMax;
-					solnMax = soln2Max;
-					soln2Max = tmpsoln;
+				// Swap vectors for next iter
+				tmpsoln = solnMin;
+				solnMin = soln2Min;
+				soln2Min = tmpsoln;
+				tmpsoln = solnMax;
+				solnMax = soln2Max;
+				soln2Max = tmpsoln;
 
-					// Add to sum
-					if (iters >= left) {
-						for (i = 0; i < n; i++) {
-							sumMin[i] += weights[iters - left] * solnMin[i];
-							sumMax[i] += weights[iters - left] * solnMax[i];
-						}
-						// After a number of iters (default 50), examine the partially computed result
-						if (iters % numItersExaminePartial == 0) {
-							decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
-						}
+				// Add to sum
+				if (iters >= left) {
+					for (i = 0; i < n; i++) {
+						sumMin[i] += weights[iters - left] * solnMin[i];
+						sumMax[i] += weights[iters - left] * solnMax[i];
 					}
-
-					iters++;
-					totalIters++;
+					// After a number of iters (default 50), examine the partially computed result
+					if (iters % numItersExaminePartial == 0) {
+						decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
+					}
 				}
 
-				// Examine this region's result after all the iters have been finished
-				decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
-
-				// Store result
-				regionValues.put(region, sumMin, sumMax);
-			} catch (DecompositionProcedure.DecompositionNeeded e) {
-				e.printRegionsToDecompose(mainLog);
-				for (BoxRegion regionToDecompose : e.getRegionsToDecompose()) {
-					regions.addAll(regionToDecompose.decompose());
-				}
+				iters++;
+				totalIters++;
 			}
+
+			// Examine this region's result after all the iters have been finished
+			decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
+
+			// Store result
+			regionValues.put(region, sumMin, sumMax);
 		}
 
-		// TODO: Call decompositionProcedure.examineWholeComputation()?
+		// Examine the whole computation after it's completely finished
+		decompositionProcedure.examineWholeComputation(regionValues);
 
 		// Finished bounded probabilistic reachability
 		timer = System.currentTimeMillis() - timer;
@@ -1063,5 +1063,47 @@ public final class PSEModelChecker extends PrismComponent
 		mainLog.println(" (producing " + regionValues.getNumRegions() + " final regions).");
 
 		return regionValues;
+	}
+	
+	// Utility methods
+
+	/**
+	 * Read a probability distribution, stored as a {@code BoxRegionValues} object,
+	 * from a file, where the only initial parameter region is the complete parameter
+	 * space.
+	 * If {@code distFile} is null, so is the return value.
+	 */
+	public BoxRegionValues readDistributionFromFile(File distFile, PSEModel model) throws PrismException
+	{
+		if (distFile == null) {
+			return null;
+		}
+
+		/* TODO: PSE-specific initial distribution files that may define
+		/* the initial parameter regions with their minimised and maximised
+		 * probabilities.
+		 */
+
+		mainLog.println("\nImporting probability distribution from file \"" + distFile + "\"...");
+		StateValues dist = new StateValues(TypeDouble.getInstance(), model);
+		dist.readFromFile(distFile);
+		return new BoxRegionValues(model, regionFactory.completeSpace(), dist, dist);
+	}
+
+	/**
+	 * Build a probability distribution, stored as a {@code BoxRegionValues} object,
+	 * from the initial states info of the current model, with the only initial
+	 * parameter region being the complete parameter space: state values have either
+	 * probability 1 for the (single) initial state or equiprobable over multiple
+	 * initial states.
+	 */
+	public BoxRegionValues buildInitialDistribution(PSEModel model) throws PrismException
+	{
+		StateValues uniformInit = new StateValues(TypeDouble.getInstance(), new Double(0.0), model);
+		double initVal = 1.0 / model.getNumInitialStates();
+		for (int in : model.getInitialStates()) {
+			uniformInit.setDoubleValue(in, initVal);
+		}
+		return new BoxRegionValues(model, regionFactory.completeSpace(), uniformInit, uniformInit);
 	}
 }

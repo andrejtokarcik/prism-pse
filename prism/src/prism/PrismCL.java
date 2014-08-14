@@ -901,33 +901,28 @@ public class PrismCL implements PrismModelListener
 	}
 
 	/**
-	 * Do parameter space exploration (if required).
+	 * Do PSE transient probability computation (if required).
 	 */
 	private void doTransientPSE()
 	{
-		ModelType modelType;
-
 		if (pseTransient) {
 			try {
 				// TODO: PSE results export
 
-				// Determine model type
-				modelType = prism.getModelType();
-
 				// Parse time specification, store as UndefinedConstant for constant T
-				String timeType = modelType.continuousTime() ? "double" : "int";
-				UndefinedConstants ucPSE = new UndefinedConstants(null, prism.parsePropertiesString(null, "const " + timeType + " T; T;"));
+				UndefinedConstants ucPSE = new UndefinedConstants(null, prism.parsePropertiesString(null, "const double T; T;"));
 				try {
 					ucPSE.defineUsingConstSwitch("T=" + pseTime);
 				} catch (PrismException e) {
 					if (pseTime.contains(":"))
-						errorAndExit("\"" + pseTime + "\" is not a valid time range for a " + modelType);
+						errorAndExit("\"" + pseTime + "\" is not a valid time range for PSE");
 					else
-						errorAndExit("\"" + pseTime + "\" is not a valid time for a " + modelType);
+						errorAndExit("\"" + pseTime + "\" is not a valid time for PSE");
 				}
 
 				// Perform the exploration
-				prism.doTransientPSE(ucPSE, pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy, importinitdist ? new File(importInitDistFilename) : null);
+				prism.doTransientPSE(ucPSE, pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy,
+						importinitdist ? new File(importInitDistFilename) : null);
 			}
 			// In case of error, report it and proceed
 			catch (PrismException e) {
