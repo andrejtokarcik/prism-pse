@@ -49,7 +49,6 @@ import prism.PrismComponent;
 import prism.PrismException;
 import prism.Result;
 import prism.PrismSettings;
-import pse.DecompositionProcedure.DecompositionNeeded;
 import explicit.FoxGlynn;
 import explicit.StateModelChecker;
 import explicit.StateValues;
@@ -615,8 +614,9 @@ public final class PSEModelChecker extends PrismComponent
 						break;
 					} catch (DecompositionProcedure.DecompositionNeeded e) {
 						e.printRegionsToDecompose(mainLog);
-						for (BoxRegion region : e.getRegionsToDecompose())
+						for (BoxRegion region : e.getRegionsToDecompose()) {
 							onesMultProbs.decomposeRegion(region);
+						}
 						oldRegionValues = e.getExaminedRegionValues();
 					}
 				}
@@ -630,8 +630,8 @@ public final class PSEModelChecker extends PrismComponent
 
 				while (true) {
 					try {
-						// Decomposition is always performed due to the failed condition in the second transient computation.
-						// The first transient computation is executed with decomposing disabled.
+						// DecompositionNeeded is always thrown within the second transient computation,
+						// since the first transient computation is executed with decomposing disabled.
 						tmpRegionValues = computeTransientBackwardsProbs(
 								model, b2Min, tmpMin, b2Max, tmpMax, uTime - lTime, onesMultProbs,
 								SimpleDecompositionProcedure.NoDecomposing.getInstance(), oldTmpRegionValues, false);
@@ -672,10 +672,10 @@ public final class PSEModelChecker extends PrismComponent
 	 * probability in the vector {@code multProbs}, assuming that all states
 	 * <i>not</i> in {@code nonAbs} are made absorbing. This holds for both
 	 * {@code *Min} and {@code *Max} variant, as they are in fact computed
-	 * independently of each other.
+	 * in parallel independently of each other.
 	 * <p>
 	 * NB: Decompositions of the parameter space must be performed explicitly,
-	 * {@link DecompositionNeeded} is not handled within the method.
+	 * {@code DecompositionNeeded} is not handled within the method.
 	 * 
 	 * @param model model to check
 	 * @param targetMin target states when producing minimised probabilities

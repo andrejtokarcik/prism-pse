@@ -33,6 +33,10 @@ import java.util.Map;
 
 import prism.PrismLog;
 
+/**
+ * A collection of {@link BoxRegion}s where each of them is associated
+ * with a collection of string labels.
+ */
 @SuppressWarnings("serial")
 final class LabelledBoxRegions extends HashMap<BoxRegion, Collection<String>> 
 {
@@ -47,11 +51,28 @@ final class LabelledBoxRegions extends HashMap<BoxRegion, Collection<String>>
 		add(region, label);
 	}
 
+	/**
+	 * Adds a region {@code region} without a label.
+	 * If {@code region} is already contained, no change occurs.
+	 * 
+	 * @param region region to add
+	 * @return collection of labels associated with {@code region}
+	 */
 	public Collection<String> add(BoxRegion region)
 	{
 		return add(region, null);
 	}
 
+	/**
+	 * Adds a region {@code region} labelled with {@code label}.
+	 * If {@code region} is already contained, {@code label} is appended
+	 * to the collection of labels associated with {@code region}.
+	 * 
+	 * @param region region to add
+	 * @param label string to label {@code region}
+	 * @return collection of labels associated with {@code region}
+	 * (including {@code label})
+	 */
 	public Collection<String> add(BoxRegion region, String label)
 	{
 		if (!containsKey(region)) {
@@ -64,11 +85,22 @@ final class LabelledBoxRegions extends HashMap<BoxRegion, Collection<String>>
 		return labels;
 	}
 
+	/**
+	 * Determines whether {@code region} is contained.
+	 * 
+	 * @param region region to look for
+	 * @return true iff {@code region} is contained
+	 */
 	public boolean contains(BoxRegion region)
 	{
 		return containsKey(region);
 	}
 
+	/**
+	 * Pretty-prints the stored box regions with their respective labels.
+	 * 
+	 * @param log file into which to print
+	 */
 	public void print(PrismLog log)
 	{
 		if (isEmpty()) {

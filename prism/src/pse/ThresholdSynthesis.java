@@ -34,21 +34,34 @@ import parser.ast.RelOp;
 import prism.PrismException;
 import prism.PrismLog;
 
+/**
+ * Decomposition procedure solving the threshold synthesis problem.
+ */
 public final class ThresholdSynthesis extends DecompositionProcedure
 {
 	// Synthesis parameters
+	/** true iff the property formula is of the form P>=r[subformula] */
 	private boolean aboveIsTrue;
+	/** threshold for distinguishing "above" regions from those "below" */
 	private double threshold;
+	/** greatest acceptable value for {@link #undecidedVsComplete} */
 	private double volumeTolerance;
 
-	// Properties of the model being model-checked
+	// Properties of the model to be checked
+	/** model's initial state */
 	private int initState;
+	/** volume of the complete parameter space */
 	private double completeSpaceVolume;
 
 	// Solution structures
+	/** regions marked as "below" {@code threshold} */
 	private LabelledBoxRegions belowRegions;
+	/** regions marked as "above" {@code threshold} */
 	private LabelledBoxRegions aboveRegions;
+	/** regions marked as yet "undecided" */
 	private LabelledBoxRegions undecidedRegions;
+	/** ratio of total volume of "undecided" regions to volume
+	 *  of the complete parameter space */
 	private double undecidedVsComplete;
 
 	public ThresholdSynthesis(double volumeTolerance, int initState, BoxRegion completeSpace) throws PrismException

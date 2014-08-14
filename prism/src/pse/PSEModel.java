@@ -48,7 +48,10 @@ import explicit.CTMC;
 import explicit.ModelExplicit;
 
 /**
- * Represents a parametrised CTMC model to be used for PSE-based methods.
+ * Represents a parametrised CTMC model to be used for PSE-based methods
+ * of analysis.
+ * 
+ * @see PSEModelBuilder
  */
 public final class PSEModel extends ModelExplicit
 {
@@ -493,6 +496,7 @@ public final class PSEModel extends ModelExplicit
 	 * @param vectMax vector to multiply by when computing maximised result
 	 * @param resultMax vector to store maximised result in
 	 * @param q uniformisation rate
+	 * @see #mvMult(double[], double[], double[], double[], BitSet, boolean, double)
 	 */
 	public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], double q)
 			throws PrismException
@@ -586,8 +590,8 @@ public final class PSEModel extends ModelExplicit
 	 * probability matrix (uniformised with rate {@code q}) and the vector's min/max
 	 * components ({@code vectMin} and {@code vectMax}, respectively) passed in.
 	 * <p>
-	 * NB: Semantics of {@code mvMult} is <i>not</i> analogical to that of {@link #vmMult},
-	 * the difference is crucial:  {@code result[k]_i} in {@link #vmMult} is simply
+	 * NB: Semantics of {@code mvMult} is <i>not</i> analogical to that of {@code vmMult},
+	 * the difference is crucial:  {@code result[k]_i} in {@code vmMult} is simply
 	 * the probability of being in state {@code k} after {@code i} iterations starting
 	 * from the initial state.  On the other hand, {@code mvMult}'s {@code result[k]_i}
 	 * denotes the probability that an absorbing state (i.e., a state not in {@code subset})
@@ -600,6 +604,7 @@ public final class PSEModel extends ModelExplicit
 	 * @param subset only do multiplication for these rows (null means "all")
 	 * @param complement if true, {@code subset} is taken to be its complement
 	 * @param q uniformisation rate
+	 * @see #vmMult(double[], double[], double[], double[], double)
 	 */
 	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], BitSet subset, boolean complement, double q)
 			throws PrismException

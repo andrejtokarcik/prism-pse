@@ -36,20 +36,37 @@ import parser.ast.RelOp;
 import prism.PrismException;
 import prism.PrismLog;
 
+/**
+ * Base class for decomposition procedures to solve min and/or max
+ * synthesis problems.
+ * 
+ * @see MinSynthesis
+ * @see MaxSynthesis
+ */
 abstract class OptimisingSynthesis extends DecompositionProcedure
 {
 	// Synthesis parameters
+	/** greatest possible difference between {@link #maximalUpperProbBoundOfOptimising}
+	 *  and {@link #minimalLowerProbBoundOfOptimising} */
 	protected double probTolerance;
+	/** user-friendly caption string to be printed instead of "optimising" */
 	protected String captionForOptimising;
 
-	// Properties of the model being model-checked
+	// Properties of the model to be checked
+	/** model's initial state */
 	protected int initState;
 
 	// Solution structures
-	protected LabelledBoxRegions regionsOptimising;
-	protected LabelledBoxRegions regionsNonoptimising;
+	/** regions marked as "optimising" */
+	protected LabelledBoxRegions optimisingRegions;
+	/** regions marked as "non-optimising" */
+	protected LabelledBoxRegions nonOptimisingRegions;
+	/** minimal lower probability bound from among {@link optimisingRegion} */
 	private double minimalLowerProbBoundOfOptimising;
+	/** maximal upper probability bound from among {@link optimisingRegion} */
 	private double maximalUpperProbBoundOfOptimising;
+	/** probability bounds as they were successively used to distinguish
+	 *  between "optimising" and "non-optimising" regions */
 	protected List<Double> demarcationProbBounds;
 
 	public OptimisingSynthesis(double probTolerance, int initState)
@@ -62,8 +79,8 @@ abstract class OptimisingSynthesis extends DecompositionProcedure
 	public void initialiseModelChecking(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
 	{
 		super.initialiseModelChecking(modelChecker, model, propExpr);
-		regionsOptimising = new LabelledBoxRegions();
-		regionsNonoptimising = new LabelledBoxRegions();
+		optimisingRegions = new LabelledBoxRegions();
+		nonOptimisingRegions = new LabelledBoxRegions();
 		demarcationProbBounds = new LinkedList<Double>();
 	}
 
@@ -92,8 +109,9 @@ abstract class OptimisingSynthesis extends DecompositionProcedure
 		BoxRegion regionToDecomposeMin = null;
 		BoxRegion regionToDecomposeMax = null;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
-			if (!regionsOptimising.contains(entry.getKey()))
+			if (!optimisingRegions.contains(entry.getKey())) {
 				continue;
+			}
 
 			double currentLowerProbBound = (Double) entry.getValue().getMin().getValue(initState);
 			if (currentLowerProbBound < minimalLowerProbBoundOfOptimising) {
@@ -125,11 +143,11 @@ abstract class OptimisingSynthesis extends DecompositionProcedure
 		printIntro(log);
 
 		log.print("\nRegions " + captionForOptimising + " the property satisfaction probability");
-		log.println(" (" + regionsOptimising.size() + "):");
-		regionsOptimising.print(log);
+		log.println(" (" + optimisingRegions.size() + "):");
+		optimisingRegions.print(log);
 		log.print("Non-" + captionForOptimising + " regions");
-		log.println(" (" + regionsNonoptimising.size() + "):");
-		regionsNonoptimising.print(log);
+		log.println(" (" + nonOptimisingRegions.size() + "):");
+		nonOptimisingRegions.print(log);
 
 		log.println("\nMin lower prob bound of " + captionForOptimising + " regions = " + minimalLowerProbBoundOfOptimising);
 		log.println("Max upper prob bound of " + captionForOptimising + " regions = " + maximalUpperProbBoundOfOptimising);

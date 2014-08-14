@@ -28,6 +28,9 @@ package pse;
 
 import parser.Values;
 
+/**
+ * Factory for producing {@link BoxRegion}s.
+ */
 public final class BoxRegionFactory
 {
 	private Values lowerParams;
@@ -40,6 +43,11 @@ public final class BoxRegionFactory
 		this.upperParams = paramsUpper;
 	}
 
+	/**
+	 * Returns a box region covering the complete parameter space.
+	 * 
+	 * @return box region covering the complete parameter space
+	 */
 	public BoxRegion completeSpace()
 	{
 		return new BoxRegion(lowerParams, upperParams);

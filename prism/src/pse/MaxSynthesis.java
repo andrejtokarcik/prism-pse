@@ -30,6 +30,13 @@ import java.util.Map.Entry;
 
 import prism.PrismException;
 
+/**
+ * Decomposition procedure solving the max synthesis problem, with
+ * two approaches to computing the demarcation probability bound: <ul>
+ * <li>naive approach, implemented as {@link MaxSynthesisNaive};
+ * <li>sampling-based approach, implemented as {@link MaxSynthesisSampling}.
+ * </ul>
+ */
 abstract class MaxSynthesis extends OptimisingSynthesis
 {
 	public MaxSynthesis(double probTolerance, int initState)
@@ -48,16 +55,16 @@ abstract class MaxSynthesis extends OptimisingSynthesis
 		demarcationProbBounds.add(maximalLowerBound);
 
 		// Determine the (non-)maximising regions
-		regionsOptimising.clear();
+		optimisingRegions.clear();
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
-			if (regionsNonoptimising.contains(entry.getKey())) {
+			if (nonOptimisingRegions.contains(entry.getKey())) {
 				continue;
 			}
 			double upperProbBound = (Double) entry.getValue().getMax().getValue(initState);
 			if (upperProbBound < maximalLowerBound) {
-				regionsNonoptimising.add(entry.getKey(), "upper prob bound = " + upperProbBound);
+				nonOptimisingRegions.add(entry.getKey(), "upper prob bound = " + upperProbBound);
 			} else {
-				regionsOptimising.add(entry.getKey(), "upper prob bound = " + upperProbBound);
+				optimisingRegions.add(entry.getKey(), "upper prob bound = " + upperProbBound);
 			}
 		}
 	}

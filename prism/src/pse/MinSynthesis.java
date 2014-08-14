@@ -30,6 +30,13 @@ import java.util.Map.Entry;
 
 import prism.PrismException;
 
+/**
+ * Decomposition procedure solving the min synthesis problem, with
+ * two approaches to computing the demarcation probability bound: <ul>
+ * <li>naive approach, implemented as {@link MinSynthesisNaive};
+ * <li>sampling-based approach, implemented as {@link MinSynthesisSampling}.
+ * </ul>
+ */
 abstract class MinSynthesis extends OptimisingSynthesis
 {
 	public MinSynthesis(double probTolerance, int initState)
@@ -48,16 +55,16 @@ abstract class MinSynthesis extends OptimisingSynthesis
 		demarcationProbBounds.add(minimalUpperBound);
 		
 		// Determine the (non-)minimising regions
-		regionsOptimising.clear();
+		optimisingRegions.clear();
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
-			if (regionsNonoptimising.contains(entry.getKey())) {
+			if (nonOptimisingRegions.contains(entry.getKey())) {
 				continue;
 			}
 			double lowerProbBound = (Double) entry.getValue().getMin().getValue(initState);
 			if (lowerProbBound > minimalUpperBound) {
-				regionsNonoptimising.add(entry.getKey(), "lower prob bound = " + lowerProbBound);
+				nonOptimisingRegions.add(entry.getKey(), "lower prob bound = " + lowerProbBound);
 			} else {
-				regionsOptimising.add(entry.getKey(), "lower prob bound = " + lowerProbBound);
+				optimisingRegions.add(entry.getKey(), "lower prob bound = " + lowerProbBound);
 			}
 		}
 	}

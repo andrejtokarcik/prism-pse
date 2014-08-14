@@ -68,18 +68,19 @@ public final class PSEModelExplorer implements ModelExplorer<Expression>
 	 * Special data structure for holding a pair consisting of rate parameters
 	 * and rate population.
 	 */
-	protected static class RateParametersAndPopulation extends Pair<Expression, Double>
+	static class RateParametersAndPopulation extends Pair<Expression, Double>
 	{
-		public RateParametersAndPopulation(Expression first, Double second) {
+		RateParametersAndPopulation(Expression first, Double second)
+		{
 			super(first, second);
 		}
 
-		public Expression getParameters()
+		Expression getParameters()
 		{
 			return first;
 		}
 
-		public double getPopulation()
+		double getPopulation()
 		{
 			return second;
 		}
@@ -138,7 +139,7 @@ public final class PSEModelExplorer implements ModelExplorer<Expression>
 	 * @throws PrismException in case of an error during handling of 
 	 * of {@code rateExpression}
 	 */
-	protected RateParametersAndPopulation extractRateParametersAndPopulation(Expression rateExpression)
+	RateParametersAndPopulation extractRateParametersAndPopulation(Expression rateExpression)
 			throws PrismException
 	{
 		if (rateDataCache.containsKey(rateExpression)) {
@@ -178,7 +179,7 @@ public final class PSEModelExplorer implements ModelExplorer<Expression>
 	 * @throws PrismException in case of an error during handling of 
 	 * of a {@code rateExpressions} item
 	 */
-	protected RateParametersAndPopulation[] extractRateParametersAndPopulation(Expression[] rateExpressions) throws PrismException
+	RateParametersAndPopulation[] extractRateParametersAndPopulation(Expression[] rateExpressions) throws PrismException
 	{
 		if (rateExpressions == null) {
 			return null;

@@ -34,7 +34,7 @@ import parser.Values;
 import explicit.Utils;
 
 /**
- * Box (hyper-rectangle) representation of a parameter region.
+ * Box (hyper-rectangle) variant of a parameter region.
  * Each parameter is associated with a lower and upper bound, and
  * the region contains all bounds so that the corresponding dimensions
  * are (not strictly) between these lower and upper bounds.
