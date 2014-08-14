@@ -26,10 +26,12 @@
 
 package pse;
 
+import java.util.LinkedList;
 import java.util.Map.Entry;
 
 import parser.ast.Expression;
 import prism.PrismException;
+import prism.PrismLog;
 import simulator.SimulatorEngine;
 import explicit.CTMC;
 import explicit.CTMCModelChecker;
@@ -39,7 +41,7 @@ public final class MinSynthesisSampling extends MinSynthesis
 	private SimulatorEngine simulatorEngine;
 	private explicit.ConstructModel constructModel;
 	private CTMCModelChecker ctmcModelChecker;
-	private double lastMinimalSampleProb;
+	private LinkedList<Point> samples;
 
 	public MinSynthesisSampling(double probTolerance, int initState, SimulatorEngine simulatorEngine)
 	{
@@ -55,7 +57,8 @@ public final class MinSynthesisSampling extends MinSynthesis
 		constructModel = new explicit.ConstructModel(modelChecker, simulatorEngine);
 		ctmcModelChecker = new CTMCModelChecker(modelChecker);
 		ctmcModelChecker.setModulesFileAndPropertiesFile(modelChecker.getModulesFile(), modelChecker.getPropertiesFile());
-		lastMinimalSampleProb = Double.POSITIVE_INFINITY;
+		ctmcModelChecker.setVerbosity(0);
+		samples = new LinkedList<Point>();
 	}
 
 	/**
@@ -80,23 +83,38 @@ public final class MinSynthesisSampling extends MinSynthesis
 		 */
 
 		double minimalSampleProb = Double.POSITIVE_INFINITY;
+		Point minimalSample = null;
 		for (Point sample : minimalUpperBoundRegion.generateSamplePoints()) {
 			CTMC ctmc = model.instantiate(sample, modelChecker.getModulesFile(), constructModel);
 			double currentSampleProb = (Double) ctmcModelChecker.checkExpression(ctmc, propExpr).getValue(initState);
-			if (currentSampleProb < minimalSampleProb)
+			if (currentSampleProb < minimalSampleProb) {
 				minimalSampleProb = currentSampleProb;
+				minimalSample = sample;
+			}
 		}
 
-		if (minimalSampleProb < lastMinimalSampleProb) {
-			lastMinimalSampleProb = minimalSampleProb;
+		if (demarcationProbBounds.isEmpty() || minimalSampleProb < demarcationProbBounds.getLast()) {
+			samples.add(minimalSample);
 			return minimalSampleProb;
 		}
-		return lastMinimalSampleProb;
+		samples.add(samples.getLast());
+		return demarcationProbBounds.getLast();
 	}
 
 	@Override
 	public String toString()
 	{
 		return super.toString() + " (sampling)";
+	}
+
+	@Override
+	public void printSolution(PrismLog log, boolean verbose)
+	{
+		super.printSolution(log, verbose);
+
+		if (verbose) {
+			log.println("\nSample points in the order they were used to exclude regions:");
+			log.println(samples);
+		}
 	}
 }

@@ -44,8 +44,9 @@ public final class MaxSynthesisNaive extends MaxSynthesis
 		double maximalLowerBound = Double.NEGATIVE_INFINITY;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
 			double currentLowerBound = (Double) entry.getValue().getMin().getValue(initState);
-			if (currentLowerBound > maximalLowerBound)
+			if (currentLowerBound > maximalLowerBound) {
 				maximalLowerBound = currentLowerBound;
+			}
 		}
 		return maximalLowerBound;
 	}

@@ -44,8 +44,9 @@ public final class MinSynthesisNaive extends MinSynthesis
 		double minimalUpperBound = Double.POSITIVE_INFINITY;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
 			double currentUpperBound = (Double) entry.getValue().getMax().getValue(initState);
-			if (currentUpperBound < minimalUpperBound)
+			if (currentUpperBound < minimalUpperBound) {
 				minimalUpperBound = currentUpperBound;
+			}
 		}
 		return minimalUpperBound;
 	}

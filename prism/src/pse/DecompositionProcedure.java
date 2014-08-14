@@ -237,8 +237,9 @@ public abstract class DecompositionProcedure
 	 * addressed by the decomposition procedure.
 	 * 
 	 * @param log file into which to print
+	 * @param verbose whether output ought to be verbose
 	 */
-	public void printSolution(PrismLog log)
+	public void printSolution(PrismLog log, boolean verbose)
 	{
 		// The default filter added above takes care of printing the solution
 	}

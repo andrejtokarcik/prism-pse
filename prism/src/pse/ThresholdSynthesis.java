@@ -137,7 +137,7 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 	}
 
 	@Override
-	public void printSolution(PrismLog log)
+	public void printSolution(PrismLog log, boolean verbose)
 	{
 		printIntro(log);
 

@@ -163,7 +163,7 @@ public final class PSEModelChecker extends PrismComponent
 		mainLog.println("\nTotal time for model checking: " + timer / 1000.0 + " seconds.");
 
 		// Print and return result
-		decompositionProcedure.printSolution(mainLog);
+		decompositionProcedure.printSolution(mainLog, settings.getBoolean(PrismSettings.PRISM_VERBOSE));
 		Result result = new Result();
 		result.setResult(regionValues);
 		return result;

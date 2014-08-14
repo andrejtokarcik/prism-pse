@@ -27,7 +27,6 @@
 package pse;
 
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map.Entry;
 
 import parser.ast.Expression;
@@ -62,12 +61,12 @@ abstract class OptimisingSynthesis extends DecompositionProcedure
 	/** regions marked as "non-optimising" */
 	protected LabelledBoxRegions nonOptimisingRegions;
 	/** minimal lower probability bound from among {@link optimisingRegion} */
-	private double minimalLowerProbBoundOfOptimising;
+	protected double minimalLowerProbBoundOfOptimising;
 	/** maximal upper probability bound from among {@link optimisingRegion} */
-	private double maximalUpperProbBoundOfOptimising;
+	protected double maximalUpperProbBoundOfOptimising;
 	/** probability bounds as they were successively used to distinguish
 	 *  between "optimising" and "non-optimising" regions */
-	protected List<Double> demarcationProbBounds;
+	protected LinkedList<Double> demarcationProbBounds;
 
 	public OptimisingSynthesis(double probTolerance, int initState)
 	{
@@ -138,7 +137,7 @@ abstract class OptimisingSynthesis extends DecompositionProcedure
 	}
 
 	@Override
-	public void printSolution(PrismLog log)
+	public void printSolution(PrismLog log, boolean verbose)
 	{
 		printIntro(log);
 
@@ -152,8 +151,10 @@ abstract class OptimisingSynthesis extends DecompositionProcedure
 		log.println("\nMin lower prob bound of " + captionForOptimising + " regions = " + minimalLowerProbBoundOfOptimising);
 		log.println("Max upper prob bound of " + captionForOptimising + " regions = " + maximalUpperProbBoundOfOptimising);
 		log.println("Probability tolerance = " + probTolerance);
-		
-		log.println("\nDemarcation prob bounds in the order they were used to exclude regions:");
-		log.println(demarcationProbBounds);
+
+		if (verbose) {
+			log.println("\nDemarcation prob bounds in the order they were used to exclude regions:");
+			log.println(demarcationProbBounds);
+		}
 	}
 }
