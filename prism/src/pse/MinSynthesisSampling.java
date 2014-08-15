@@ -36,11 +36,20 @@ import simulator.SimulatorEngine;
 import explicit.CTMC;
 import explicit.CTMCModelChecker;
 
+/**
+ * Decomposition procedure solving the min synthesis problem using
+ * the sampling-based approach to determine the demarcation
+ * probability bound.
+ */
 public final class MinSynthesisSampling extends MinSynthesis
 {
+	/** simulator engine for instantiating the PSE model */
 	private SimulatorEngine simulatorEngine;
+	/** constructor of explicit models for instantiating the PSE model */
 	private explicit.ConstructModel constructModel;
+	/** model checker for analysing the instantiated model */
 	private CTMCModelChecker ctmcModelChecker;
+	/** list of sample points used for demarcation */
 	private LinkedList<Point> samples;
 
 	public MinSynthesisSampling(double probTolerance, int initState, SimulatorEngine simulatorEngine)
@@ -62,7 +71,7 @@ public final class MinSynthesisSampling extends MinSynthesis
 	}
 
 	/**
-	 * Sampling approach to determining the maximal lower bound.
+	 * Sampling-based approach to determining the maximal lower bound.
 	 */
 	@Override
 	protected double getMinimalUpperBound(BoxRegionValues regionValues) throws PrismException
@@ -79,8 +88,7 @@ public final class MinSynthesisSampling extends MinSynthesis
 		/* TODO: If the region found above is the same as the previously found region
 		 * for the X-th time (where X is a PRISM setting, configurable via CLI), then
 		 * don't even attempt to generate more samples, and simply return the last
-		 * minimal sample probability.
-		 */
+		 * minimal sample probability. */
 
 		double minimalSampleProb = Double.POSITIVE_INFINITY;
 		Point minimalSample = null;

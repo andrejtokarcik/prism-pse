@@ -28,6 +28,10 @@ package pse;
 
 import java.util.Map.Entry;
 
+/**
+ * Decomposition procedure solving the min synthesis problem using
+ * the naive approach to determine the demarcation probability bound.
+ */
 public final class MinSynthesisNaive extends MinSynthesis
 {
 	public MinSynthesisNaive(double probTolerance, int initState)

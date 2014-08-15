@@ -28,6 +28,10 @@ package pse;
 
 import java.util.Map.Entry;
 
+/**
+ * Decomposition procedure solving the max synthesis problem using
+ * the naive approach to determine the demarcation probability bound.
+ */
 public final class MaxSynthesisNaive extends MaxSynthesis
 {
 	public MaxSynthesisNaive(double probTolerance, int initState)

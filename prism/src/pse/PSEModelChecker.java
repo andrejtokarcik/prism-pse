@@ -1081,8 +1081,7 @@ public final class PSEModelChecker extends PrismComponent
 
 		/* TODO: PSE-specific initial distribution files that may define
 		/* the initial parameter regions with their minimised and maximised
-		 * probabilities.
-		 */
+		 * probabilities. */
 
 		mainLog.println("\nImporting probability distribution from file \"" + distFile + "\"...");
 		StateValues dist = new StateValues(TypeDouble.getInstance(), model);
