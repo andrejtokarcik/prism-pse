@@ -920,7 +920,7 @@ public class PrismCL implements PrismModelListener
 						errorAndExit("\"" + pseTime + "\" is not a valid time for PSE");
 				}
 
-				// Perform the exploration
+				// Do the PSE transient computation
 				prism.doTransientPSE(ucPSE, pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy,
 						importinitdist ? new File(importInitDistFilename) : null);
 			}

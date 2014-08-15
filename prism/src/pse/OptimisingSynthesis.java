@@ -45,7 +45,7 @@ import prism.PrismLog;
 abstract class OptimisingSynthesis extends DecompositionProcedure
 {
 	// Synthesis parameters
-	/** greatest possible difference between {@link #maximalUpperProbBoundOfOptimising}
+	/** greatest acceptable difference between {@link #maximalUpperProbBoundOfOptimising}
 	 *  and {@link #minimalLowerProbBoundOfOptimising} */
 	protected double probTolerance;
 	/** user-friendly caption string to be printed instead of "optimising" */

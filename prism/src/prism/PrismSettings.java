@@ -1516,10 +1516,10 @@ public class PrismSettings implements Observer
 		mainLog.println("-pse <time> <s> <acc> .......... Perform transient analysis with parameter space <s> and accuracy <acc> for time <time>");
 		mainLog.println("-psecheck <s> <acc> ............ Perform model checking with parameter space <s> and accuracy <acc>");
 		mainLog.println("-psesynth-thr <s> <tol> ........ Perform threshold synthesis with parameter space <s> and volume tolerance <tol>");
-		mainLog.println("-psesynth-min-naive <s> <tol> .. Perform min synthesis (naive approach) with parameter space <s> and probability tolerance <tol>");
-		mainLog.println("-psesynth-min-sample <s> <tol> . Perform min synthesis (sampling approach) with parameter space <s> and probability tolerance <tol>");
-		mainLog.println("-psesynth-max-naive <s> <tol> .. Perform max synthesis (naive approach) with parameter space <s> and probability tolerance <tol>");
-		mainLog.println("-psesynth-max-sample <s> <tol> . Perform max synthesis (sampling approach) with parameter space <s> and probability tolerance <tol>");
+		mainLog.println("-psesynth-min-naive <s> <tol> .. Perform min synthesis (naive) with parameter space <s> and probability tolerance <tol>");
+		mainLog.println("-psesynth-min-sample <s> <tol> . Perform min synthesis (sampling) with parameter space <s> and probability tolerance <tol>");
+		mainLog.println("-psesynth-max-naive <s> <tol> .. Perform max synthesis (naive) with parameter space <s> and probability tolerance <tol>");
+		mainLog.println("-psesynth-max-sample <s> <tol> . Perform max synthesis (sampling) with parameter space <s> and probability tolerance <tol>");
 		mainLog.println("-pseexaminepartial <x> ......... Set number of iterations after which current result is examined for accuracy [default: 50]");
 		mainLog.println();
 		mainLog.println("FAST ADAPTIVE UNIFORMISATION (FAU) OPTIONS:");
