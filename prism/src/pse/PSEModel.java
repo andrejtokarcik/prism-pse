@@ -685,7 +685,6 @@ public final class PSEModel extends ModelExplicit
 			rateParamsLowers[trans] = rateParams[trans].evaluateDouble(region.getLowerBounds());
 			rateParamsUppers[trans] = rateParams[trans].evaluateDouble(region.getUpperBounds());
 			parametrisedTransitions[trans] = rateParamsLowers[trans] != rateParamsUppers[trans];
-
 		}
 	}
 
