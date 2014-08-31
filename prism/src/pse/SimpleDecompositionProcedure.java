@@ -64,7 +64,7 @@ public final class SimpleDecompositionProcedure extends DecompositionProcedure
 		assert probsMin.length == probsMax.length;
 		for (int state = 0; state < probsMin.length; state++) {
 			if (probsMax[state] - probsMin[state] > accuracy) {
-				throw new DecompositionNeeded("Significant inaccuracy was obtained " +
+				throw new DecompositionNeeded("Significant inaccuracy AHAHAHAXXA was obtained " +
 						"in state " + state  + ",\n" +
 						probsMax[state] + " - " + probsMin[state] + " > " + accuracy,
 						region, "inaccurate region");
