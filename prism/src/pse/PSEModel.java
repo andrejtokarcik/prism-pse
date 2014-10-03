@@ -75,17 +75,17 @@ public final class PSEModel extends ModelExplicit
 	private Set<Integer> predecessorsViaReaction;
 	/** map from state to transitions coming into the state (and not outgoing) */
 	private Map<Integer, List<Integer>> trsI;
-    private int trsICnt;
+	private int trsICnt;
 	/** map from state to transitions both incoming in and outgoing from the state */
 	private Map<Integer, List<Pair<Integer, Integer>>> trsIO;
-    private int trsIOCnt;
+	private int trsIOCnt;
 	/** map from state to transitions going out from the state (and not incoming) */
 	private Map<Integer, List<Integer>> trsO;
-    private int trsOCnt;
+	private int trsOCnt;
 	/** map from state to transitions that are nopt parametrised */
 	private Map<Integer, List<Integer>> trsNP;
 
-    private PSEModelForVM modelVM;
+	private PSEModelForVM modelVM;
 
 	/**
 	 * Constructs a new parametric model.
@@ -94,9 +94,9 @@ public final class PSEModel extends ModelExplicit
 	{
 		numStates = 0;
 		numTransitions = 0;
-        trsICnt = 0;
-        trsOCnt = 0;
-        trsIOCnt = 0;
+		trsICnt = 0;
+		trsOCnt = 0;
+		trsIOCnt = 0;
 		initialStates = new LinkedList<Integer>();
 		deadlocks = new TreeSet<Integer>();
 		predecessorsViaReaction = new HashSet<Integer>();
@@ -447,62 +447,62 @@ public final class PSEModel extends ModelExplicit
 		if (trsI != null)
 			return;
 
-        // Initialise the transition sets
-        trsI = new HashMap<Integer, List<Integer>>(numStates);
-        trsO = new HashMap<Integer, List<Integer>>(numStates);
-        trsIO = new HashMap<Integer, List<Pair<Integer, Integer>>>(numStates);
-        trsNP = new HashMap<Integer, List<Integer>>(numStates);
-        for (int state = 0; state < numStates; state++) {
-            trsI.put(state, new LinkedList<Integer>());
-            trsO.put(state, new LinkedList<Integer>());
-            trsIO.put(state, new LinkedList<Pair<Integer, Integer>>());
-            trsNP.put(state, new LinkedList<Integer>());
-        }
+		// Initialise the transition sets
+		trsI = new HashMap<Integer, List<Integer>>(numStates);
+		trsO = new HashMap<Integer, List<Integer>>(numStates);
+		trsIO = new HashMap<Integer, List<Pair<Integer, Integer>>>(numStates);
+		trsNP = new HashMap<Integer, List<Integer>>(numStates);
+		for (int state = 0; state < numStates; state++) {
+			trsI.put(state, new LinkedList<Integer>());
+			trsO.put(state, new LinkedList<Integer>());
+			trsIO.put(state, new LinkedList<Pair<Integer, Integer>>());
+			trsNP.put(state, new LinkedList<Integer>());
+		}
 
-        // Populate the sets with transition indices
-        for (int pred = 0; pred < numStates; pred++) {
-            for (int predTrans = stateBegin(pred); predTrans < stateEnd(pred); predTrans++) {
-                if (!isParametrised(predTrans)) {
-                    trsNP.get(pred).add(predTrans);
-                    continue;
-                }
-                boolean inout = false;
-                int predReaction = getReaction(predTrans);
-                int state = toState(predTrans);
-                for (int trans = stateBegin(state); trans < stateEnd(state); trans++) {
-                    if (getReaction(trans) == predReaction) {
-                        inout = true;
-                        trsIO.get(state).add(new Pair<Integer, Integer>(predTrans, trans));
-                        ++trsIOCnt;
-                        break;
-                    }
-                }
-                if (!inout) {
-                    trsI.get(state).add(predTrans);
-                    ++trsICnt;
-                }
-                if (!predecessorsViaReaction.contains(pred ^ predReaction)) {
-                    trsO.get(pred).add(predTrans);
-                    ++trsOCnt;
-                }
-            }
-        }
+		// Populate the sets with transition indices
+		for (int pred = 0; pred < numStates; pred++) {
+			for (int predTrans = stateBegin(pred); predTrans < stateEnd(pred); predTrans++) {
+				if (!isParametrised(predTrans)) {
+					trsNP.get(pred).add(predTrans);
+					continue;
+				}
+				boolean inout = false;
+				int predReaction = getReaction(predTrans);
+				int state = toState(predTrans);
+				for (int trans = stateBegin(state); trans < stateEnd(state); trans++) {
+					if (getReaction(trans) == predReaction) {
+						inout = true;
+						trsIO.get(state).add(new Pair<Integer, Integer>(predTrans, trans));
+						++trsIOCnt;
+						break;
+					}
+				}
+				if (!inout) {
+					trsI.get(state).add(predTrans);
+					++trsICnt;
+				}
+				if (!predecessorsViaReaction.contains(pred ^ predReaction)) {
+					trsO.get(pred).add(predTrans);
+					++trsOCnt;
+				}
+			}
+		}
 
-        modelVM = buildModelForVM();
+		modelVM = buildModelForVM();
 	}
-    
+
   public PSEModelForVM buildModelForVM()
 	{
-        final double qrec = 1.0 / getDefaultUniformisationRate();
-        final double[] trRatePopul_ = new double[trRatePopul.length];
-        for (int i = 0; i < trRatePopul_.length; ++i) { trRatePopul_[i] = trRatePopul[i] * qrec; }
+		final double qrec = 1.0 / getDefaultUniformisationRate();
+		final double[] trRatePopul_ = new double[trRatePopul.length];
+		for (int i = 0; i < trRatePopul_.length; ++i) { trRatePopul_[i] = trRatePopul[i] * qrec; }
 
 		int[] trsI_ = new int[trsICnt];
 		int[] trsO_ = new int[trsOCnt];
 		int[] trsIO_ = new int[trsIOCnt * 2];
 
 		VectorOfDouble trsNPVal = new VectorOfDouble();
-        VectorOfInt trsNPTrg = new VectorOfInt();
+		VectorOfInt trsNPTrg = new VectorOfInt();
 		int[] trsNPSrcBeg = new int[numStates + 1];
 		int trsNPPos = 0;
 
@@ -533,13 +533,13 @@ public final class PSEModel extends ModelExplicit
 			trsNPSrcBeg[state] = trsNPPos;
 			for (Integer t : stTrsNP)
 			{
-                final double rate = trRateLower[t] * trRatePopul_[t];
-                if (rate != 0)
-                {
-                    trsNPVal.pushBack(rate);
-                    trsNPTrg.pushBack(trStTrg[t]);
-                    ++trsNPPos;
-                }
+				final double rate = trRateLower[t] * trRatePopul_[t];
+				if (rate != 0)
+				{
+					trsNPVal.pushBack(rate);
+					trsNPTrg.pushBack(trStTrg[t]);
+					++trsNPPos;
+				}
 			}
 		}
 		trsNPSrcBeg[numStates] = trsNPPos;
@@ -707,10 +707,10 @@ public final class PSEModel extends ModelExplicit
 			trRateUpper[trans] = rateParams[trans].evaluateDouble(region.getUpperBounds());
 			parametrisedTransitions[trans] = trRateLower[trans] != trRateUpper[trans];
 		}
-        if (modelVM != null)
-        {
-            modelVM = buildModelForVM();
-        }
+		if (modelVM != null)
+		{
+			modelVM = buildModelForVM();
+		}
 	}
 
 	/**
