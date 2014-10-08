@@ -924,8 +924,7 @@ public final class PSEModelChecker extends PrismComponent
 	 * 
 	 * @param model model to be analysed
 	 * @param t time point
-	 * @param initDistMin initial distribution
-	 * @param initDistMax initial distribution for maximised probabilities
+	 * @param initDist initial distribution
 	 * @param decompositionProcedure decomposition procedure to verify accuracy
 	 * of results
 	 * @return minimised & maximised probabilities per state and region
@@ -1019,7 +1018,7 @@ public final class PSEModelChecker extends PrismComponent
 			totalIters++;
 			while (iters <= right) {
 				// Vector-matrix multiply
-				model.vmMult(solnMin, soln2Min, solnMax, soln2Max, q);
+				model.vmMult(solnMin, soln2Min, solnMax, soln2Max);
 
 				// Swap vectors for next iter
 				tmpsoln = solnMin;
