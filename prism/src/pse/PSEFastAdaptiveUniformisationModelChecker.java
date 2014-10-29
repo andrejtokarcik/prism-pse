@@ -48,7 +48,7 @@ import simulator.SimulatorEngine;
 /**
  * CTMC model checker based on fast adaptive uniformisation.
  */
-public final class PSEFastAdaptiveUniformisationModelChecker extends PrismComponent
+public class PSEFastAdaptiveUniformisationModelChecker extends PrismComponent
 {
 	// Region factory
 	private BoxRegionFactory regionFactory;
@@ -122,11 +122,17 @@ public final class PSEFastAdaptiveUniformisationModelChecker extends PrismCompon
 	 */
 	private Result checkExpression(Expression expr) throws PrismException
 	{
-		if (expr instanceof ExpressionProb) {
-			return checkExpressionProb((ExpressionProb) expr);
-		} else {
-			throw new PrismException("PSE+FAU not yet supported for this operator");
-		}
+		Result res;
+
+		// Current range of supported properties is quite limited...
+		if (expr instanceof ExpressionProb)
+			res = checkExpressionProb((ExpressionProb) expr);
+		//else if (expr instanceof ExpressionReward)
+		//	res = checkExpressionReward((ExpressionReward) expr);
+		else
+			throw new PrismException("Fast adaptive uniformisation not yet supported for this operator");
+
+		return res;
 	}
 
 	/**
@@ -135,98 +141,9 @@ public final class PSEFastAdaptiveUniformisationModelChecker extends PrismCompon
 	private Result checkExpressionProb(ExpressionProb expr) throws PrismException
 	{
 		return null;
-
 		// TODO
-		/*
-		// Check whether P=? (only case allowed)
-		if (expr.getProb() != null) {
-			throw new PrismException("PSE+FAU model checking currently only supports P=? properties");
-		}
-
-		if (!(expr.getExpression() instanceof ExpressionTemporal)) {
-			throw new PrismException("PSE+FAU model checking currently only supports simple path operators");
-		}
-		ExpressionTemporal exprTemp = (ExpressionTemporal) expr.getExpression();
-		if (!exprTemp.isSimplePathFormula()) {
-			throw new PrismException("PSE+FAU window model checking currently only supports simple until operators");
-		}
-
-		double timeLower = 0.0;
-		if (exprTemp.getLowerBound() != null) {
-			timeLower = exprTemp.getLowerBound().evaluateDouble(constantValues);
-		}
-		if (exprTemp.getUpperBound() == null) {
-			throw new PrismException("PSE+FAU window model checking currently requires an upper time bound");
-		}
-		double timeUpper = exprTemp.getUpperBound().evaluateDouble(constantValues);
-
-		if (!exprTemp.hasBounds()) {
-			throw new PrismException("PSE+FAU window model checking currently only supports timed properties");
-		}
-
-		mainLog.println("Starting transient probability computation using PSE+FAU...");
-		PSEModelExplorer modelExplorer = new PSEModelExplorer(modulesFile);
-
-		PSEFastAdaptiveUniformisation fau = new PSEFastAdaptiveUniformisation(this, modelExplorer);
-
-		Expression op1 = exprTemp.getOperand1();
-		if (op1 == null) {
-			op1 = Expression.True();
-		}
-		Expression op2 = exprTemp.getOperand2();
-		op1 = (Expression) op1.expandPropRefsAndLabels(propertiesFile, labelListModel);
-		op1 = (Expression) op1.expandPropRefsAndLabels(propertiesFile, labelListProp);
-		op2 = (Expression) op2.expandPropRefsAndLabels(propertiesFile, labelListModel);
-		op2 = (Expression) op2.expandPropRefsAndLabels(propertiesFile, labelListProp);
-		int operator = exprTemp.getOperator();
-
-		Expression sink = null;
-		Expression target = null;
-		switch (operator) {
-		case ExpressionTemporal.P_U:
-		case ExpressionTemporal.P_F:
-			sink = Expression.Not(op1);
-			break;
-		case ExpressionTemporal.P_G:
-			sink = Expression.False();
-			break;
-		case ExpressionTemporal.P_W:
-		case ExpressionTemporal.P_R:
-		default:
-			throw new PrismException("Operator currently not supported for PSE+FAU");
-		}
-		
-		fau.setSink(sink);
-		fau.computeTransientProbsAdaptive(timeLower);
-		switch (operator) {
-		case ExpressionTemporal.P_U:
-		case ExpressionTemporal.P_F:
-			sink = Expression.Or(Expression.Not(op1), op2);
-			target = op2;
-			break;
-		case ExpressionTemporal.P_G:
-			sink = Expression.Not(op2);
-			target = op2;
-			break;
-		case ExpressionTemporal.P_W:
-		case ExpressionTemporal.P_R:
-		default:
-			throw new PrismException("Operator currently not supported for PSE+FAU");
-		}
-		Values varValues = new Values();
-		varValues.addValue("deadlock", "true");
-		sink.replaceVars(varValues);
-		fau.setAnalysisType(FastAdaptiveUniformisation.AnalysisType.REACH);
-		fau.setSink(sink);
-		fau.setTarget(target);
-		fau.computeTransientProbsAdaptive(timeUpper - timeLower);
-		mainLog.println("\nTotal probability lost is : " + fau.getTotalDiscreteLoss());
-		mainLog.println("Maximal number of states stored during analysis : " + fau.getMaxNumStates());
-
-		return new Result(new Double(fau.getValue()));
-		*/
 	}
-	
+
 	// Transient analysis
 	
 	public BoxRegionValues doTransient(PSEModelExplorer modelExplorer, double t, StateValues initDistMin, StateValues initDistMax, DecompositionProcedure decompositionProcedure)
@@ -250,8 +167,8 @@ public final class PSEFastAdaptiveUniformisationModelChecker extends PrismCompon
 			mainLog.println("Computing probabilities for parameter region " + region);
 
 			StateValues probsMin, probsMax;
-			probsMin = fau.doTransient(t, initDistMin, PSEFastAdaptiveUniformisation.VectorType.MIN);
-			probsMax = fau.doTransient(t, initDistMax, PSEFastAdaptiveUniformisation.VectorType.MAX);
+			probsMin = fau.doTransient(t, initDistMin); //, PSEFastAdaptiveUniformisation.VectorType.MIN);
+			probsMax = fau.doTransient(t, initDistMax); //, PSEFastAdaptiveUniformisation.VectorType.MAX);
 			try {
 				decompositionProcedure.examinePartialComputation(regionValues, region, probsMin.getDoubleArray(), probsMax.getDoubleArray());
 				regionValues.put(region, probsMin, probsMax);
