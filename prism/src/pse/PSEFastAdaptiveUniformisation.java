@@ -239,7 +239,6 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		{
 			transitionMap.removeOutgoingTransitions(this);
 			alive = false;
-			//totalProbLoss += prob;
 			prob = BigDecimal.ZERO;
 			nextProb = BigDecimal.ZERO;
 		}
@@ -262,22 +261,22 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		 * 
 		 * @return sum of all rates leaving to successor states
 		 */
-		double sumRates() throws PrismException
+		BigDecimal sumRates() throws PrismException
 		{
 			HashSet<Transition> outgoing = transitionMap.getOutgoingTransitions(this);
 			if (outgoing.isEmpty()) {
 				if (alive) {
 					// This workaround is necessary since self-loops
 					// aren't stored in transitionMap.
-					return 1.0;
+					return BigDecimal.ONE;
 				} else {
-					return 0.0;
+					return BigDecimal.ZERO;
 				}
 			}
 
-			double sum = 0.0;
+			BigDecimal sum = BigDecimal.ZERO;
 			for (Transition trans : outgoing) {
-				sum += trans.getRatePopulation() * trans.getRateParamsUpper();
+				sum = sum.add(trans.getRatePopulation().multiply(trans.getRateParamsUpper()));
 			}
 			return sum;
 		}
@@ -294,9 +293,9 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		StateProp from;
 		StateProp to;
 		Expression rateParams;
-		double rateParamsLower;
-		double rateParamsUpper;
-		double ratePopulation;
+		BigDecimal rateParamsLower;
+		BigDecimal rateParamsUpper;
+		BigDecimal ratePopulation;
 		boolean parametrised = false;
 
 		Transition(int reaction, StateProp from, StateProp to, Expression rateParams, double ratePopulation, BoxRegion region)
@@ -306,14 +305,14 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 			this.from = from;
 			this.to = to;
 			this.rateParams = rateParams;
-			this.ratePopulation = ratePopulation;
+			this.ratePopulation = new BigDecimal(ratePopulation);
 			evaluateRateParams(region);
 		}
 
 		void evaluateRateParams(BoxRegion region) throws PrismException
 		{
-			rateParamsLower = rateParams.evaluateDouble(region.getLowerBounds());
-			rateParamsUpper = rateParams.evaluateDouble(region.getUpperBounds());
+			rateParamsLower = new BigDecimal(rateParams.evaluateDouble(region.getLowerBounds()));
+			rateParamsUpper = new BigDecimal(rateParams.evaluateDouble(region.getUpperBounds()));
 			parametrised = rateParamsLower != rateParamsUpper;
 		}
 
@@ -322,17 +321,17 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 			return reaction;
 		}
 
-		double getRateParamsLower()
+		BigDecimal getRateParamsLower()
 		{
 			return rateParamsLower;
 		}
 
-		double getRateParamsUpper()
+		BigDecimal getRateParamsUpper()
 		{
 			return rateParamsUpper;
 		}
 
-		double getRatePopulation()
+		BigDecimal getRatePopulation()
 		{
 			return ratePopulation;
 		}
@@ -577,7 +576,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	/** initial size of state hash map */
 	private final int initSize = 3000;
 	/** maximal total leaving rate of all states alive */
-	private double maxRate = 0.0;
+	private BigDecimal maxRate = BigDecimal.ZERO;
 	/** target state set - used for reachability (until or finally properties) */
 	private Expression target;
 	/** number of consecutive iterations without new states are state drops */
@@ -805,8 +804,8 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 			//if ((itersUnchanged == arrayThreshold)) {
 			//	iters = arrayIterate(iters);
 			//} else {
-			    //?? long birthProcTimer = System.currentTimeMillis();
-				double prob = birthProc.calculateNextProb(maxRate);
+				//?? long birthProcTimer = System.currentTimeMillis();
+				double prob = birthProc.calculateNextProb(maxRate.doubleValue());
 				//System.out.println("birth proc prob = " + prob);
 				//?? birthProcTimer = System.currentTimeMillis() - birthProcTimer;
 				birthProbSum += prob;
@@ -866,7 +865,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	 */
 	private void updateStates() throws PrismException
 	{
-		maxRate = 0.0;
+		maxRate = BigDecimal.ZERO;
 		addDistr.clear();
 		for (Map.Entry<State, StateProp> statePair : states.entrySet()) {
 			State state = statePair.getKey();
@@ -879,7 +878,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 					itersUnchanged = 0;
 					addDistr.add(state);
 				} else {
-					maxRate = Math.max(maxRate, prop.sumRates());
+					maxRate = maxRate.max(prop.sumRates());
 				}
 			} else {
 				//System.out.println("WAAAAT");
@@ -890,9 +889,9 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		}
 		for (int stateNr = 0; stateNr < addDistr.size(); stateNr++) {
 			computeStateRates(addDistr.get(stateNr));
-			maxRate = Math.max(maxRate, states.get(addDistr.get(stateNr)).sumRates());
+			maxRate = maxRate.max(states.get(addDistr.get(stateNr)).sumRates());
 		}
-		maxRate *= 1.02;
+		maxRate = maxRate.multiply(new BigDecimal(1.02));
 
 		removeDeletedStates();
 	}
@@ -940,7 +939,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		addToModel(initState);
 		computeStateRates(initState);
 		states.get(initState).setProb(BigDecimal.ONE);
-		maxRate = states.get(initState).sumRates() * 1.02;
+		maxRate = states.get(initState).sumRates().multiply(new BigDecimal(1.02));
 	}
 
 	/**
@@ -952,7 +951,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	{
 		return totalProbLoss;
 	}
-	
+
 	/**
 	 * Adds a @{code state} to model.
 	 * Computes reward for this states, creates entry in map of states,
@@ -1029,7 +1028,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	 * 
 	 * @param maxRate maximal total leaving rate sum in living states
 	 */
-	private void vmMult(double maxRate, VectorType vectorType)
+	private void vmMult(BigDecimal maxRate, VectorType vectorType)
 	{
 		for (StateProp state : states.values()) {
 			state.setNextProb(state.getProb());
@@ -1040,11 +1039,6 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 				// Incoming transitions
 				if (transPair.second == null) {
 					Transition predTrans = transPair.first;
-					/*
-					if (!predTrans.fromState().isAlive()) {
-						continue;
-					}
-					*/
 					//System.out.println("incoming = " + vmMultIn(predTrans, maxRate, vectorType));
 					state.addToNextProb(vmMultIn(predTrans, maxRate, vectorType));
 				}
@@ -1052,12 +1046,6 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 				// Outgoing transitions
 				else if (transPair.first == null) {
 					Transition trans = transPair.second;
-					/*
-					if (!trans.toState().isAlive()) {
-						totalProbLoss += resProb;
-						continue;
-					}
-					*/
 					//System.out.println("outgoing = " + vmMultOut(trans, maxRate, vectorType).negate());
 					state.addToNextProb(vmMultOut(trans, maxRate, vectorType).negate());
 				}
@@ -1067,53 +1055,33 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 					Transition predTrans = transPair.first;
 					Transition trans = transPair.second;
 
-					/*
-					boolean doLoss = false;
-					if (!predTrans.fromState().isAlive() && !trans.toState().isAlive()) {
-						totalProbLoss += vmMultOut(trans, vectorType);
-						continue;
-					} else if (!predTrans.fromState().isAlive()) {
-						state.addToNextProb(-vmMultOut(trans, maxRate, vectorType));
-						continue;
-					} else if (!trans.toState().isAlive()) {
-						doLoss = true;
-						state.addToNextProb(vmMultIn(predTrans, maxRate, vectorType));
-					}
-					*/
-
 					BigDecimal predProb = predTrans.fromState().getProb();
 					BigDecimal prob = trans.fromState().getProb();
 
-					assert predTrans.getRateParamsLower() == trans.getRateParamsLower();
-					assert predTrans.getRateParamsUpper() == trans.getRateParamsUpper();
+					assert predTrans.getRateParamsLower().equals(trans.getRateParamsLower());
+					assert predTrans.getRateParamsUpper().equals(trans.getRateParamsUpper());
 
-					BigDecimal midSumNumerator = predProb.multiply(new BigDecimal(predTrans.getRatePopulation())).subtract(prob.multiply(new BigDecimal(trans.getRatePopulation())));
-					BigDecimal resProb = midSumNumerator.divide(new BigDecimal(maxRate), 750, RoundingMode.HALF_EVEN);
+					BigDecimal midSumNumerator = predProb.multiply(predTrans.getRatePopulation()).subtract(prob.multiply(trans.getRatePopulation()));
+					BigDecimal resProb = midSumNumerator.divide(maxRate, 750, RoundingMode.HALF_EVEN);
 					if (midSumNumerator.compareTo(BigDecimal.ZERO) > 0.0) {
 						switch (vectorType) {
 						case MIN:
-							resProb = resProb.multiply(new BigDecimal(predTrans.getRateParamsLower()));
+							resProb = resProb.multiply(predTrans.getRateParamsLower());
 							break;
 						case MAX:
-							resProb = resProb.multiply(new BigDecimal(predTrans.getRateParamsUpper()));
+							resProb = resProb.multiply(predTrans.getRateParamsUpper());
 							break;
 						}
 					} else {
 						switch (vectorType) {
 						case MIN:
-							resProb = resProb.multiply(new BigDecimal(predTrans.getRateParamsUpper()));
+							resProb = resProb.multiply(predTrans.getRateParamsUpper());
 							break;
 						case MAX:
-							resProb = resProb.multiply(new BigDecimal(predTrans.getRateParamsLower()));
+							resProb = resProb.multiply(predTrans.getRateParamsLower());
 							break;
 						}
 					}
-					/*
-					if (doLoss) {
-						totalProbLoss += resProb;
-						continue;
-					}
-					*/
 					//System.out.println("both = " + resProb);
 					state.addToNextProb(resProb);
 				}
@@ -1130,37 +1098,36 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 		}
 	}
 
-	private BigDecimal vmMultIn(Transition predTrans, double maxRate, VectorType vectorType)
+	private BigDecimal vmMultIn(Transition predTrans, BigDecimal maxRate, VectorType vectorType)
 	{
-		BigDecimal result = predTrans.fromState().getProb().multiply(new BigDecimal(predTrans.getRatePopulation())).divide(new BigDecimal(maxRate), 750, RoundingMode.HALF_EVEN);
+		BigDecimal result = predTrans.fromState().getProb().multiply(predTrans.getRatePopulation()).divide(maxRate, 750, RoundingMode.HALF_EVEN);
 		switch (vectorType) {
 		case MIN:
-			result = result.multiply(new BigDecimal(predTrans.getRateParamsLower()));
+			result = result.multiply(predTrans.getRateParamsLower());
 			break;
 		case MAX:
-			result = result.multiply(new BigDecimal(predTrans.getRateParamsUpper()));
+			result = result.multiply(predTrans.getRateParamsUpper());
 			break;
 		}
 		return result;
 	}
 
-	private BigDecimal vmMultOut(Transition trans, double maxRate, VectorType vectorType)
+	private BigDecimal vmMultOut(Transition trans, BigDecimal maxRate, VectorType vectorType)
 	{
 		//System.out.println("prob = " + trans.fromState().getProb());
 		//System.out.println("pop = " + trans.getRatePopulation());
 		//System.out.println("max rate = " + maxRate);
 		//System.out.println(trans.fromState().getProb().doubleValue() * trans.getRatePopulation() / maxRate);
-		BigDecimal result = trans.fromState().getProb().multiply(new BigDecimal(trans.getRatePopulation())).divide(new BigDecimal(maxRate), 750, RoundingMode.HALF_EVEN);
+		BigDecimal result = trans.fromState().getProb().multiply(trans.getRatePopulation()).divide(maxRate, 750, RoundingMode.HALF_EVEN);
 		switch (vectorType) {
 		case MIN:
-			result = result.multiply(new BigDecimal(trans.getRateParamsUpper()));
+			result = result.multiply(trans.getRateParamsUpper());
 			break;
 		case MAX:
-			result = result.multiply(new BigDecimal(trans.getRateParamsLower()));
+			result = result.multiply(trans.getRateParamsLower());
 			break;
 		}
 		//System.out.println("vmMultOut res = " + result);
 		return result;
 	}
-	
 }
