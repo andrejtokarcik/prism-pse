@@ -61,19 +61,19 @@ import explicit.Utils;
  * The results are examined for accuracy by invocations
  * of passed-in decomposition procedures.
  */
-public class PSEModelChecker extends PrismComponent
+public final class PSEModelChecker extends PrismComponent
 {
 	/** parameter region factory */
-	protected BoxRegionFactory regionFactory;
+	private BoxRegionFactory regionFactory;
 
 	/** modules file, for instantiating of the PSE model */
-	protected ModulesFile modulesFile = null;
+	private ModulesFile modulesFile = null;
 
 	/** properties file (for labels, constants, etc.) */
-	protected PropertiesFile propertiesFile = null;
+	private PropertiesFile propertiesFile = null;
 
 	/** constants (extracted from modules & properties) */
-	protected Values constantValues;
+	private Values constantValues;
 
 	/** state model checker, used as fall-back for checking
 	 *  of those expressions that PSE isn't concerned with */

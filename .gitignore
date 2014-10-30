@@ -3,6 +3,7 @@
 *~
 *.a
 *.o
+*.bak
 cudd/include
 prism/bin
 prism/classes
