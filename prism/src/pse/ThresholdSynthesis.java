@@ -34,34 +34,47 @@ import parser.ast.RelOp;
 import prism.PrismException;
 import prism.PrismLog;
 
+/**
+ * Decomposition procedure solving the threshold synthesis problem.
+ */
 public final class ThresholdSynthesis extends DecompositionProcedure
 {
 	// Synthesis parameters
+	/** true iff the property formula is of the form P>=r[subformula] */
 	private boolean aboveIsTrue;
+	/** threshold for distinguishing "above" regions from those "below" */
 	private double threshold;
+	/** greatest acceptable value for {@link #undecidedVsComplete} */
 	private double volumeTolerance;
 
-	// Properties of the model being model-checked
+	// Properties of the model to be checked
+	/** model's initial state */
 	private int initState;
+	/** volume of the complete parameter space */
 	private double completeSpaceVolume;
 
 	// Solution structures
+	/** regions marked as "below" {@code threshold} */
 	private LabelledBoxRegions belowRegions;
+	/** regions marked as "above" {@code threshold} */
 	private LabelledBoxRegions aboveRegions;
+	/** regions marked as yet "undecided" */
 	private LabelledBoxRegions undecidedRegions;
+	/** ratio of total volume of "undecided" regions to volume
+	 *  of the complete parameter space */
 	private double undecidedVsComplete;
 
 	public ThresholdSynthesis(double volumeTolerance, int initState, BoxRegion completeSpace) throws PrismException
 	{
 		this.volumeTolerance = volumeTolerance;
 		this.initState = initState;
-		this.completeSpaceVolume = completeSpace.getVolume();
+		this.completeSpaceVolume = completeSpace.volume();
 	}
 
 	@Override
-	public void initialise(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
+	public void initialiseModelChecking(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
 	{
-		super.initialise(modelChecker, model, propExpr);
+		super.initialiseModelChecking(modelChecker, model, propExpr);
 		belowRegions = new LabelledBoxRegions();
 		aboveRegions = new LabelledBoxRegions();
 		undecidedRegions = new LabelledBoxRegions();
@@ -105,7 +118,7 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 				belowRegions.add(entry.getKey(), "upper prob bound = " + upperProbBound);
 			} else {
 				undecidedRegions.add(entry.getKey());
-				double currentVolume = entry.getKey().getVolume();
+				double currentVolume = entry.getKey().volume();
 				undecidedVolume += currentVolume;
 				if (currentVolume > greatestVolume) {
 					greatestVolume = currentVolume;
@@ -117,14 +130,14 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 		// Evaluate whether a decomposition is needed
 		undecidedVsComplete = undecidedVolume / completeSpaceVolume;
 		if (undecidedVolume / completeSpaceVolume > volumeTolerance) {
-			throw new DecompositionNeeded("The volume of undecided regions is too large, " +
+			throw new DecompositionNeeded("The volume of undecided regions is too large,\n" +
 					undecidedVolume + " / " + completeSpaceVolume + " > " + volumeTolerance,
 					regionToDecompose, "largest undecided region");
 		}
 	}
 
 	@Override
-	public void printSolution(PrismLog log)
+	public void printSolution(PrismLog log, boolean verbose)
 	{
 		printIntro(log);
 

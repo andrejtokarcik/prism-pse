@@ -27,15 +27,7 @@
 package pse;
 
 import java.io.File;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 
 import parser.Values;
 import parser.ast.Expression;
@@ -47,58 +39,67 @@ import prism.PrismLog;
 import explicit.CTMC;
 import explicit.ModelExplicit;
 
+/**
+ * Represents a parametrised CTMC model to be used for PSE-based
+ * techniques of analysis.
+ * 
+ * @see PSEModelBuilder
+ */
 public final class PSEModel extends ModelExplicit
 {
 	/** total number of probabilistic transitions over all states */
-	private int numTotalTransitions;
+	private int numTransitions;
 	/** begin and end of state transitions */
 	private int[] rows;
 	/** origins of distribution branches */
-	private int[] colsFrom;
+	private int[] trStSrc;
 	/** targets of distribution branches */
-	private int[] colsTo;
-	/** */
+	private int[] trStTrg;
+	/** all transitions' rate parameters, as expressions */
 	private Expression[] rateParams;
-	private double[] rateParamsLowers;
-	private double[] rateParamsUppers;
-	/** */
-	private double[] ratePopulations;
-	/** */
+	/** all transitions' rate parameters, evaluated with lower bounds of current region */
+	private double[] trRateLower;
+	/** all transitions' rate parameters, evaluated with upper bounds of current region */
+	private double[] trRateUpper;
+	/** species populations in all transitions' origin states */
+	private double[] trRatePopul;
+	/** indication on all transitions, whether their rate depends on parameters */
 	private boolean[] parametrisedTransitions;
-	/** reactions - kinds of transitions */
+	/** all transitions' reactions, i.e. transition kinds */
 	private int[] reactions;
 	/** labels - per transition, <i>not</i> per action */
 	private String[] labels;
 	/** total sum of leaving rates for a state */
 	private double[] exitRates;
-	/** model type */
-	private ModelType modelType;
-	/** */
-	private Set<Integer> predecessorsViaReaction = new HashSet<Integer>();
-	/** */
-	private Map<Integer, List<Integer>> inTransitions;
-	private Map<Integer, List<Pair<Integer, Integer>>> inoutTransitions;
-	private Map<Integer, List<Integer>> outTransitions;
-	
+	/** set of hash codes for deciding whether state has predecessors via reaction */
+	private Set<Integer> predecessorsViaReaction;
+	/** map from state to transitions coming into the state (and not outgoing) */
+	private Map<Integer, List<Integer>> trsI;
+	private int trsICnt;
+	/** map from state to transitions both incoming in and outgoing from the state */
+	private Map<Integer, List<Pair<Integer, Integer>>> trsIO;
+	private int trsIOCnt;
+	/** map from state to transitions going out from the state (and not incoming) */
+	private Map<Integer, List<Integer>> trsO;
+	private int trsOCnt;
+	/** map from state to transitions that are nopt parametrised */
+	private Map<Integer, List<Integer>> trsNP;
+
+	private PSEModelForVM modelVM;
+
 	/**
 	 * Constructs a new parametric model.
 	 */
 	PSEModel()
 	{
 		numStates = 0;
-		numTotalTransitions = 0;
+		numTransitions = 0;
+		trsICnt = 0;
+		trsOCnt = 0;
+		trsIOCnt = 0;
 		initialStates = new LinkedList<Integer>();
 		deadlocks = new TreeSet<Integer>();
-	}
-
-	/**
-	 * Sets the type of the model.
-	 * 
-	 * @param modelType type the model shall have
-	 */
-	void setModelType(ModelType modelType)
-	{
-		this.modelType = modelType;
+		predecessorsViaReaction = new HashSet<Integer>();
 	}
 
 	// Accessors (for Model)
@@ -106,7 +107,7 @@ public final class PSEModel extends ModelExplicit
 	@Override
 	public ModelType getModelType()
 	{
-		return modelType;
+		return ModelType.CTMC;
 	}
 
 	@Override
@@ -118,7 +119,7 @@ public final class PSEModel extends ModelExplicit
 	@Override
 	public int getNumTransitions()
 	{
-		return numTotalTransitions;
+		return numTransitions;
 	}
 
 	@Override
@@ -240,27 +241,27 @@ public final class PSEModel extends ModelExplicit
 	 * Allocates memory for subsequent construction of model. 
 	 * 
 	 * @param numStates number of states of the model
-	 * @param numTotalTransitions total number of probabilistic transitions of the model
+	 * @param numTransitions total number of probabilistic transitions of the model
 	 */
-	void reserveMem(int numStates, int numTotalTransitions)
+	void reserveMem(int numStates, int numTransitions)
 	{
 		rows = new int[numStates + 1];
-		labels = new String[numTotalTransitions];
-		reactions = new int[numTotalTransitions];
-		rateParams = new Expression[numTotalTransitions];
-		rateParamsLowers = new double[numTotalTransitions];
-		rateParamsUppers = new double[numTotalTransitions];
-		parametrisedTransitions = new boolean[numTotalTransitions];
-		ratePopulations = new double[numTotalTransitions];
-		colsTo = new int[numTotalTransitions];
-		colsFrom = new int[numTotalTransitions];
+		labels = new String[numTransitions];
+		reactions = new int[numTransitions];
+		rateParams = new Expression[numTransitions];
+		trRateLower = new double[numTransitions];
+		trRateUpper = new double[numTransitions];
+		parametrisedTransitions = new boolean[numTransitions];
+		trRatePopul = new double[numTransitions];
+		trStTrg = new int[numTransitions];
+		trStSrc = new int[numTransitions];
 		exitRates = new double[numStates];
 	}
 
 	/**
-	 * Finish the current state.
+	 * Finishes the current state.
 	 * Starting with the 0th state, this function shall be called once all
-	 * nondeterministic decisions of the current nth state have been added.
+	 * transitions outgoing from the current nth state have been added.
 	 * Subsequent method calls of {@code addTransition}
 	 * will then apply to the (n+1)th state. Notice that this method must be
 	 * called for each state of the method, even the last one, once all its
@@ -268,29 +269,38 @@ public final class PSEModel extends ModelExplicit
 	 */
 	void finishState()
 	{
-		rows[numStates + 1] = numTotalTransitions;
+		rows[numStates + 1] = numTransitions;
 		numStates++;
 	}
 
 	/**
 	 * Adds a probabilistic transition from the current state.
+	 * 
+	 * @param reaction kind of the transition being added
+	 * @param fromState from which state the transition goes
+	 * @param toState to which state the transition leads
+	 * @param rateParamsExpr the transition's rate parameters as expression
+	 * @param ratePopulation the transition's origin state's species population
+	 * @param action action with which the transition is labelled
 	 */
 	void addTransition(int reaction, int fromState, int toState, Expression rateParamsExpr, double ratePopulation, String action)
 	{
-		reactions[numTotalTransitions] = reaction;
-		colsFrom[numTotalTransitions] = fromState;
-		colsTo[numTotalTransitions] = toState;
-		rateParams[numTotalTransitions] = rateParamsExpr;
-		ratePopulations[numTotalTransitions] = ratePopulation;
-		labels[numTotalTransitions] = action;
+		reactions[numTransitions] = reaction;
+		trStSrc[numTransitions] = fromState;
+		trStTrg[numTransitions] = toState;
+		rateParams[numTransitions] = rateParamsExpr;
+		trRatePopul[numTransitions] = ratePopulation;
+		labels[numTransitions] = action;
 
 		predecessorsViaReaction.add(toState ^ reaction);
 
-		numTotalTransitions++;
+		numTransitions++;
 	}
 
 	/**
 	 * Sets the total sum of leaving rates from the current state.
+	 * 
+	 * @param leaving sum of leaving rates from the current state
 	 */
 	void setSumLeaving(double leaving)
 	{
@@ -298,7 +308,11 @@ public final class PSEModel extends ModelExplicit
 	}
 
 	/**
-	 * Returns the number of the first transition of {@code state}.
+	 * Returns the number of the first transition going from {@code state}.
+	 * 
+	 * 
+	 * @param state state to return number of first transition of
+	 * @return number of first transition going from {@code state}
 	 */
 	int stateBegin(int state)
 	{
@@ -306,7 +320,10 @@ public final class PSEModel extends ModelExplicit
 	}
 
 	/**
-	 * Returns the number of the last transition of {@code state} plus one.
+	 * Returns the number of the last transition going from {@code state} plus one.
+	 * 
+	 * @param state state to return number of last transition of
+	 * @return number of last transition going from {@code state} plus one
 	 */
 	int stateEnd(int state)
 	{
@@ -314,13 +331,21 @@ public final class PSEModel extends ModelExplicit
 	}
 
 	/**
+	 * Returns whether the rate of the given transition depends on parameters.
+	 * 
+	 * @param trans transition about which to decide whether it's parametrised
+	 * @return true iff the rate {@code trans} depends on parameters
 	 */
-	boolean parametrised(int trans)
+	boolean isParametrised(int trans)
 	{
 		return parametrisedTransitions[trans];
 	}
 
 	/**
+	 * Returns reaction to which the given transition belongs.
+	 * 
+	 * @param trans transition to return reaction for
+	 * @return reaction of {@code trans}
 	 */
 	int getReaction(int trans)
 	{
@@ -329,78 +354,116 @@ public final class PSEModel extends ModelExplicit
 
 	/**
 	 * Returns the predecessor state of the given transition.
+	 * 
+	 * @param trans transition to return predecessor for
+	 * @return predecessor state of {@code trans}
 	 */
 	int fromState(int trans)
 	{
-		return colsFrom[trans];
+		return trStSrc[trans];
 	}
 
 	/**
 	 * Returns the successor state of the given transition.
+	 * 
+	 * @param trans transition to return successor for
+	 * @return successor state of {@code trans}
 	 */
 	int toState(int trans)
 	{
-		return colsTo[trans];
+		return trStTrg[trans];
 	}
 
 	/**
 	 * Returns the label of the given transition.
+	 * 
+	 * @param trans transition to return label of
+	 * @return label of {@code trans}
 	 */
 	String getLabel(int trans)
 	{
 		return labels[trans];
 	}
-	
+
 	/**
+	 * Computes the maximum exit rate over all states in the model,
+	 * i.e. max_i { sum_j R(i,j) }.
+	 * 
+	 * @return maximum exit rate
 	 */
 	double getMaxExitRate()
 	{
-		BitSet allStates = new BitSet(numStates);
-		allStates.set(0, numStates - 1);
-		return getMaxExitRate(allStates);
+		return getMaxExitRate(null);
 	}
 
+	/**
+	 * Computes the maximum exit rate over states in {@code subset},
+	 * i.e. max_{i in subset} { sum_j R(i,j) }.
+	 * 
+	 * @param subset subset of states over which to compute maximum exit rate
+	 * @return maximum exit rate over states in {@code subset}
+	 */
 	double getMaxExitRate(BitSet subset)
 	{
+		if (subset == null) {
+			// Will loop over all states
+			subset = new BitSet(numStates);
+			subset.set(0, numStates - 1);
+		}
 		double max = Double.NEGATIVE_INFINITY;
 		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
-			if (exitRates[state] > max)
+			if (exitRates[state] > max) {
 				max = exitRates[state];
+			}
 		}
 		return max;
 	}
 
+	/**
+	 * Computes the default rate used to uniformise this parametrised CTMC.
+	 */
 	double getDefaultUniformisationRate()
 	{
 		return 1.02 * getMaxExitRate();
 	}
 
+	/**
+	 * Computes the default rate used to uniformise this parametrised CTMC,
+	 * assuming that all states *not* in {@code nonAbs} have been made absorbing.
+	 */
 	double getDefaultUniformisationRate(BitSet nonAbs)
 	{
 		return 1.02 * getMaxExitRate(nonAbs);
 	}
 
 	/**
+	 * Analyses the model's transitions in order to divide them between exclusively
+	 * incoming, exclusively outgoing or both incoming/outgoing from the perspective
+	 * of particular states. The results are stored in {@code trsI},
+	 * {@code trsO} and {@code trsIO}, respectively.
 	 */
-	public void computeInOutReactions() throws PrismException
+	public void computeInOutTransitions()
 	{
-		if (inTransitions != null && inoutTransitions != null && outTransitions != null)
+		if (trsI != null)
 			return;
 
-		// Initialise the reaction sets
-		inTransitions = new HashMap<Integer, List<Integer>>(numStates);
-		inoutTransitions = new HashMap<Integer, List<Pair<Integer, Integer>>>(numStates);
-		outTransitions = new HashMap<Integer, List<Integer>>(numStates);
+		// Initialise the transition sets
+		trsI = new HashMap<Integer, List<Integer>>(numStates);
+		trsO = new HashMap<Integer, List<Integer>>(numStates);
+		trsIO = new HashMap<Integer, List<Pair<Integer, Integer>>>(numStates);
+		trsNP = new HashMap<Integer, List<Integer>>(numStates);
 		for (int state = 0; state < numStates; state++) {
-			inTransitions.put(state, new LinkedList<Integer>());
-			inoutTransitions.put(state, new LinkedList<Pair<Integer, Integer>>());
-			outTransitions.put(state, new LinkedList<Integer>());
+			trsI.put(state, new LinkedList<Integer>());
+			trsO.put(state, new LinkedList<Integer>());
+			trsIO.put(state, new LinkedList<Pair<Integer, Integer>>());
+			trsNP.put(state, new LinkedList<Integer>());
 		}
 
 		// Populate the sets with transition indices
 		for (int pred = 0; pred < numStates; pred++) {
 			for (int predTrans = stateBegin(pred); predTrans < stateEnd(pred); predTrans++) {
-				if (!parametrised(predTrans)) {
+				if (!isParametrised(predTrans)) {
+					trsNP.get(pred).add(predTrans);
 					continue;
 				}
 				boolean inout = false;
@@ -409,119 +472,166 @@ public final class PSEModel extends ModelExplicit
 				for (int trans = stateBegin(state); trans < stateEnd(state); trans++) {
 					if (getReaction(trans) == predReaction) {
 						inout = true;
-						inoutTransitions.get(state).add(new Pair<Integer, Integer>(predTrans, trans));
+						trsIO.get(state).add(new Pair<Integer, Integer>(predTrans, trans));
+						++trsIOCnt;
 						break;
 					}
 				}
 				if (!inout) {
-					inTransitions.get(state).add(predTrans);
+					trsI.get(state).add(predTrans);
+					++trsICnt;
 				}
 				if (!predecessorsViaReaction.contains(pred ^ predReaction)) {
-					outTransitions.get(pred).add(predTrans);
+					trsO.get(pred).add(predTrans);
+					++trsOCnt;
 				}
 			}
 		}
+
+		modelVM = buildModelForVM();
 	}
 
-	public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], double q)
+  public PSEModelForVM buildModelForVM()
+	{
+		final double qrec = 1.0 / getDefaultUniformisationRate();
+		final double[] trRatePopul_ = new double[trRatePopul.length];
+		for (int i = 0; i < trRatePopul_.length; ++i) { trRatePopul_[i] = trRatePopul[i] * qrec; }
+
+		int[] trsI_ = new int[trsICnt];
+		int[] trsO_ = new int[trsOCnt];
+		int[] trsIO_ = new int[trsIOCnt * 2];
+
+		VectorOfDouble trsNPVal = new VectorOfDouble();
+		VectorOfInt trsNPTrg = new VectorOfInt();
+		int[] trsNPSrcBeg = new int[numStates + 1];
+		int trsNPPos = 0;
+
+		int trsIPos = 0;
+		int trsOPos = 0;
+		int trsIOPos = 0;
+		for (int state = 0; state < numStates; ++state)
+		{
+			List<Integer> stTrsI = trsI.get(state);
+			List<Integer> stTrsO = trsO.get(state);
+			List<Pair<Integer, Integer>> stTrsIO = trsIO.get(state);
+			List<Integer> stTrsNP = trsNP.get(state);
+
+			for (Integer tr : stTrsI)
+			{
+				trsI_[trsIPos++] = tr;
+			}
+			for (Integer tr : stTrsO)
+			{
+				trsO_[trsOPos++] = tr;
+			}
+			for (Pair<Integer, Integer> p : stTrsIO)
+			{
+				trsIO_[trsIOPos++] = p.first;
+				trsIO_[trsIOPos++] = p.second;
+			}
+
+			trsNPSrcBeg[state] = trsNPPos;
+			for (Integer t : stTrsNP)
+			{
+				final double rate = trRateLower[t] * trRatePopul_[t];
+				if (rate != 0)
+				{
+					trsNPVal.pushBack(rate);
+					trsNPTrg.pushBack(trStTrg[t]);
+					++trsNPPos;
+				}
+			}
+		}
+		trsNPSrcBeg[numStates] = trsNPPos;
+
+		// Sort for better locality when accessing trRateLower/Upper/Popul.
+		Arrays.sort(trsI_);
+		Arrays.sort(trsO_);
+
+		return new PSEModelForVM
+			( numStates, numTransitions
+			, trRateLower
+			, trRateUpper
+			, trRatePopul_
+			, trStSrc
+			, trStTrg
+			, trsI_
+			, trsO_
+			, trsIO_
+			, trsNPVal.data()
+			, trsNPTrg.data()
+			, trsNPSrcBeg
+			);
+	}
+
+	/**
+	 * Does a vector-matrix multiplication for this parametrised CTMC's transition
+	 * probability matrix (uniformised with rate {@code q}) and the vector's min/max
+	 * components ({@code vectMin} and {@code vectMax}, respectively) passed in.
+	 * The code follows closely the algorithm described in the article:
+	 * <p>
+	 * L. Brim‚ M. Češka‚ S. Dražan and D. Šafránek: Exploring Parameter Space
+	 * of Stochastic Biochemical Systems Using Quantitative Model Checking
+	 * In Computer Aided Verification (CAV'13): 107−123, 2013.
+	 * 
+	 * @param vectMin vector to multiply by when computing minimised result
+	 * @param resultMin vector to store minimised result in
+	 * @param vectMax vector to multiply by when computing maximised result
+	 * @param resultMax vector to store maximised result in
+	 * @see #mvMult(double[], double[], double[], double[], BitSet, boolean, double)
+	 */
+	public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[])
 			throws PrismException
 	{
-		for (int state = 0; state < numStates; state++) {
-			// Initialise the result
-			resultMin[state] = vectMin[state];
-			resultMax[state] = vectMax[state];
-
-			// Incoming transitions
-			for (int predTrans : inTransitions.get(state)) {
-				int pred = fromState(predTrans);
-				resultMin[state] += rateParamsLowers[predTrans] * ratePopulations[predTrans] * vectMin[pred] / q;
-				resultMax[state] += rateParamsUppers[predTrans] * ratePopulations[predTrans] * vectMax[pred] / q;
-			}
-
-			// Outgoing transitions
-			for (int trans : outTransitions.get(state)) {
-				resultMin[state] -= rateParamsUppers[trans] * ratePopulations[trans] * vectMin[state] / q;
-				resultMax[state] -= rateParamsLowers[trans] * ratePopulations[trans] * vectMax[state] / q;
-			}
-
-			// Both incoming and outgoing
-			for (Pair<Integer, Integer> transs : inoutTransitions.get(state)) {
-				int predTrans = transs.first;
-				int trans = transs.second;
-
-				int pred = fromState(predTrans);
-				assert fromState(trans) == state;
-
-				// The rate params of the two considered transitions must be identical
-				assert rateParamsLowers[predTrans] == rateParamsLowers[trans];
-				assert rateParamsUppers[predTrans] == rateParamsUppers[trans];
-
-				double midSumNumeratorMin = ratePopulations[predTrans] * vectMin[pred] - ratePopulations[trans] * vectMin[state];
-				if (midSumNumeratorMin > 0.0) {
-					resultMin[state] += rateParamsLowers[trans] * midSumNumeratorMin / q;
-				} else {
-					resultMin[state] += rateParamsUppers[trans] * midSumNumeratorMin / q;
-				}
-
-				double midSumNumeratorMax = ratePopulations[predTrans] * vectMax[pred] - ratePopulations[trans] * vectMax[state];
-				if (midSumNumeratorMax > 0.0) {
-					resultMax[state] += rateParamsUppers[trans] * midSumNumeratorMax / q;
-				} else {
-					resultMax[state] += rateParamsLowers[trans] * midSumNumeratorMax / q;
-				}
-			}
-		}
-
-		// Optimisation: Non-parametrised transitions
-		for (int trans = 0; trans < numTotalTransitions; trans++) {
-			if (parametrised(trans))
-				continue;
-
-			int pred = fromState(trans);
-			int state = toState(trans);
-
-			double rate = rateParamsLowers[trans] * ratePopulations[trans];
-
-			resultMin[pred] -= rate * vectMin[pred] / q;
-			resultMax[pred] -= rate * vectMax[pred] / q;
-
-			resultMin[state] += rate * vectMin[pred] / q;
-			resultMax[state] += rate * vectMax[pred] / q;
-		}
+		modelVM.vmMult(vectMin, resultMin, vectMax, resultMax);
 	}
 
 	private double mvMultMidSumEvalMin(int trans, double vectMinPred, double vectMinState, double q)
 	{
-		double midSumNumeratorMin = ratePopulations[trans] * vectMinPred - ratePopulations[trans] * vectMinState;
+		double midSumNumeratorMin = trRatePopul[trans] * vectMinPred - trRatePopul[trans] * vectMinState;
 		if (midSumNumeratorMin > 0.0) {
-			return rateParamsLowers[trans] * midSumNumeratorMin / q;
+			return trRateLower[trans] * midSumNumeratorMin / q;
 		} else {
-			return rateParamsUppers[trans] * midSumNumeratorMin / q;
+			return trRateUpper[trans] * midSumNumeratorMin / q;
 		}
 	}
 
 	private double mvMultMidSumEvalMax(int trans, double vectMaxPred, double vectMaxState, double q)
 	{
-		double midSumNumeratorMax = ratePopulations[trans] * vectMaxPred - ratePopulations[trans] * vectMaxState;
+		double midSumNumeratorMax = trRatePopul[trans] * vectMaxPred - trRatePopul[trans] * vectMaxState;
 		if (midSumNumeratorMax > 0.0) {
-			return rateParamsUppers[trans] * midSumNumeratorMax / q;
+			return trRateUpper[trans] * midSumNumeratorMax / q;
 		} else {
-			return rateParamsLowers[trans] * midSumNumeratorMax / q;
+			return trRateLower[trans] * midSumNumeratorMax / q;
 		}
 	}
 
 	/**
-	 * NB: Semantics of mvMult() is *not* analogical to that of vmMult(), the difference
-	 * is crucial:  result[k]_i in vmMult() is simply the probability of being in state k
-	 * after i iterations starting from an initial state.  On the other hand, mvMult()'s
-	 * result[k]_i denotes the probability that an absorbing state (i.e., a state
-	 * in the complement of subset) is reached after i iterations starting from k.
+	 * Does a matrix-vector multiplication for this parametrised CTMC's transition
+	 * probability matrix (uniformised with rate {@code q}) and the vector's min/max
+	 * components ({@code vectMin} and {@code vectMax}, respectively) passed in.
+	 * <p>
+	 * NB: Semantics of {@code mvMult} is <i>not</i> analogical to that of {@code vmMult},
+	 * the difference is crucial:  {@code result[k]_i} in {@code vmMult} is simply
+	 * the probability of being in state {@code k} after {@code i} iterations starting
+	 * from the initial state.  On the other hand, {@code mvMult}'s {@code result[k]_i}
+	 * denotes the probability that an absorbing state (i.e., a state not in {@code subset})
+	 * is reached after {@code i} iterations starting from {@code k}.
+	 * 
+	 * @param vectMin vector to multiply by when computing minimised result
+	 * @param resultMin vector to store minimised result in
+	 * @param vectMax vector to multiply by when computing maximised result
+	 * @param resultMax vector to store maximised result in
+	 * @param subset only do multiplication for these rows (null means "all")
+	 * @param complement if true, {@code subset} is taken to be its complement
+	 * @param q uniformisation rate
+	 * @see #vmMult(double[], double[], double[], double[])
 	 */
 	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], BitSet subset, boolean complement, double q)
 			throws PrismException
 	{
 		if (subset == null) {
-			// Loop over all states
+			// Will loop over all states
 			subset = new BitSet(numStates);
 			subset.set(0, numStates - 1);
 		}
@@ -535,13 +645,13 @@ public final class PSEModel extends ModelExplicit
 			resultMin[state] = vectMin[state];
 			resultMax[state] = vectMax[state];
 
-			for (int trans : outTransitions.get(state)) {
+			for (int trans : trsO.get(state)) {
 				int succ = toState(trans);
 				resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[succ], vectMin[state], q);
 				resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[succ], vectMax[state], q);
 			}
 
-			for (Pair<Integer, Integer> transs : inoutTransitions.get(state)) {
+			for (Pair<Integer, Integer> transs : trsIO.get(state)) {
 				int trans = transs.first;
 				int succTrans = transs.second;
 
@@ -556,8 +666,8 @@ public final class PSEModel extends ModelExplicit
 				}
 
 				// The rate params of the two considered transitions must be identical
-				assert rateParamsLowers[succTrans] == rateParamsLowers[trans];
-				assert rateParamsUppers[succTrans] == rateParamsUppers[trans];
+				assert trRateLower[succTrans] == trRateLower[trans];
+				assert trRateUpper[succTrans] == trRateUpper[trans];
 
 				resultMin[state] += mvMultMidSumEvalMin(succTrans, vectMin[succ], vectMin[state], q);
 				resultMax[state] += mvMultMidSumEvalMax(succTrans, vectMax[succ], vectMax[state], q);
@@ -565,8 +675,8 @@ public final class PSEModel extends ModelExplicit
 		}
 
 		// Optimisation: Non-parametrised transitions
-		for (int trans = 0; trans < numTotalTransitions; trans++) {
-			if (parametrised(trans))
+		for (int trans = 0; trans < numTransitions; trans++) {
+			if (isParametrised(trans))
 				continue;
 
 			int state = fromState(trans);
@@ -575,27 +685,52 @@ public final class PSEModel extends ModelExplicit
 			if (!subset.get(state))
 				continue;
 
-			double rate = rateParamsLowers[trans] * ratePopulations[trans];
+			double rate = trRateLower[trans] * trRatePopul[trans];
 			resultMin[state] += rate * (vectMin[succ] - vectMin[state]) / q;
 			resultMax[state] += rate * (vectMax[succ] - vectMax[state]) / q;
 		}
 	}
 
+	/**
+	 * Updates the transition rates of this parametrised CTMC according
+	 * to the given parameter region.
+	 * 
+	 * @param region parameter region according to which configure the model's
+	 * parameter space
+	 * @throws PrismException thrown if rates cannot be evaluated with the new
+	 * parameter region's bounds
+	 */
 	public void configureParameterSpace(BoxRegion region) throws PrismException
 	{
-		for (int trans = 0; trans < numTotalTransitions; trans++) {
-			rateParamsLowers[trans] = rateParams[trans].evaluateDouble(region.getLowerBounds());
-			rateParamsUppers[trans] = rateParams[trans].evaluateDouble(region.getUpperBounds());
-			parametrisedTransitions[trans] = rateParamsLowers[trans] != rateParamsUppers[trans];
-
+		for (int trans = 0; trans < numTransitions; trans++) {
+			trRateLower[trans] = rateParams[trans].evaluateDouble(region.getLowerBounds());
+			trRateUpper[trans] = rateParams[trans].evaluateDouble(region.getUpperBounds());
+			parametrisedTransitions[trans] = trRateLower[trans] != trRateUpper[trans];
+		}
+		if (modelVM != null)
+		{
+			modelVM = buildModelForVM();
 		}
 	}
 
+	/**
+	 * Returns a particular non-parametrised CTMC associated with
+	 * the given point of the parameter space of this parametrised CTMC.
+	 * 
+	 * @param point point of parameter space determining the parameters' values
+	 * @param modulesFile modules file
+	 * @param constructModel object conducting construction of {@code explicit.CTMC}
+	 * models
+	 * @return non-parametrised CTMC obtained by substituting {@code point}
+	 * for parameter ranges
+	 * @throws PrismException thrown if an error occurred during construction
+	 * of the non-parametrised CTMC
+	 */
 	public CTMC instantiate(Point point, ModulesFile modulesFile, explicit.ConstructModel constructModel)
 			throws PrismException
 	{
 		modulesFile = (ModulesFile) modulesFile.deepCopy();
-		// Add point dimensions to constants of the model file
+		// Add point dimensions to constants of the modules file
 		modulesFile.getConstantValues().addValues(point.getDimensions());
 		return (CTMC) constructModel.constructModel(modulesFile);
 	}

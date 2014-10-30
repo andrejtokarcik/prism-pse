@@ -28,6 +28,10 @@ package pse;
 
 import java.util.Map.Entry;
 
+/**
+ * Decomposition procedure solving the min synthesis problem using
+ * the naive approach to determine the demarcation probability bound.
+ */
 public final class MinSynthesisNaive extends MinSynthesis
 {
 	public MinSynthesisNaive(double probTolerance, int initState)
@@ -44,8 +48,9 @@ public final class MinSynthesisNaive extends MinSynthesis
 		double minimalUpperBound = Double.POSITIVE_INFINITY;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
 			double currentUpperBound = (Double) entry.getValue().getMax().getValue(initState);
-			if (currentUpperBound < minimalUpperBound)
+			if (currentUpperBound < minimalUpperBound) {
 				minimalUpperBound = currentUpperBound;
+			}
 		}
 		return minimalUpperBound;
 	}

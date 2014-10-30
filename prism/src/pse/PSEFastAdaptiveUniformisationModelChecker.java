@@ -146,7 +146,7 @@ public class PSEFastAdaptiveUniformisationModelChecker extends PrismComponent
 
 	// Transient analysis
 	
-	public BoxRegionValues doTransient(PSEModelExplorer modelExplorer, double t, StateValues initDistMin, StateValues initDistMax, DecompositionProcedure decompositionProcedure)
+	public BoxRegionValues doTransient(PSEModelExplorer modelExplorer, double t, BoxRegionValues initDist, DecompositionProcedure decompositionProcedure)
 			throws PrismException
 	{
 		// TODO: initial distributions
@@ -168,8 +168,8 @@ public class PSEFastAdaptiveUniformisationModelChecker extends PrismComponent
 			mainLog.println("Computing probabilities for parameter region " + region);
 
 			StateValues probsMin, probsMax;
-			probsMin = fau.doTransient(t, initDistMin); //, PSEFastAdaptiveUniformisation.VectorType.MIN);
-			probsMax = fau.doTransient(t, initDistMax); //, PSEFastAdaptiveUniformisation.VectorType.MAX);
+			probsMin = fau.doTransient(t, initDist); //, PSEFastAdaptiveUniformisation.VectorType.MIN);
+			probsMax = fau.doTransient(t, initDist); //, PSEFastAdaptiveUniformisation.VectorType.MAX);
 			try {
 				decompositionProcedure.examinePartialComputation(regionValues, region, probsMin.getDoubleArray(), probsMax.getDoubleArray());
 				regionValues.put(region, probsMin, probsMax);

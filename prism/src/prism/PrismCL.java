@@ -901,33 +901,28 @@ public class PrismCL implements PrismModelListener
 	}
 
 	/**
-	 * Do parameter space exploration (if required).
+	 * Do PSE transient probability computation (if required).
 	 */
 	private void doTransientPSE()
 	{
-		ModelType modelType;
-
 		if (pseTransient) {
 			try {
 				// TODO: PSE results export
 
-				// Determine model type
-				modelType = prism.getModelType();
-
 				// Parse time specification, store as UndefinedConstant for constant T
-				String timeType = modelType.continuousTime() ? "double" : "int";
-				UndefinedConstants ucPSE = new UndefinedConstants(null, prism.parsePropertiesString(null, "const " + timeType + " T; T;"));
+				UndefinedConstants ucPSE = new UndefinedConstants(null, prism.parsePropertiesString(null, "const double T; T;"));
 				try {
 					ucPSE.defineUsingConstSwitch("T=" + pseTime);
 				} catch (PrismException e) {
 					if (pseTime.contains(":"))
-						errorAndExit("\"" + pseTime + "\" is not a valid time range for a " + modelType);
+						errorAndExit("\"" + pseTime + "\" is not a valid time range for PSE");
 					else
-						errorAndExit("\"" + pseTime + "\" is not a valid time for a " + modelType);
+						errorAndExit("\"" + pseTime + "\" is not a valid time for PSE");
 				}
 
-				// Perform the exploration
-				prism.doTransientPSE(ucPSE, pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy, importinitdist ? new File(importInitDistFilename) : null);
+				// Do the PSE transient computation
+				prism.doTransientPSE(ucPSE, pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy,
+						importinitdist ? new File(importInitDistFilename) : null);
 			}
 			// In case of error, report it and proceed
 			catch (PrismException e) {
@@ -1096,8 +1091,8 @@ public class PrismCL implements PrismModelListener
 				}
 				// PSE-based model checking techniques
 				else if (sw.equals("psecheck") || sw.equals("psesynth-thr") ||
-						sw.equals("psesynth-min-naive") || sw.equals("psesynth-min-sampling") ||
-						sw.equals("psesynth-max-naive") || sw.equals("psesynth-max-sampling")) {
+						sw.equals("psesynth-min-naive") || sw.equals("psesynth-min-sample") ||
+						sw.equals("psesynth-max-naive") || sw.equals("psesynth-max-sample")) {
 					pseCheck = true;
 					if (sw.equals("psecheck"))
 						pseCheckType = pse.DecompositionProcedure.Type.SIMPLE;
@@ -1105,11 +1100,11 @@ public class PrismCL implements PrismModelListener
 						pseCheckType = pse.DecompositionProcedure.Type.THRESHOLD;
 					else if (sw.equals("psesynth-min-naive"))
 						pseCheckType = pse.DecompositionProcedure.Type.MIN_NAIVE;
-					else if (sw.equals("psesynth-min-sampling"))
+					else if (sw.equals("psesynth-min-sample"))
 						pseCheckType = pse.DecompositionProcedure.Type.MIN_SAMPLING;
 					else if (sw.equals("psesynth-max-naive"))
 						pseCheckType = pse.DecompositionProcedure.Type.MAX_NAIVE;
-					else if (sw.equals("psesynth-max-sampling"))
+					else if (sw.equals("psesynth-max-sample"))
 						pseCheckType = pse.DecompositionProcedure.Type.MAX_SAMPLING;
 
 					if (i < args.length - 2) {
@@ -2074,14 +2069,21 @@ public class PrismCL implements PrismModelListener
 					pseNames[pdNr] = pseDefSplit[0].trim();
 					String[] upperLower = pseDefSplit[1].split(":");
 					if (upperLower.length != 2)
-						throw new PrismException("Not a range \"" + pseDefSplit[1] + "\" for parameter " + pseNames[pdNr]);
+						throw new PrismException("\"" + pseDefSplit[1] + "\" cannot be used as range for parameter " + pseNames[pdNr]);
 
-					pseLowerBounds[pdNr] = Double.parseDouble(upperLower[0].trim());
-					pseUpperBounds[pdNr] = Double.parseDouble(upperLower[1].trim());
-					if (pseLowerBounds[pdNr] > pseUpperBounds[pdNr])
+					try {
+						pseLowerBounds[pdNr] = Double.parseDouble(upperLower[0].trim());
+						pseUpperBounds[pdNr] = Double.parseDouble(upperLower[1].trim());
+					} catch (NumberFormatException e) {
+						throw new PrismException(
+								"Invalid range \"" + pseDefSplit[1] + "\" for parameter " + pseNames[pdNr] +
+								" (bounds must be doubles)");
+					}
+					if (pseLowerBounds[pdNr] > pseUpperBounds[pdNr]) {
 						throw new PrismException(
 								"Invalid range \"" + pseDefSplit[1] + "\" for parameter " + pseNames[pdNr] +
 								" (lower bound greater than upper)");
+					}
 				}
 			}
 		}

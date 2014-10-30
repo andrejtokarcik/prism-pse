@@ -56,19 +56,11 @@ import parser.ast.LabelList;
 import parser.ast.ModulesFile;
 import parser.ast.PropertiesFile;
 import parser.ast.Property;
-import pse.DecompositionProcedure;
-import pse.MaxSynthesisNaive;
-import pse.MaxSynthesisSampling;
-import pse.MinSynthesisNaive;
-import pse.MinSynthesisSampling;
 import pse.PSEFastAdaptiveUniformisationModelChecker;
 import pse.PSEModel;
 import pse.PSEModelBuilder;
 import pse.PSEModelChecker;
 import pse.PSEModelExplorer;
-import pse.PSEFastAdaptiveUniformisation;
-import pse.SimpleDecompositionProcedure;
-import pse.ThresholdSynthesis;
 import pta.DigitalClocks;
 import pta.PTAModelChecker;
 import simulator.GenerateSimulationPath;
@@ -3418,7 +3410,10 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 	// PSE methods
 
-	private void printInitInfoPSE(PrismLog log, String intro, pse.BoxRegionFactory regionFactory, PropertiesFile propertiesFile, double accuracy)
+	/**
+	 * Print introductory information for PSE methods.
+	 */
+	private void printPSEIntro(PrismLog log, String intro, pse.BoxRegionFactory regionFactory, PropertiesFile propertiesFile, double accuracy)
 	{
 		log.printSeparator();
 		log.println("\n" + intro);
@@ -3436,8 +3431,21 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	}
 
 	/**
+	 * Perform model checking or parameter synthesis of a property
+	 * on the current PSE model and return result.
+	 * 
+	 * @param decompositionType type of procedure to use for decomposing
+	 * of the parameter space, e.g. a synthesis technique
+	 * @param propertiesFile file containing all properties
+	 * @param prop property to check
+	 * @param paramNames names of parameters
+	 * @param paramLowerBounds lower bounds of parameters
+	 * @param paramUpperBounds upper bounds of parameters
+	 * @param accuracy accuracy/tolerance value
+	 * @return result of model checking or parameter synthesis
+	 * @throws PrismException in case inputs were invalid or an inner method failed
 	 */
-	public Result modelCheckPSE(DecompositionProcedure.Type decompositionType, PropertiesFile propertiesFile, Property prop,
+	public Result modelCheckPSE(pse.DecompositionProcedure.Type decompositionType, PropertiesFile propertiesFile, Property prop,
 			String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double accuracy)
 			throws PrismException
 	{
@@ -3468,31 +3476,31 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
 
 		// Determine the decomposition procedure
-		DecompositionProcedure decompositionProcedure;
+		pse.DecompositionProcedure decompositionProcedure;
 		switch (decompositionType) {
 		case SIMPLE:
-			printInitInfoPSE(mainLog, "PSE model checking: " + prop, regionFactory, propertiesFile, accuracy);
-			decompositionProcedure = new SimpleDecompositionProcedure(accuracy);
+			printPSEIntro(mainLog, "PSE model checking: " + prop, regionFactory, propertiesFile, accuracy);
+			decompositionProcedure = new pse.SimpleDecompositionProcedure(accuracy);
 			break;
 		case THRESHOLD:
-			printInitInfoPSE(mainLog, "PSE threshold synthesis: " + prop, regionFactory, propertiesFile, accuracy);
-			decompositionProcedure = new ThresholdSynthesis(accuracy, model.getFirstInitialState(), regionFactory.completeSpace());
+			printPSEIntro(mainLog, "PSE threshold synthesis: " + prop, regionFactory, propertiesFile, accuracy);
+			decompositionProcedure = new pse.ThresholdSynthesis(accuracy, model.getFirstInitialState(), regionFactory.completeSpace());
 			break;
 		case MIN_NAIVE:
-			printInitInfoPSE(mainLog, "PSE min synthesis using the naive approach: " + prop, regionFactory, propertiesFile, accuracy);
-			decompositionProcedure = new MinSynthesisNaive(accuracy, model.getFirstInitialState());
+			printPSEIntro(mainLog, "PSE min synthesis (naive): " + prop, regionFactory, propertiesFile, accuracy);
+			decompositionProcedure = new pse.MinSynthesisNaive(accuracy, model.getFirstInitialState());
 			break;
 		case MIN_SAMPLING:
-			printInitInfoPSE(mainLog, "PSE min synthesis using the sampling approach: " + prop, regionFactory, propertiesFile, accuracy);
-			decompositionProcedure = new MinSynthesisSampling(accuracy, model.getFirstInitialState(), getSimulator());
+			printPSEIntro(mainLog, "PSE min synthesis (sampling): " + prop, regionFactory, propertiesFile, accuracy);
+			decompositionProcedure = new pse.MinSynthesisSampling(accuracy, model.getFirstInitialState(), getSimulator());
 			break;
 		case MAX_NAIVE:
-			printInitInfoPSE(mainLog, "PSE max synthesis using the naive approach: " + prop, regionFactory, propertiesFile, accuracy);
-			decompositionProcedure = new MaxSynthesisNaive(accuracy, model.getFirstInitialState());
+			printPSEIntro(mainLog, "PSE max synthesis (naive): " + prop, regionFactory, propertiesFile, accuracy);
+			decompositionProcedure = new pse.MaxSynthesisNaive(accuracy, model.getFirstInitialState());
 			break;
 		case MAX_SAMPLING:
-			printInitInfoPSE(mainLog, "PSE max synthesis using the sampling approach: " + prop, regionFactory, propertiesFile, accuracy);
-			decompositionProcedure = new MaxSynthesisSampling(accuracy, model.getFirstInitialState(), getSimulator());
+			printPSEIntro(mainLog, "PSE max synthesis (sampling): " + prop, regionFactory, propertiesFile, accuracy);
+			decompositionProcedure = new pse.MaxSynthesisSampling(accuracy, model.getFirstInitialState(), getSimulator());
 			break;
 		default:
 			throw new PrismException("Unrecognized decomposition type");
@@ -3503,6 +3511,22 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	}
 
 	/**
+	 * Compute transient probabilities (forwards) for the current PSE model, i.e. CTMC
+	 * with parameters specified in {@code paramNames}, {@code paramLowerBounds}
+	 * and {@code paramUpperBounds}. Ensure that the results are accurate enough,
+	 * according to the user-specified {@code accuracy} value.
+	 * Optionally (if non-null), read in the initial probability distribution from a file.
+	 * Output probability distribution to the main log.
+	 * 
+	 * @param times time points
+	 * @param paramNames names of parameters
+	 * @param paramLowerBounds lower bounds of parameters
+	 * @param paramUpperBounds upper bounds of parameters
+	 * @param accuracy accuracy value
+	 * @param fileIn file containing initial distribution
+	 * @throws PrismException in case inputs were invalid or an inner method failed
+	 * @see PSEModelChecker
+	 * @see SimpleDecompositionProcedure
 	 */
 	public void doTransientPSE(UndefinedConstants times, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double accuracy, File fileIn)
 			throws PrismException
@@ -3535,7 +3559,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 		// Step through required time points
 		double initTimeDouble = 0.0;
-		explicit.StateValues initDistExplMin = null, initDistExplMax = null;
+		pse.BoxRegionValues initDist = null;
 		for (int i = 0; i < times.getNumPropertyIterations(); i++) {
 			// Get time, check non-negative
 			Object time = times.getPFConstantValues().getValue(0);
@@ -3544,28 +3568,27 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 				throw new PrismException("Cannot perform parameter space exploration for negative time value");
 			}
 
-			printInitInfoPSE(mainLog, "Performing parameter space exploration (time = " + time + ")...", regionFactory, null, accuracy);
+			printPSEIntro(mainLog, "Performing parameter space exploration (time = " + time + ")...", regionFactory, null, accuracy);
 
 			long l = System.currentTimeMillis();
-
-			// TODO
-			/*
-			if (i == 0) {
-				initDistExplMin = mc.readDistributionFromFile(fileIn, modelExpl);
-				initDistExplMax = mc.readDistributionFromFile(fileIn, modelExpl);
-				initTimeDouble = 0;
-			}
-			*/
 
 			pse.BoxRegionValues regionValues;
 			if (doFAU) {
 				PSEFastAdaptiveUniformisationModelChecker mc = new PSEFastAdaptiveUniformisationModelChecker(this, regionFactory);
-				regionValues = mc.doTransient(modelExplorer, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax,
-						new SimpleDecompositionProcedure(accuracy));
+				/*
+				if (i == 0) {
+					initDist = mc.readDistributionFromFile(fileIn, model);
+				}
+				*/
+				regionValues = mc.doTransient(modelExplorer, timeDouble - initTimeDouble, initDist,
+						new pse.SimpleDecompositionProcedure(accuracy));
 			} else {
 				PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
-				regionValues = mc.doTransient(model, timeDouble - initTimeDouble, initDistExplMin, initDistExplMax,
-						new SimpleDecompositionProcedure(accuracy));
+				if (i == 0) {
+					initDist = mc.readDistributionFromFile(fileIn, model);
+				}
+				regionValues = mc.doTransient(model, timeDouble - initTimeDouble, initDist,
+						new pse.SimpleDecompositionProcedure(accuracy));
 			}
 
 			// Results report
@@ -3580,8 +3603,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			mainLog.println("\nTime for parameter space exploration: " + l / 1000.0 + " seconds.");
 
 			// Prepare for next iteration
-			initDistExplMin = null;
-			initDistExplMax = null;
+			initDist = regionValues;
 			initTimeDouble = timeDouble;
 			times.iterateProperty();
 		}

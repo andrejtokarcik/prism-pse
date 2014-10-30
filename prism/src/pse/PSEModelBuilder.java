@@ -40,13 +40,17 @@ import prism.PrismException;
 import explicit.IndexedSet;
 import explicit.StateStorage;
 
+/**
+ * Class to build PSE models, taking advantage
+ * of {@link PSEModelExplorer} functionality.
+ */
 public final class PSEModelBuilder extends PrismComponent
 {
 	private PSEModel model;
 	private PSEModelExplorer explorer;
 
 	/**
-	 * Constructor
+	 * Constructor.
 	 */
 	public PSEModelBuilder(PrismComponent parent, PSEModelExplorer explorer) throws PrismException
 	{
@@ -55,9 +59,7 @@ public final class PSEModelBuilder extends PrismComponent
 	}
 
 	/**
-	 * Construct parametric Markov model.
-	 * For this to work, module file, PRISM log, etc. must have been set
-	 * beforehand.
+	 * Builds PSE model with all necessities included.
 	 * 
 	 * @throws PrismException in case the model cannot be constructed
 	 */
@@ -67,7 +69,6 @@ public final class PSEModelBuilder extends PrismComponent
 
 		mainLog.print("\nBuilding model...\n");
 
-		// build model
 		time = System.currentTimeMillis();
 		ModulesFile modulesFile = (ModulesFile) explorer.getModulesFile();
 		model = constructModel(modulesFile);
@@ -87,7 +88,6 @@ public final class PSEModelBuilder extends PrismComponent
 	{
 		return model;
 	}
-
 
 	/**
 	 * Reserves memory needed for parametric model and reserves necessary space.
@@ -127,10 +127,10 @@ public final class PSEModelBuilder extends PrismComponent
 	}
 
 	/**
-	 * Construct model once modules file etc. has been prepared.
+	 * Constructs PSE model once modules file etc. has been prepared.
 	 * 
-	 * @param modulesFile modules file of which to construct parametric model
-	 * @return parametric model constructed
+	 * @param modulesFile modules file of which to construct PSE model
+	 * @return PSE model constructed
 	 * @throws PrismException thrown if model cannot be constructed
 	 */
 	private PSEModel constructModel(ModulesFile modulesFile) throws PrismException
@@ -139,7 +139,7 @@ public final class PSEModelBuilder extends PrismComponent
 		PSEModel model;
 
 		if (modulesFile.getInitialStates() != null) {
-			throw new PrismException("Cannot do explicit-state reachability if there are multiple initial states");
+			throw new PrismException("Explicit model construction does not support multiple initial states");
 		}
 
 		modelType = modulesFile.getModelType();
@@ -152,11 +152,6 @@ public final class PSEModelBuilder extends PrismComponent
 		long timer = System.currentTimeMillis();
 
 		model = new PSEModel();
-		model.setModelType(modelType);
-
-		if (modulesFile.getInitialStates() != null) {
-			throw new PrismException("Explicit model construction does not support multiple initial states");
-		}
 
 		StateStorage<State> states = new IndexedSet<State>(true);
 		reserveMemoryAndExploreStates(model, states);

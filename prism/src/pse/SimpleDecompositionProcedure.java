@@ -26,10 +26,21 @@
 
 package pse;
 
+/**
+ * Simple decomposition procedure that ensures that the minimised & maximised
+ * probabilities are "close enough" to each other, i.e. accurate enough with
+ * respect to the {@code accuracy} value.
+ */
 public final class SimpleDecompositionProcedure extends DecompositionProcedure
 {
+	/** greatest acceptable difference between maximised and minimised probability
+	 *  of the same state */
 	private double accuracy;
 
+	/**
+	 * Singleton decomposition procedure during which no decomposition occurs
+	 * whatsoever.
+	 */
 	public static final class NoDecomposing extends DecompositionProcedure
 	{
 		private static final NoDecomposing INSTANCE = new NoDecomposing();

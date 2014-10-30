@@ -28,6 +28,10 @@ package pse;
 
 import java.util.Map.Entry;
 
+/**
+ * Decomposition procedure solving the max synthesis problem using
+ * the naive approach to determine the demarcation probability bound.
+ */
 public final class MaxSynthesisNaive extends MaxSynthesis
 {
 	public MaxSynthesisNaive(double probTolerance, int initState)
@@ -44,8 +48,9 @@ public final class MaxSynthesisNaive extends MaxSynthesis
 		double maximalLowerBound = Double.NEGATIVE_INFINITY;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
 			double currentLowerBound = (Double) entry.getValue().getMin().getValue(initState);
-			if (currentLowerBound > maximalLowerBound)
+			if (currentLowerBound > maximalLowerBound) {
 				maximalLowerBound = currentLowerBound;
+			}
 		}
 		return maximalLowerBound;
 	}

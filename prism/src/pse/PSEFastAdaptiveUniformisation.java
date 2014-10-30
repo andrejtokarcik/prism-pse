@@ -686,7 +686,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	 */
 	public StateValues doTransient(double time) throws PrismException
 	{
-		return doTransient(time, (StateValues) null);
+		return doTransient(time, null);
 	}
 
 	/**
@@ -697,7 +697,7 @@ public final class PSEFastAdaptiveUniformisation extends PrismComponent
 	 * @param time Time point
 	 * @param initDist Initial distribution
 	 */
-	public StateValues doTransient(double time, StateValues initDist) throws PrismException
+	public StateValues doTransient(double time, BoxRegionValues initDist) throws PrismException
 	{
 		totalProbLoss = BigDecimal.ZERO;
 		totalProbSetZero = BigDecimal.ZERO;

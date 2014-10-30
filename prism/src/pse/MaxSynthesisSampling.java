@@ -26,6 +26,7 @@
 
 package pse;
 
+import java.util.LinkedList;
 import java.util.Map.Entry;
 
 import parser.ast.Expression;
@@ -33,27 +34,44 @@ import prism.PrismException;
 import simulator.SimulatorEngine;
 import explicit.CTMC;
 import explicit.CTMCModelChecker;
+import prism.PrismLog;
 
+/**
+ * Decomposition procedure solving the max synthesis problem using
+ * the sampling-based approach to determine the demarcation
+ * probability bound.
+ */
 public final class MaxSynthesisSampling extends MaxSynthesis
 {
+	/** simulator engine for instantiating the PSE model */
+	private SimulatorEngine simulatorEngine;
+	/** constructor of explicit models for instantiating the PSE model */
 	private explicit.ConstructModel constructModel;
-	private double lastMaximalSampleProb;
+	/** model checker for analysing the instantiated model */
+	private CTMCModelChecker ctmcModelChecker;
+	/** list of sample points used for demarcation */
+	private LinkedList<Point> samples;
 
 	public MaxSynthesisSampling(double probTolerance, int initState, SimulatorEngine simulatorEngine)
 	{
 		super(probTolerance, initState);
-		constructModel = new explicit.ConstructModel(modelChecker, simulatorEngine);
+		this.simulatorEngine = simulatorEngine;
 	}
 
 	@Override
-	public void initialise(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
+	public void initialiseModelChecking(PSEModelChecker modelChecker, PSEModel model, Expression propExpr)
+			throws PrismException
 	{
-		super.initialise(modelChecker, model, propExpr);
-		lastMaximalSampleProb = Double.NEGATIVE_INFINITY;
+		super.initialiseModelChecking(modelChecker, model, propExpr);
+		constructModel = new explicit.ConstructModel(modelChecker, simulatorEngine);
+		ctmcModelChecker = new CTMCModelChecker(modelChecker);
+		ctmcModelChecker.setModulesFileAndPropertiesFile(modelChecker.getModulesFile(), modelChecker.getPropertiesFile());
+		ctmcModelChecker.setVerbosity(0);
+		samples = new LinkedList<Point>();
 	}
 
 	/**
-	 * Sampling approach to determining the maximal lower bound.
+	 * Sampling-based approach to determining the maximal lower bound.
 	 */
 	@Override
 	protected double getMaximalLowerBound(BoxRegionValues regionValues) throws PrismException
@@ -67,26 +85,44 @@ public final class MaxSynthesisSampling extends MaxSynthesis
 				maximalLowerBoundRegion = entry.getKey();
 			}
 		}
+		/* TODO: If the region found above is the same as the previously found region
+		 * for the X-th time (where X is a PRISM setting, configurable via CLI), then
+		 * don't even attempt to generate more samples, and simply return the last
+		 * maximal sample probability. */
 
 		double maximalSampleProb = Double.NEGATIVE_INFINITY;
+		Point maximalSample = null;
 		for (Point sample : maximalLowerBoundRegion.generateSamplePoints()) {
 			CTMC ctmc = model.instantiate(sample, modelChecker.getModulesFile(), constructModel);
-			CTMCModelChecker ctmcModelChecker = new CTMCModelChecker(modelChecker);
 			double currentSampleProb = (Double) ctmcModelChecker.checkExpression(ctmc, propExpr).getValue(initState);
-			if (currentSampleProb > maximalSampleProb)
+			if (currentSampleProb > maximalSampleProb) {
 				maximalSampleProb = currentSampleProb;
+				maximalSample = sample;
+			}
 		}
 
-		if (maximalSampleProb > lastMaximalSampleProb) {
-			lastMaximalSampleProb = maximalSampleProb;
+		if (demarcationProbBounds.isEmpty() || maximalSampleProb > demarcationProbBounds.getLast()) {
+			samples.add(maximalSample);
 			return maximalSampleProb;
 		}
-		return lastMaximalSampleProb;
+		samples.add(samples.getLast());
+		return demarcationProbBounds.getLast();
 	}
 
 	@Override
 	public String toString()
 	{
 		return super.toString() + " (sampling)";
+	}
+
+	@Override
+	public void printSolution(PrismLog log, boolean verbose)
+	{
+		super.printSolution(log, verbose);
+
+		if (verbose) {
+			log.println("\nSample points in the order they were used to exclude regions:");
+			log.println(samples);
+		}
 	}
 }

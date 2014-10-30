@@ -26,6 +26,7 @@
 
 package pse;
 
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
 import java.util.Map.Entry;
@@ -38,11 +39,25 @@ import prism.PrismLog;
 import explicit.Model;
 import explicit.StateValues;
 
+/**
+ * Map from a parameter region to a pair of minimised & maximised
+ * state values.
+ * 
+ * @see BoxRegion
+ * @see StateValues
+ * @see StateValuesPair
+ */
 @SuppressWarnings("serial")
 public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateValuesPair> implements Iterable<Entry<BoxRegion, BoxRegionValues.StateValuesPair>>
 {
+	/** for {@link StateValues}' constructor */
 	private Model model;
 
+	/**
+	 * Data structure holding a pair of {@link StateValues}. The pair's
+	 * components are stored in such a manner that the first is the result
+	 * of minimising computations, while the second of maximising.
+	 */
 	public static class StateValuesPair extends Pair<StateValues, StateValues>
 	{
 		public StateValuesPair(StateValues min, StateValues max)
@@ -97,12 +112,43 @@ public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateVal
 		put(region, minValues, maxValues);
 	}
 
-	public static BoxRegionValues createWithOnes(Model model, BoxRegion region) throws PrismException
+	/**
+	 * Creates region values with a single region, in which both the minimised and
+	 * the maximised values are set to 1.0 for all states.
+	 * 
+	 * @param model model for obtaining information about states
+	 * @param region region to populate with ones
+	 * @return region values with all ones
+	 * @throws PrismException in case the all-ones state values could not be created
+	 */
+	public static BoxRegionValues createWithAllOnes(Model model, BoxRegion region) throws PrismException
 	{
 		StateValues ones = new StateValues(TypeDouble.getInstance(), new Double(1.0), model);
 		return new BoxRegionValues(model, region, ones, ones);
 	}
-	
+
+	/**
+	 * Returns true if and only if this region values object contains only 1.0,
+	 * i.e., for all regions, for both minimised & maximised, for all states,
+	 * the value must be equal to 1.0.
+	 * 
+	 * @return true iff these region values consist exclusively of 1.0
+	 * @throws PrismException in case the all-ones state values could not be created
+	 */
+	public boolean isAllOnes() throws PrismException
+	{
+		double[] onesD = new StateValues(TypeDouble.getInstance(), new Double(1.0), model).getDoubleArray();
+		for (BoxRegionValues.StateValuesPair valuesPair : values()) {
+			if (!Arrays.equals(valuesPair.getMin().getDoubleArray(), onesD)) {
+				return false;
+			}
+			if (!Arrays.equals(valuesPair.getMax().getDoubleArray(), onesD)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	public StateValuesPair put(BoxRegion region, StateValues minValues, StateValues maxValues)
 	{
 		return put(region, new StateValuesPair(minValues, maxValues));
@@ -122,6 +168,13 @@ public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateVal
 		return put(region, minValues, maxValues);
 	}
 
+	/**
+	 * Replaces {@code region} with its subregions, retaining the {@link StateValuesPair}
+	 * object associated with {@code region}.
+	 * 
+	 * @param region region to decompose and replace with its subregions
+	 * @see BoxRegion#decompose()
+	 */
 	public void decomposeRegion(BoxRegion region)
 	{
 		StateValuesPair oldValuesPair = remove(region);
@@ -156,6 +209,11 @@ public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateVal
 		return entrySet().iterator();
 	}
 
+	/**
+	 * Pretty-prints the region values.
+	 * 
+	 * @param log file into which to print
+	 */
 	public void print(PrismLog log)
 	{
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : entrySet()) {
