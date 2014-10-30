@@ -408,7 +408,7 @@ public final class PSEModel extends ModelExplicit
 		if (subset == null) {
 			// Will loop over all states
 			subset = new BitSet(numStates);
-			subset.set(0, numStates - 1);
+			subset.set(0, numStates);
 		}
 		double max = Double.NEGATIVE_INFINITY;
 		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
@@ -633,11 +633,11 @@ public final class PSEModel extends ModelExplicit
 		if (subset == null) {
 			// Will loop over all states
 			subset = new BitSet(numStates);
-			subset.set(0, numStates - 1);
+			subset.set(0, numStates);
 		}
 
 		if (complement) {
-			subset.flip(0, numStates - 1);
+			subset.flip(0, numStates);
 		}
 
 		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {

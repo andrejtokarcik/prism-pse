@@ -84,7 +84,7 @@ public class ConstructRewards
 	 * @param rewStr The reward structure
 	 * @param constantValues Values for any undefined constants needed
 	 */
-	public MCRewards buildMCRewardStructure(DTMC mc, RewardStruct rewStr, Values constantValues) throws PrismException
+	public MCRewards buildMCRewardStructure(Model mc, RewardStruct rewStr, Values constantValues) throws PrismException
 	{
 		List<State> statesList;
 		Expression guard;

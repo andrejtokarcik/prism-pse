@@ -37,14 +37,15 @@ import parser.ast.ExpressionFilter;
 import parser.ast.ExpressionFilter.FilterOperator;
 import parser.ast.ExpressionLabel;
 import parser.ast.ExpressionProb;
+import parser.ast.ExpressionReward;
 import parser.ast.ExpressionTemporal;
 import parser.ast.ExpressionUnaryOp;
 import parser.ast.ModulesFile;
 import parser.ast.PropertiesFile;
 import parser.ast.RelOp;
+import parser.ast.RewardStruct;
 import parser.type.TypeBool;
 import parser.type.TypeDouble;
-import prism.ModelType;
 import prism.PrismComponent;
 import prism.PrismException;
 import prism.Result;
@@ -53,6 +54,8 @@ import explicit.FoxGlynn;
 import explicit.StateModelChecker;
 import explicit.StateValues;
 import explicit.Utils;
+import explicit.rewards.ConstructRewards;
+import explicit.rewards.MCRewards;
 
 /**
  * Model checker for {@link PSEModel}.
@@ -123,7 +126,7 @@ public final class PSEModelChecker extends PrismComponent
 	{
 		return constantValues;
 	}
-	
+
 	// Model checking functions, including backwards transient analysis
 
 	/**
@@ -188,6 +191,9 @@ public final class PSEModelChecker extends PrismComponent
 		}
 		if (expr instanceof ExpressionProb) {
 			return checkExpressionProb(model, (ExpressionProb) expr, decompositionProcedure);
+		}
+		if (expr instanceof ExpressionReward) {
+			return checkExpressionReward(model, (ExpressionReward) expr, decompositionProcedure);
 		}
 		// Let explicit.StateModelChecker take care of other kinds of expressions
 		StateValues vals = stateChecker.checkExpression(model, expr);
@@ -410,16 +416,10 @@ public final class PSEModelChecker extends PrismComponent
 	 */
 	protected BoxRegionValues checkExpressionProb(PSEModel model, ExpressionProb expr, DecompositionProcedure decompositionProcedure) throws PrismException
 	{
-		Expression pb; // Probability bound (expression)
-		double p = 0; // Probability bound (actual value)
-		RelOp relOp; // Relational operator
-		ModelType modelType = model.getModelType();
-
-		BoxRegionValues regionValues = null;
-
 		// Get info from prob operator
-		relOp = expr.getRelOp();
-		pb = expr.getProb();
+		RelOp relOp = expr.getRelOp(); // Relational operator
+		Expression pb = expr.getProb(); // Probability bound (expression)
+		double p = 0;  // Probability bound (actual value)
 		if (pb != null) {
 			p = pb.evaluateDouble(constantValues);
 			if (p < 0 || p > 1)
@@ -427,13 +427,7 @@ public final class PSEModelChecker extends PrismComponent
 		}
 
 		// Compute probabilities
-		switch (modelType) {
-		case CTMC:
-			regionValues = checkProbPathFormula(model, expr.getExpression(), decompositionProcedure);
-			break;
-		default:
-			throw new PrismException("Cannot model check " + expr + " for a " + modelType);
-		}
+		BoxRegionValues regionValues = checkProbPathFormula(model, expr.getExpression(), decompositionProcedure);
 
 		// For =? properties, just return values
 		if (pb == null) {
@@ -761,8 +755,9 @@ public final class PSEModelChecker extends PrismComponent
 			throw new PrismException("Overflow in Fox-Glynn computation (time bound too big?)");
 		weights = fg.getWeights();
 		totalWeight = fg.getTotalWeight();
-		for (i = left; i <= right; i++)
+		for (i = left; i <= right; i++) {
 			weights[i - left] /= totalWeight;
+		}
 		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
 		mainLog.println();
 
@@ -866,6 +861,294 @@ public final class PSEModelChecker extends PrismComponent
 		// Finished bounded probabilistic reachability
 		timer = System.currentTimeMillis() - timer;
 		mainLog.print("\nPSE backwards transient probability computation");
+		mainLog.print(" took " + totalIters + " iters");
+		mainLog.println(" and " + timer / 1000.0 + " seconds.");
+
+		return regionValues;
+	}
+
+	/**
+	 * Model check an R operator expression and return the values for all states.
+	 */
+	protected BoxRegionValues checkExpressionReward(PSEModel model, ExpressionReward expr, DecompositionProcedure decompositionProcedure)
+			throws PrismException
+	{
+		// Get info from R operator
+		RewardStruct rewStruct = expr.getRewardStructByIndexObject(modulesFile, constantValues);
+		RelOp relOp = expr.getRelOp(); // Relational operator
+		Expression rb = expr.getReward(); // Reward bound (expression)
+		double r = 0; // Reward bound (actual value)
+		if (rb != null) {
+			r = rb.evaluateDouble(constantValues);
+			if (r < 0)
+				throw new PrismException("Invalid reward bound " + r + " in R[] formula");
+		}
+
+		// Build rewards
+		mainLog.println("Building reward structure...");
+		ConstructRewards constructRewards = new ConstructRewards(mainLog);
+		MCRewards rewards = constructRewards.buildMCRewardStructure(model, rewStruct, constantValues);
+
+		// Compute rewards
+		BoxRegionValues regionValues = checkRewardFormula(model, rewards, expr.getExpression(), decompositionProcedure);
+
+		// For =? properties, just return values
+		if (rb == null) {
+			return regionValues;
+		}
+		// Otherwise, compare against bound to get set of satisfying states
+		else {
+			for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
+				BitSet solnMin = entry.getValue().getMin().getBitSetFromInterval(relOp, r);
+				BitSet solnMax = entry.getValue().getMax().getBitSetFromInterval(relOp, r);
+				regionValues.put(entry.getKey(), solnMin, solnMax);
+			}
+			return regionValues;
+		}
+	}
+
+	/**
+	 * Compute rewards for the contents of an R operator.
+	 */
+	protected BoxRegionValues checkRewardFormula(PSEModel model, MCRewards modelRewards, Expression expr, DecompositionProcedure decompositionProcedure)
+			throws PrismException
+	{
+		assert expr instanceof ExpressionTemporal : "Unrecognized operator in R operator";
+
+		ExpressionTemporal exprTemp = (ExpressionTemporal) expr;
+		switch (exprTemp.getOperator()) {
+		case ExpressionTemporal.R_C:
+			return checkRewardCumulative(model, modelRewards, exprTemp, decompositionProcedure);
+		default:
+			throw new PrismException("PSE does not yet handle the " + exprTemp.getOperatorSymbol() + " reward operator");
+		}
+	}
+
+	/**
+	 * Compute rewards for a cumulative reward operator.
+	 */
+	protected BoxRegionValues checkRewardCumulative(PSEModel model, MCRewards modelRewards, ExpressionTemporal expr, DecompositionProcedure decompositionProcedure)
+			throws PrismException
+	{
+		// Check that there is an upper time bound
+		if (expr.getUpperBound() == null) {
+			throw new PrismException("Cumulative reward operator without time bound (C) is only allowed for multi-objective queries");
+		}
+
+		// Get time bound
+		assert model.getModelType().continuousTime();
+		double time = expr.getUpperBound().evaluateDouble(constantValues);
+		if (time < 0) {
+			throw new PrismException("Invalid time bound " + time + " in cumulative reward formula");
+		}
+
+		BoxRegionValues oldRegionValues = null;
+		BoxRegionValues onesMultProbs = BoxRegionValues.createWithAllOnes(model, regionFactory.completeSpace());
+		while (true) {
+			try {
+				return computeCumulativeRewards(
+						model, modelRewards, time, onesMultProbs,
+						decompositionProcedure, oldRegionValues);
+			} catch (DecompositionProcedure.DecompositionNeeded e) {
+				e.printRegionsToDecompose(mainLog);
+				for (BoxRegion region : e.getRegionsToDecompose()) {
+					onesMultProbs.decomposeRegion(region);
+				}
+				oldRegionValues = e.getExaminedRegionValues();
+			}
+		}
+	}
+
+	/**
+	 */
+	public BoxRegionValues computeCumulativeRewards(PSEModel model,
+			MCRewards mcRewards, double t, BoxRegionValues multProbs,
+			DecompositionProcedure decompositionProcedure, BoxRegionValues previousResult)
+					throws PrismException, DecompositionProcedure.DecompositionNeeded
+	{
+		BoxRegionValues regionValues = new BoxRegionValues(model);
+		int i, n, iters, totalIters;
+		double solnMin[], soln2Min[], sumMin[];
+		double solnMax[], soln2Max[], sumMax[];
+		double tmpsoln[];
+		long timer;
+		// Fox-Glynn stuff
+		FoxGlynn fg;
+		int left, right;
+		double termCritParam, q, qt, acc, weights[], totalWeight;
+
+		if (previousResult == null) {
+			previousResult = new BoxRegionValues(model);
+		}
+
+		// Store num states
+		n = model.getNumStates();
+
+		// Optimisations: If t = 0, this is easy.
+		if (t == 0) {
+			double[] zeros = new double[n];
+			for (BoxRegion region : multProbs.keySet()) {
+				if (previousResult.hasRegion(region)) {
+					regionValues.put(region, previousResult.getMin(region), previousResult.getMax(region));
+					continue;
+				}
+				regionValues.put(region, zeros, zeros);
+			}
+			return regionValues;
+		}
+
+		// Start backwards transient computation
+		timer = System.currentTimeMillis();
+		mainLog.println("\nStarting PSE backwards cumulative rewards computation...");
+
+		// Compute the in, out, inout sets of reactions
+		model.computeInOutTransitions();
+
+		// Get uniformisation rate; do Fox-Glynn
+		q = model.getDefaultUniformisationRate();
+		qt = q * t;
+		mainLog.println("\nUniformisation: q.t = " + q + " x " + t + " = " + qt);
+		termCritParam = 1e-6;
+		acc = termCritParam / 8.0;
+		fg = new FoxGlynn(qt, 1e-300, 1e+300, acc);
+		left = fg.getLeftTruncationPoint();
+		right = fg.getRightTruncationPoint();
+		if (right < 0)
+			throw new PrismException("Overflow in Fox-Glynn computation (time bound too big?)");
+		weights = fg.getWeights();
+		totalWeight = fg.getTotalWeight();
+		for (i = left; i <= right; i++) {
+			weights[i - left] /= totalWeight;
+		}
+		
+		// modify the poisson probabilities to what we need for this computation
+		// first make the kth value equal to the sum of the values for 0...k
+		for (i = left+1; i <= right; i++) {
+			weights[i - left] += weights[i - 1 - left];
+		}
+		// then subtract from 1 and divide by uniformisation constant (q) to give mixed poisson probabilities
+		for (i = left; i <= right; i++) {
+			weights[i - left] = (1 - weights[i - left]) / q;
+		}
+
+		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
+		mainLog.println();
+
+		// Get number of iterations for partial examination
+		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
+
+		totalIters = 0;
+		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : multProbs) {
+			BoxRegion region = entry.getKey();
+
+			// If the previous region values contain probs for this region, i.e. the region
+			// has not been decomposed, then just use the previous result directly.
+			if (previousResult.hasRegion(region)) {
+				regionValues.put(region, previousResult.getMin(region), previousResult.getMax(region));
+				continue;
+			}
+
+			/*
+			double[] multProbsMin = entry.getValue().getMin().getDoubleArray();
+			double[] multProbsMax = entry.getValue().getMax().getDoubleArray();
+			*/
+
+			// Configure parameter space
+			model.configureParameterSpace(region);
+			mainLog.println("Computing probabilities for parameter region " + region);
+
+			// Create solution vectors
+			solnMin = new double[n];
+			soln2Min = new double[n];
+			sumMin = new double[n];
+			solnMax = new double[n];
+			soln2Max = new double[n];
+			sumMax = new double[n];
+
+			// Initialise solution vectors.
+			// Vectors soln/soln2 are multProbs[i] for target states.
+			// Vector sum is all zeros (done by array creation).
+			for (i = 0; i < n; i++) {
+				solnMin[i] = mcRewards.getStateReward(i);
+				solnMax[i] = mcRewards.getStateReward(i);
+			}
+
+			// do 0th element of summation (doesn't require any matrix powers)
+			if (left == 0) {
+				for (i = 0; i < n; i++) {
+					sumMin[i] += weights[0] * solnMin[i];
+					sumMax[i] += weights[0] * solnMax[i];
+				}
+			} else {
+				for (i = 0; i < n; i++) {
+					sumMin[i] += solnMin[i] / q;
+					sumMax[i] += solnMax[i] / q;
+				}
+			}
+
+			// Start iterations
+			iters = 1;
+			while (iters <= right) {
+				// Matrix-vector multiply				
+				model.mvMult(solnMin, soln2Min, solnMax, soln2Max, null, false, q);
+
+				// Swap vectors for next iter
+				tmpsoln = solnMin;
+				solnMin = soln2Min;
+				soln2Min = tmpsoln;
+				tmpsoln = solnMax;
+				solnMax = soln2Max;
+				soln2Max = tmpsoln;
+
+				// Add to sum
+				if (iters >= left) {
+					for (i = 0; i < n; i++) {
+						sumMin[i] += weights[iters - left] * solnMin[i];
+						sumMax[i] += weights[iters - left] * solnMax[i];
+					}
+				} else {
+					for (i = 0; i < n; i++) {
+						sumMin[i] += solnMin[i] / q;
+						sumMax[i] += solnMax[i] / q;
+					}
+				}
+				
+				// After a number of iters (default 50), examine the partially computed result
+				if (iters % numItersExaminePartial == 0) {
+					decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
+				}
+
+				iters++;
+				totalIters++;
+			}
+
+			// Examine this region's result after all the iters have been finished
+			decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
+
+			// Store result
+			regionValues.put(region, sumMin, sumMax);
+		}
+
+		/*
+		// Negate if necessary
+		if (negate) {
+			// Subtract all min/max values from 1 and swap
+			for (BoxRegionValues.StateValuesPair pair: regionValues.values()) {
+				pair.getMin().timesConstant(-1.0);
+				pair.getMin().plusConstant(1.0);
+				pair.getMax().timesConstant(-1.0);
+				pair.getMax().plusConstant(1.0);
+				pair.swap();
+			}
+		}
+		*/
+
+		// Examine the whole computation after it's completely finished
+		decompositionProcedure.examineWholeComputation(regionValues);
+
+		// Finished bounded probabilistic reachability
+		timer = System.currentTimeMillis() - timer;
+		mainLog.print("\nPSE backwards transient cumulative rewards computation");
 		mainLog.print(" took " + totalIters + " iters");
 		mainLog.println(" and " + timer / 1000.0 + " seconds.");
 
