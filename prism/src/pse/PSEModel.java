@@ -75,17 +75,16 @@ public final class PSEModel extends ModelExplicit
 	private Set<Integer> predecessorsViaReaction;
 	/** map from state to transitions coming into the state (and not outgoing) */
 	private Map<Integer, List<Integer>> trsI;
-	private int trsICnt;
 	/** map from state to transitions both incoming in and outgoing from the state */
 	private Map<Integer, List<Pair<Integer, Integer>>> trsIO;
-	private int trsIOCnt;
 	/** map from state to transitions going out from the state (and not incoming) */
 	private Map<Integer, List<Integer>> trsO;
-	private int trsOCnt;
 	/** map from state to transitions that are nopt parametrised */
-	private Map<Integer, List<Integer>> trsNP;
+	private Map<Integer, List<Integer>> trsNPBySrc;
+	private Map<Integer, List<Integer>> trsNPByTrg;
 
 	private PSEModelForVM modelVM;
+	private PSEModelForMV modelMV;
 
 	/**
 	 * Constructs a new parametric model.
@@ -94,9 +93,6 @@ public final class PSEModel extends ModelExplicit
 	{
 		numStates = 0;
 		numTransitions = 0;
-		trsICnt = 0;
-		trsOCnt = 0;
-		trsIOCnt = 0;
 		initialStates = new LinkedList<Integer>();
 		deadlocks = new TreeSet<Integer>();
 		predecessorsViaReaction = new HashSet<Integer>();
@@ -451,116 +447,351 @@ public final class PSEModel extends ModelExplicit
 		trsI = new HashMap<Integer, List<Integer>>(numStates);
 		trsO = new HashMap<Integer, List<Integer>>(numStates);
 		trsIO = new HashMap<Integer, List<Pair<Integer, Integer>>>(numStates);
-		trsNP = new HashMap<Integer, List<Integer>>(numStates);
+		trsNPBySrc = new HashMap<Integer, List<Integer>>(numStates);
+		trsNPByTrg = new HashMap<Integer, List<Integer>>(numStates);
 		for (int state = 0; state < numStates; state++) {
 			trsI.put(state, new LinkedList<Integer>());
 			trsO.put(state, new LinkedList<Integer>());
 			trsIO.put(state, new LinkedList<Pair<Integer, Integer>>());
-			trsNP.put(state, new LinkedList<Integer>());
+			trsNPBySrc.put(state, new LinkedList<Integer>());
+			trsNPByTrg.put(state, new LinkedList<Integer>());
 		}
 
 		// Populate the sets with transition indices
 		for (int pred = 0; pred < numStates; pred++) {
 			for (int predTrans = stateBegin(pred); predTrans < stateEnd(pred); predTrans++) {
-				if (!isParametrised(predTrans)) {
-					trsNP.get(pred).add(predTrans);
-					continue;
-				}
 				boolean inout = false;
 				int predReaction = getReaction(predTrans);
 				int state = toState(predTrans);
+				if (!isParametrised(predTrans)) {
+					trsNPBySrc.get(pred).add(predTrans);
+					trsNPByTrg.get(state).add(predTrans);
+					continue;
+				}
 				for (int trans = stateBegin(state); trans < stateEnd(state); trans++) {
 					if (getReaction(trans) == predReaction) {
 						inout = true;
 						trsIO.get(state).add(new Pair<Integer, Integer>(predTrans, trans));
-						++trsIOCnt;
 						break;
 					}
 				}
 				if (!inout) {
 					trsI.get(state).add(predTrans);
-					++trsICnt;
 				}
 				if (!predecessorsViaReaction.contains(pred ^ predReaction)) {
 					trsO.get(pred).add(predTrans);
-					++trsOCnt;
 				}
 			}
 		}
-
-		modelVM = buildModelForVM();
 	}
 
-  public PSEModelForVM buildModelForVM()
+    final public void prepareForVM()
 	{
-		final double qrec = 1.0 / getDefaultUniformisationRate();
-		final double[] trRatePopul_ = new double[trRatePopul.length];
-		for (int i = 0; i < trRatePopul_.length; ++i) { trRatePopul_[i] = trRatePopul[i] * qrec; }
+	    final double qrec = 1.0 / getDefaultUniformisationRate();
 
-		int[] trsI_ = new int[trsICnt];
-		int[] trsO_ = new int[trsOCnt];
-		int[] trsIO_ = new int[trsIOCnt * 2];
+	    VectorOfDouble matMinVal = new VectorOfDouble();
+	    VectorOfInt matMinSrc = new VectorOfInt();
+	    int[] matMinTrgBeg = new int [numStates + 1];
+	    int matMinPos = 0;
 
-		VectorOfDouble trsNPVal = new VectorOfDouble();
-		VectorOfInt trsNPTrg = new VectorOfInt();
-		int[] trsNPSrcBeg = new int[numStates + 1];
-		int trsNPPos = 0;
+	    VectorOfDouble matMaxVal = new VectorOfDouble();
+	    VectorOfInt matMaxSrc = new VectorOfInt();
+	    int[] matMaxTrgBeg = new int [numStates + 1];
+	    int matMaxPos = 0;
 
-		int trsIPos = 0;
-		int trsOPos = 0;
-		int trsIOPos = 0;
-		for (int state = 0; state < numStates; ++state)
+	    VectorOfDouble matVal = new VectorOfDouble();
+	    VectorOfInt matSrc = new VectorOfInt();
+	    int[] matTrgBeg = new int [numStates + 1];
+	    int matPos = 0;
+
+	    double[] matMinDiagVal = new double[numStates];
+	    double[] matMaxDiagVal = new double[numStates];
+	    for (int i = 0; i < numStates; ++i)
+	    {
+		    matMinDiagVal[i] = 1;
+		    matMaxDiagVal[i] = 1;
+	    }
+
+
+	    VectorOfDouble matIOLowerVal0 = new VectorOfDouble();
+	    VectorOfDouble matIOLowerVal1 = new VectorOfDouble();
+	    VectorOfDouble matIOUpperVal0 = new VectorOfDouble();
+	    VectorOfDouble matIOUpperVal1 = new VectorOfDouble();
+	    VectorOfInt matIOSrc = new VectorOfInt();
+	    int[] matIOTrgBeg = new int [numStates + 1];
+	    int matIOPos = 0;
+
+	    for (int state = 0; state < numStates; ++state)
+	    {
+		    matMinTrgBeg[state] = matMinPos;
+		    matMaxTrgBeg[state] = matMaxPos;
+		    matTrgBeg[state] = matPos;
+		    matIOTrgBeg[state] = matIOPos;
+
+		    List<Integer> stTrsI = trsI.get(state);
+		    List<Integer> stTrsO = trsO.get(state);
+		    List<Pair<Integer, Integer>> stTrsIO = trsIO.get(state);
+		    List<Integer> stTrsNP = trsNPByTrg.get(state);
+
+		    for (Pair<Integer, Integer> p : stTrsIO)
+		    {
+			    final int t0 = p.first;
+			    final int t1 = p.second;
+			    final int v0 = trStSrc[t0];
+			    final int v1 = trStTrg[t0]; // == trStSrc[t1]
+
+			    final double valLower0 = trRateLower[t0] * trRatePopul[t0] * qrec;
+			    final double valLower1 = trRateLower[t1] * trRatePopul[t1] * qrec;
+			    final double valUpper0 = trRateUpper[t0] * trRatePopul[t0] * qrec;
+			    final double valUpper1 = trRateUpper[t1] * trRatePopul[t1] * qrec;
+
+			    // The rate params of t0 and t1 must be identical
+			    // assert trRateLower[t0] == trRateLower[t1];
+			    // assert trRateUpper[t0] == trRateUpper[t1];
+			    //
+			    // The lower rate == 0 iff upper rate == 0
+			    // assert (trRateLower[t0] == 0 && trRateUpper[t0] == 0) ||
+			    //        (trRateLower[t0] != 0 && trRateUpper[t0] != 0)
+			    //
+
+			    // if (valLower0 != 0) should be enough -- see above
+			    if (!(valLower0 == 0 && valLower1 == 0 && valUpper0 == 0 && valUpper1 == 0))
+			    {
+				    matIOLowerVal0.pushBack(valLower0);
+				    matIOLowerVal1.pushBack(valLower1);
+				    matIOUpperVal0.pushBack(valUpper0);
+				    matIOUpperVal1.pushBack(valUpper1);
+
+				    matIOSrc.pushBack(v0);
+				    ++matIOPos;
+			    }
+		    }
+
+		    for (Integer t : stTrsI)
+		    {
+			    final double valMin = trRateLower[t] * trRatePopul[t] * qrec;
+			    final double valMax = trRateUpper[t] * trRatePopul[t] * qrec;
+			    if (valMin != 0)
+			    {
+				    matMinVal.pushBack(valMin);
+				    matMinSrc.pushBack(trStSrc[t]);
+				    ++matMinPos;
+			    }
+			    if (valMax != 0)
+			    {
+				    matMaxVal.pushBack(valMax);
+				    matMaxSrc.pushBack(trStSrc[t]);
+				    ++matMaxPos;
+			    }
+		    }
+		    for (Integer t : stTrsO)
+		    {
+			    matMinDiagVal[trStSrc[t]] -= trRateUpper[t] * trRatePopul[t] * qrec;
+			    matMaxDiagVal[trStSrc[t]] -= trRateLower[t] * trRatePopul[t] * qrec;
+		    }
+
+		    for (Integer t : stTrsNP)
+		    {
+			    final double val = trRateLower[t] * trRatePopul[t] * qrec;
+			    matMinDiagVal[trStSrc[t]] -= val;
+			    matMaxDiagVal[trStSrc[t]] -= val;
+			    if (val != 0)
+			    {
+				    matVal.pushBack(val);
+				    matSrc.pushBack(trStSrc[t]);
+				    ++matPos;
+			    }
+		    }
+	    }
+	    matMinTrgBeg[numStates] = matMinPos;
+	    matMaxTrgBeg[numStates] = matMaxPos;
+	    matTrgBeg[numStates] = matPos;
+	    matIOTrgBeg[numStates] = matIOPos;
+
+	    modelVM = new PSEModelForVM
+        ( numStates, numTransitions
+        , matIOLowerVal0.data()
+        , matIOLowerVal1.data()
+        , matIOUpperVal0.data()
+        , matIOUpperVal1.data()
+        , matIOSrc.data()
+        , matIOTrgBeg
+
+        , matMinVal.data()
+        , matMinSrc.data()
+        , matMinTrgBeg
+
+        , matMaxVal.data()
+        , matMaxSrc.data()
+        , matMaxTrgBeg
+
+        , matMinDiagVal
+        , matMaxDiagVal
+        , matVal.data()
+        , matSrc.data()
+        , matTrgBeg
+        );
+	}
+
+	/**
+	 * @param subset only do multiplication for these rows (null means "all")
+	 * @param complement if true, {@code subset} is taken to be its complement
+	 */
+	final public void prepareForMV(BitSet subset, boolean complement)
+	{
+		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
+
+		subset = (BitSet)subset.clone();
+		if (subset == null) {
+			// Loop over all states
+			subset = new BitSet(numStates);
+			subset.set(0, numStates - 1);
+		}
+
+		if (complement) {
+			subset.flip(0, numStates - 1);
+		}
+
+		VectorOfDouble matNPVal = new VectorOfDouble();
+		VectorOfInt matNPCol = new VectorOfInt();
+		int matNPRowCnt = subset.cardinality();
+		int[] matNPRow = new int [matNPRowCnt];
+		int[] matNPRowBeg = new int [matNPRowCnt + 1];
+		int matNPPos = 0;
+
+		int rowCntAll = 0;
+		int matRowCnt = 0;
+		int matValCnt = 0;
+		ArrayList<TreeMap<Integer, Pair<Double,Double>>> matExplicit =
+				new ArrayList<TreeMap<Integer, Pair<Double,Double>>>(numStates); // Array of rows.
+		for (int i = 0; i < numStates; ++i) matExplicit.add(null);
+		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1))
 		{
-			List<Integer> stTrsI = trsI.get(state);
+			TreeMap<Integer, Pair<Double,Double>> matRow = new TreeMap<Integer, Pair<Double,Double>>();
+			matExplicit.set(state, matRow);
+			matNPRow[rowCntAll] = state;
+			matNPRowBeg[rowCntAll] = matNPPos;
+
 			List<Integer> stTrsO = trsO.get(state);
 			List<Pair<Integer, Integer>> stTrsIO = trsIO.get(state);
-			List<Integer> stTrsNP = trsNP.get(state);
+			List<Integer> stTrsNP = trsNPBySrc.get(state);
 
-			for (Integer tr : stTrsI)
+			for (int t : stTrsO)
 			{
-				trsI_[trsIPos++] = tr;
-			}
-			for (Integer tr : stTrsO)
-			{
-				trsO_[trsOPos++] = tr;
-			}
-			for (Pair<Integer, Integer> p : stTrsIO)
-			{
-				trsIO_[trsIOPos++] = p.first;
-				trsIO_[trsIOPos++] = p.second;
-			}
-
-			trsNPSrcBeg[state] = trsNPPos;
-			for (Integer t : stTrsNP)
-			{
-				final double rate = trRateLower[t] * trRatePopul_[t];
-				if (rate != 0)
+				final double valLower = trRateLower[t] * trRatePopul[t] * qrec;
+				final double valUpper = trRateUpper[t] * trRatePopul[t] * qrec;
+				final int col = trStTrg[t];
+				if (!(valLower == 0 && valUpper == 0))
 				{
-					trsNPVal.pushBack(rate);
-					trsNPTrg.pushBack(trStTrg[t]);
-					++trsNPPos;
+					Pair<Double, Double> prev = matRow.get(col);
+					double prevLowerVal = 0;
+					if (prev != null) prevLowerVal = prev.first;
+					double prevUpperVal = 0;
+					if (prev != null) prevUpperVal = prev.second;
+					matRow.put(col, new Pair<Double,Double>(prevLowerVal + valLower, prevUpperVal + valUpper));
 				}
 			}
+
+			for (Pair<Integer, Integer> p : stTrsIO)
+			{
+				final int t0 = p.first;
+				final int t1 = p.second;
+				final int v0 = trStSrc[t0];
+				final int v1 = trStTrg[t0]; // == trStSrc[t1] == state
+				final int v2 = trStTrg[t1];
+
+				double valLower = 0;
+				double valUpper = 0;
+				if (!subset.get(v0))
+				{
+					valLower = trRateLower[t0] * trRatePopul[t0] * qrec;
+					valUpper = trRateUpper[t0] * trRatePopul[t0] * qrec;
+				}
+				else
+				{
+					valLower = trRateLower[t1] * trRatePopul[t1] * qrec;
+					valUpper = trRateUpper[t1] * trRatePopul[t1] * qrec;
+				}
+
+				final int col = v2;
+				if (!(valLower == 0 && valUpper == 0))
+				{
+					Pair<Double, Double> prev = matRow.get(col);
+					double prevLowerVal = 0;
+					if (prev != null) prevLowerVal = prev.first;
+					double prevUpperVal = 0;
+					if (prev != null) prevUpperVal = prev.second;
+					matRow.put(col, new Pair<Double,Double>(prevLowerVal + valLower, prevUpperVal + valUpper));
+				}
+			}
+			if (!matRow.isEmpty())
+			{
+				++matRowCnt;
+				matValCnt += matRow.size();
+			}
+
+			int ps = matNPVal.size();
+			for (int t : stTrsNP)
+			{
+				int v0 = trStSrc[t]; // == state
+				int v1 = trStTrg[t];
+				final double val = trRateLower[t] * trRatePopul[t] * qrec;
+
+				if (val != 0)
+				{
+					matNPVal.pushBack(val);
+					matNPCol.pushBack(v1);
+					++matNPPos;
+				}
+			}
+			++rowCntAll;
 		}
-		trsNPSrcBeg[numStates] = trsNPPos;
+		matNPRowBeg[rowCntAll] = matNPPos;
 
-		// Sort for better locality when accessing trRateLower/Upper/Popul.
-		Arrays.sort(trsI_);
-		Arrays.sort(trsO_);
+		double[] matLowerVal = new double[matValCnt];
+		double[] matUpperVal = new double[matValCnt];
+		int[] matCol = new int[matValCnt];
+		int[] matRow = new int[matRowCnt];
+		int[] matRowBeg = new int[matRowCnt + 1];
+		int matPos = 0;
 
-		return new PSEModelForVM
-			( numStates, numTransitions
-			, trRateLower
-			, trRateUpper
-			, trRatePopul_
-			, trStSrc
-			, trStTrg
-			, trsI_
-			, trsO_
-			, trsIO_
-			, trsNPVal.data()
-			, trsNPTrg.data()
-			, trsNPSrcBeg
+		matRowCnt = 0;
+		for (int row = 0; row < numStates; ++row)
+		{
+			TreeMap<Integer, Pair<Double,Double>> matExplicitRow = matExplicit.get(row);
+			if (matExplicitRow == null || matExplicitRow.isEmpty())
+			{
+				continue;
+			}
+
+			matRow[matRowCnt] = row;
+			matRowBeg[matRowCnt] = matPos;
+
+			for (Map.Entry<Integer, Pair<Double,Double>> e : matExplicitRow.entrySet())
+			{
+				matCol[matPos] = e.getKey();
+				matLowerVal[matPos] = e.getValue().first;
+				matUpperVal[matPos] = e.getValue().second;
+				++matPos;
+			}
+			++matRowCnt;
+		}
+		matRowBeg[matRowCnt] = matPos;
+
+		modelMV = new PSEModelForMV
+			( numStates
+			, matLowerVal
+			, matUpperVal
+			, matCol
+			, matRow
+			, matRowBeg
+			, matRowCnt
+
+			, matNPVal.data()
+			, matNPCol.data()
+			, matNPRow
+			, matNPRowBeg
+			, matNPRowCnt
 			);
 	}
 
@@ -578,32 +809,12 @@ public final class PSEModel extends ModelExplicit
 	 * @param resultMin vector to store minimised result in
 	 * @param vectMax vector to multiply by when computing maximised result
 	 * @param resultMax vector to store maximised result in
-	 * @see #mvMult(double[], double[], double[], double[], BitSet, boolean, double)
+	 * @see #mvMult(double[], double[], double[], double[])
 	 */
 	public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[])
 			throws PrismException
 	{
 		modelVM.vmMult(vectMin, resultMin, vectMax, resultMax);
-	}
-
-	private double mvMultMidSumEvalMin(int trans, double vectMinPred, double vectMinState, double q)
-	{
-		double midSumNumeratorMin = trRatePopul[trans] * vectMinPred - trRatePopul[trans] * vectMinState;
-		if (midSumNumeratorMin > 0.0) {
-			return trRateLower[trans] * midSumNumeratorMin / q;
-		} else {
-			return trRateUpper[trans] * midSumNumeratorMin / q;
-		}
-	}
-
-	private double mvMultMidSumEvalMax(int trans, double vectMaxPred, double vectMaxState, double q)
-	{
-		double midSumNumeratorMax = trRatePopul[trans] * vectMaxPred - trRatePopul[trans] * vectMaxState;
-		if (midSumNumeratorMax > 0.0) {
-			return trRateUpper[trans] * midSumNumeratorMax / q;
-		} else {
-			return trRateLower[trans] * midSumNumeratorMax / q;
-		}
 	}
 
 	/**
@@ -617,78 +828,17 @@ public final class PSEModel extends ModelExplicit
 	 * from the initial state.  On the other hand, {@code mvMult}'s {@code result[k]_i}
 	 * denotes the probability that an absorbing state (i.e., a state not in {@code subset})
 	 * is reached after {@code i} iterations starting from {@code k}.
-	 * 
+	 *
 	 * @param vectMin vector to multiply by when computing minimised result
 	 * @param resultMin vector to store minimised result in
 	 * @param vectMax vector to multiply by when computing maximised result
 	 * @param resultMax vector to store maximised result in
-	 * @param subset only do multiplication for these rows (null means "all")
-	 * @param complement if true, {@code subset} is taken to be its complement
-	 * @param q uniformisation rate
 	 * @see #vmMult(double[], double[], double[], double[])
 	 */
-	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], BitSet subset, boolean complement, double q)
+	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[])
 			throws PrismException
 	{
-		if (subset == null) {
-			// Will loop over all states
-			subset = new BitSet(numStates);
-			subset.set(0, numStates);
-		}
-
-		if (complement) {
-			subset.flip(0, numStates);
-		}
-
-		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
-			// Initialise the result
-			resultMin[state] = vectMin[state];
-			resultMax[state] = vectMax[state];
-
-			for (int trans : trsO.get(state)) {
-				int succ = toState(trans);
-				resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[succ], vectMin[state], q);
-				resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[succ], vectMax[state], q);
-			}
-
-			for (Pair<Integer, Integer> transs : trsIO.get(state)) {
-				int trans = transs.first;
-				int succTrans = transs.second;
-
-				assert toState(trans) == state;
-				int succ = toState(succTrans);
-
-				if (!subset.get(fromState(trans))) {
-					// Reduce to the case of an incoming reaction
-					resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[succ], vectMin[state], q);
-					resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[succ], vectMax[state], q);
-					continue;
-				}
-
-				// The rate params of the two considered transitions must be identical
-				assert trRateLower[succTrans] == trRateLower[trans];
-				assert trRateUpper[succTrans] == trRateUpper[trans];
-
-				resultMin[state] += mvMultMidSumEvalMin(succTrans, vectMin[succ], vectMin[state], q);
-				resultMax[state] += mvMultMidSumEvalMax(succTrans, vectMax[succ], vectMax[state], q);
-			}
-		}
-
-		// Optimisation: Non-parametrised transitions
-		for (int trans = 0; trans < numTransitions; trans++) {
-			if (isParametrised(trans))
-				continue;
-
-			int state = fromState(trans);
-			int succ = toState(trans);
-
-			if (!subset.get(state))
-				continue;
-
-			double rate = trRateLower[trans] * trRatePopul[trans];
-			resultMin[state] += rate * (vectMin[succ] - vectMin[state]) / q;
-			resultMax[state] += rate * (vectMax[succ] - vectMax[state]) / q;
-		}
+		modelMV.mvMult(vectMin, resultMin, vectMax, resultMax);
 	}
 
 	/**
@@ -707,10 +857,8 @@ public final class PSEModel extends ModelExplicit
 			trRateUpper[trans] = rateParams[trans].evaluateDouble(region.getUpperBounds());
 			parametrisedTransitions[trans] = trRateLower[trans] != trRateUpper[trans];
 		}
-		if (modelVM != null)
-		{
-			modelVM = buildModelForVM();
-		}
+		modelVM = null; // This marks the model as dirty (i.e. it needs to be rebuilt)
+		modelMV = null;
 	}
 
 	/**
