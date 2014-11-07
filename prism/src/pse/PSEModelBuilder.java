@@ -31,7 +31,6 @@ import java.util.LinkedList;
 import java.util.List;
 
 import parser.State;
-import parser.Values;
 import parser.ast.Expression;
 import parser.ast.ModulesFile;
 import prism.ModelType;
@@ -159,7 +158,6 @@ public final class PSEModelBuilder extends PrismComponent
 		List<State> statesList = states.toPermutedArrayList(permut);
 		model.setStatesList(statesList);
 		model.addInitialState(permut[0]);
-		Values upperParams = explorer.getCompleteSpace().getUpperBounds();
 		for (State state : statesList) {
 			explorer.queryState(state);
 			int numChoices = explorer.getNumChoices();
@@ -178,7 +176,7 @@ public final class PSEModelBuilder extends PrismComponent
 						paramsAndPopulation.first, paramsAndPopulation.second, action);
 				sumOut = Expression.Plus(sumOut, rateExpr);
 			}
-			model.setSumLeaving(sumOut.evaluateDouble(upperParams));
+			model.setSumLeaving(sumOut);
 			model.finishState();
 		}
 

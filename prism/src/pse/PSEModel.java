@@ -71,7 +71,9 @@ public final class PSEModel extends ModelExplicit
 	private int[] reactions;
 	/** labels - per transition, <i>not</i> per action */
 	private String[] labels;
-	/** total sum of leaving rates for a state */
+	/** total sum of leaving rates for a state, as expressions */
+	private Expression[] exitRatesExpr;
+	/** total sum of leaving rates for a state, evaluated */
 	private double[] exitRates;
 	/** set of hash codes for deciding whether state has predecessors via reaction */
 	private Set<Integer> predecessorsViaReaction;
@@ -258,6 +260,7 @@ public final class PSEModel extends ModelExplicit
 		trRatePopul = new double[numTransitions];
 		trStTrg = new int[numTransitions];
 		trStSrc = new int[numTransitions];
+		exitRatesExpr = new Expression[numStates];
 		exitRates = new double[numStates];
 	}
 
@@ -305,9 +308,9 @@ public final class PSEModel extends ModelExplicit
 	 * 
 	 * @param leaving sum of leaving rates from the current state
 	 */
-	void setSumLeaving(double leaving)
+	void setSumLeaving(Expression leaving)
 	{
-		exitRates[numStates] = leaving;
+		exitRatesExpr[numStates] = leaving;
 	}
 
 	/**
@@ -849,8 +852,8 @@ public final class PSEModel extends ModelExplicit
 	}
 
 	/**
-	 * Updates the transition rates of this parametrised CTMC according
-	 * to the given parameter region.
+	 * Updates the transition rates and other parametrised data
+	 * of this parametrised CTMC according to the given parameter region.
 	 * 
 	 * @param region parameter region according to which configure the model's
 	 * parameter space
@@ -863,6 +866,9 @@ public final class PSEModel extends ModelExplicit
 			trRateLower[trans] = rateParams[trans].evaluateDouble(region.getLowerBounds());
 			trRateUpper[trans] = rateParams[trans].evaluateDouble(region.getUpperBounds());
 			parametrisedTransitions[trans] = trRateLower[trans] != trRateUpper[trans];
+		}
+		for (int state = 0; state < numStates; state++) {
+			exitRates[state] = exitRatesExpr[state].evaluateDouble(region.getUpperBounds());
 		}
 		modelVM = null; // This marks the model as dirty (i.e. it needs to be rebuilt)
 		modelMV = null;
