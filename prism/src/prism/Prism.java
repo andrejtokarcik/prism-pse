@@ -3482,23 +3482,23 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			break;
 		case THRESHOLD:
 			printPSEIntro(mainLog, "PSE threshold synthesis: " + prop, model, propertiesFile, accuracy);
-			decompositionProcedure = new pse.ThresholdSynthesis(accuracy, model.getFirstInitialState(), model.getCompleteSpace());
+			decompositionProcedure = new pse.ThresholdSynthesis(accuracy);
 			break;
 		case MIN_NAIVE:
 			printPSEIntro(mainLog, "PSE min synthesis (naive): " + prop, model, propertiesFile, accuracy);
-			decompositionProcedure = new pse.MinSynthesisNaive(accuracy, model.getFirstInitialState());
+			decompositionProcedure = new pse.MinSynthesisNaive(accuracy);
 			break;
 		case MIN_SAMPLING:
 			printPSEIntro(mainLog, "PSE min synthesis (sampling): " + prop, model, propertiesFile, accuracy);
-			decompositionProcedure = new pse.MinSynthesisSampling(accuracy, model.getFirstInitialState(), getSimulator());
+			decompositionProcedure = new pse.MinSynthesisSampling(accuracy, explorer);
 			break;
 		case MAX_NAIVE:
 			printPSEIntro(mainLog, "PSE max synthesis (naive): " + prop, model, propertiesFile, accuracy);
-			decompositionProcedure = new pse.MaxSynthesisNaive(accuracy, model.getFirstInitialState());
+			decompositionProcedure = new pse.MaxSynthesisNaive(accuracy);
 			break;
 		case MAX_SAMPLING:
 			printPSEIntro(mainLog, "PSE max synthesis (sampling): " + prop, model, propertiesFile, accuracy);
-			decompositionProcedure = new pse.MaxSynthesisSampling(accuracy, model.getFirstInitialState(), getSimulator());
+			decompositionProcedure = new pse.MaxSynthesisSampling(accuracy, explorer);
 			break;
 		default:
 			throw new PrismException("Unrecognized decomposition type");

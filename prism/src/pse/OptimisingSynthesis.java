@@ -60,24 +60,24 @@ abstract class OptimisingSynthesis extends DecompositionProcedure
 	protected LabelledBoxRegions optimisingRegions;
 	/** regions marked as "non-optimising" */
 	protected LabelledBoxRegions nonOptimisingRegions;
-	/** minimal lower probability bound from among {@link optimisingRegion} */
+	/** minimal lower probability bound from among {@link #optimisingRegions} */
 	protected double minimalLowerProbBoundOfOptimising;
-	/** maximal upper probability bound from among {@link optimisingRegion} */
+	/** maximal upper probability bound from among {@link #optimisingRegions} */
 	protected double maximalUpperProbBoundOfOptimising;
 	/** probability bounds as they were successively used to distinguish
 	 *  between "optimising" and "non-optimising" regions */
 	protected LinkedList<Double> demarcationProbBounds;
 
-	public OptimisingSynthesis(double probTolerance, int initState)
+	public OptimisingSynthesis(double probTolerance)
 	{
 		this.probTolerance = probTolerance;
-		this.initState = initState;
 	}
 
 	@Override
 	public void initialiseModelChecking(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
 	{
 		super.initialiseModelChecking(modelChecker, model, propExpr);
+		initState = model.getFirstInitialState();
 		optimisingRegions = new LabelledBoxRegions();
 		nonOptimisingRegions = new LabelledBoxRegions();
 		demarcationProbBounds = new LinkedList<Double>();

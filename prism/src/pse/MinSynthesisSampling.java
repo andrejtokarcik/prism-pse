@@ -52,9 +52,9 @@ public final class MinSynthesisSampling extends MinSynthesis
 	/** list of sample points used for demarcation */
 	private LinkedList<Point> samples;
 
-	public MinSynthesisSampling(double probTolerance, int initState, SimulatorEngine simulatorEngine)
+	public MinSynthesisSampling(double probTolerance, SimulatorEngine simulatorEngine)
 	{
-		super(probTolerance, initState);
+		super(probTolerance);
 		this.simulatorEngine = simulatorEngine;
 	}
 
@@ -104,9 +104,10 @@ public final class MinSynthesisSampling extends MinSynthesis
 		if (demarcationProbBounds.isEmpty() || minimalSampleProb < demarcationProbBounds.getLast()) {
 			samples.add(minimalSample);
 			return minimalSampleProb;
+		} else {
+			samples.add(samples.getLast());
+			return demarcationProbBounds.getLast();
 		}
-		samples.add(samples.getLast());
-		return demarcationProbBounds.getLast();
 	}
 
 	@Override

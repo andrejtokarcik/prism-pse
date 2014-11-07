@@ -52,9 +52,9 @@ public final class MaxSynthesisSampling extends MaxSynthesis
 	/** list of sample points used for demarcation */
 	private LinkedList<Point> samples;
 
-	public MaxSynthesisSampling(double probTolerance, int initState, SimulatorEngine simulatorEngine)
+	public MaxSynthesisSampling(double probTolerance, SimulatorEngine simulatorEngine)
 	{
-		super(probTolerance, initState);
+		super(probTolerance);
 		this.simulatorEngine = simulatorEngine;
 	}
 
@@ -104,9 +104,10 @@ public final class MaxSynthesisSampling extends MaxSynthesis
 		if (demarcationProbBounds.isEmpty() || maximalSampleProb > demarcationProbBounds.getLast()) {
 			samples.add(maximalSample);
 			return maximalSampleProb;
+		} else {
+			samples.add(samples.getLast());
+			return demarcationProbBounds.getLast();
 		}
-		samples.add(samples.getLast());
-		return demarcationProbBounds.getLast();
 	}
 
 	@Override

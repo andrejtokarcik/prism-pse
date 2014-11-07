@@ -39,9 +39,9 @@ import prism.PrismException;
  */
 abstract class MinSynthesis extends OptimisingSynthesis
 {
-	public MinSynthesis(double probTolerance, int initState)
+	public MinSynthesis(double probTolerance)
 	{
-		super(probTolerance, initState);
+		super(probTolerance);
 		captionForOptimising = "minimising";
 	}
 

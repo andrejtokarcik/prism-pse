@@ -34,9 +34,9 @@ import java.util.Map.Entry;
  */
 public final class MaxSynthesisNaive extends MaxSynthesis
 {
-	public MaxSynthesisNaive(double probTolerance, int initState)
+	public MaxSynthesisNaive(double probTolerance)
 	{
-		super(probTolerance, initState);
+		super(probTolerance);
 	}
 
 	/**

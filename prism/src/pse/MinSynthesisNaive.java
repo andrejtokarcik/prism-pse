@@ -34,9 +34,9 @@ import java.util.Map.Entry;
  */
 public final class MinSynthesisNaive extends MinSynthesis
 {
-	public MinSynthesisNaive(double probTolerance, int initState)
+	public MinSynthesisNaive(double probTolerance)
 	{
-		super(probTolerance, initState);
+		super(probTolerance);
 	}
 
 	/**

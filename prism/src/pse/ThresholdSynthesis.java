@@ -64,17 +64,17 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 	 *  of the complete parameter space */
 	private double undecidedVsComplete;
 
-	public ThresholdSynthesis(double volumeTolerance, int initState, BoxRegion completeSpace) throws PrismException
+	public ThresholdSynthesis(double volumeTolerance) throws PrismException
 	{
 		this.volumeTolerance = volumeTolerance;
-		this.initState = initState;
-		this.completeSpaceVolume = completeSpace.volume();
 	}
 
 	@Override
 	public void initialiseModelChecking(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
 	{
 		super.initialiseModelChecking(modelChecker, model, propExpr);
+		initState = model.getFirstInitialState();
+		completeSpaceVolume = model.getCompleteSpace().volume();
 		belowRegions = new LabelledBoxRegions();
 		aboveRegions = new LabelledBoxRegions();
 		undecidedRegions = new LabelledBoxRegions();

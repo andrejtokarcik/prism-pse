@@ -39,9 +39,9 @@ import prism.PrismException;
  */
 abstract class MaxSynthesis extends OptimisingSynthesis
 {
-	public MaxSynthesis(double probTolerance, int initState)
+	public MaxSynthesis(double probTolerance)
 	{
-		super(probTolerance, initState);
+		super(probTolerance);
 		captionForOptimising = "maximising";
 	}
 
