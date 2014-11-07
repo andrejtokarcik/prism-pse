@@ -71,7 +71,7 @@ public final class PSEModelBuilder extends PrismComponent
 		time = System.currentTimeMillis();
 		ModulesFile modulesFile = (ModulesFile) explorer.getModulesFile();
 		model = constructModel(modulesFile);
-		model.configureParameterSpace(explorer.getCompleteSpace());
+		model.setParameterSpace(explorer.getCompleteSpace());
 		time = System.currentTimeMillis() - time;
 
 		mainLog.println("\nTime for model construction: " + time / 1000.0 + " seconds.");

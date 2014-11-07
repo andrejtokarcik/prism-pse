@@ -775,7 +775,7 @@ public final class PSEModelChecker extends PrismComponent
 			double[] multProbsMax = entry.getValue().getMax().getDoubleArray();
 
 			// Configure parameter space
-			model.configureParameterSpace(region);
+			model.evaluateParameters(region);
 			model.prepareForMV(nonAbs, false);
 			mainLog.println("Computing probabilities for parameter region " + region);
 
@@ -1051,7 +1051,7 @@ public final class PSEModelChecker extends PrismComponent
 			*/
 
 			// Configure parameter space
-			model.configureParameterSpace(region);
+			model.evaluateParameters(region);
 			model.prepareForMV(null, false);
 			mainLog.println("Computing probabilities for parameter region " + region);
 
@@ -1290,7 +1290,7 @@ public final class PSEModelChecker extends PrismComponent
 			}
 
 			// Configure parameter space
-			model.configureParameterSpace(region);
+			model.evaluateParameters(region);
 			model.prepareForVM();
 			mainLog.println("Computing probabilities for parameter region " + region);
 

@@ -42,6 +42,11 @@ final class Point
 		return dimensions;
 	}
 
+	public BoxRegion asRegion()
+	{
+		return new BoxRegion(dimensions, dimensions);
+	}
+
 	@Override
 	public int hashCode()
 	{

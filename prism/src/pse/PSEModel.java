@@ -31,12 +31,10 @@ import java.util.*;
 
 import parser.Values;
 import parser.ast.Expression;
-import parser.ast.ModulesFile;
 import prism.ModelType;
 import prism.Pair;
 import prism.PrismException;
 import prism.PrismLog;
-import explicit.CTMC;
 import explicit.ModelExplicit;
 
 /**
@@ -860,7 +858,7 @@ public final class PSEModel extends ModelExplicit
 	 * @throws PrismException thrown if rates cannot be evaluated with the new
 	 * parameter region's bounds
 	 */
-	public void configureParameterSpace(BoxRegion region) throws PrismException
+	public void evaluateParameters(BoxRegion region) throws PrismException
 	{
 		for (int trans = 0; trans < numTransitions; trans++) {
 			trRateLower[trans] = rateParams[trans].evaluateDouble(region.getLowerBounds());
@@ -875,24 +873,10 @@ public final class PSEModel extends ModelExplicit
 	}
 
 	/**
-	 * Returns a particular non-parametrised CTMC associated with
-	 * the given point of the parameter space of this parametrised CTMC.
-	 * 
-	 * @param point point of parameter space determining the parameters' values
-	 * @param modulesFile modules file
-	 * @param constructModel object conducting construction of {@code explicit.CTMC}
-	 * models
-	 * @return non-parametrised CTMC obtained by substituting {@code point}
-	 * for parameter ranges
-	 * @throws PrismException thrown if an error occurred during construction
-	 * of the non-parametrised CTMC
 	 */
-	public CTMC instantiate(Point point, ModulesFile modulesFile, explicit.ConstructModel constructModel)
-			throws PrismException
+	public void setParameterSpace(BoxRegion region) throws PrismException
 	{
-		modulesFile = (ModulesFile) modulesFile.deepCopy();
-		// Add point dimensions to constants of the modules file
-		modulesFile.getConstantValues().addValues(point.getDimensions());
-		return (CTMC) constructModel.constructModel(modulesFile);
+		completeSpace = region;
+		evaluateParameters(region);
 	}
 }

@@ -32,9 +32,6 @@ import java.util.Map.Entry;
 import parser.ast.Expression;
 import prism.PrismException;
 import prism.PrismLog;
-import simulator.SimulatorEngine;
-import explicit.CTMC;
-import explicit.CTMCModelChecker;
 
 /**
  * Decomposition procedure solving the min synthesis problem using
@@ -43,19 +40,16 @@ import explicit.CTMCModelChecker;
  */
 public final class MinSynthesisSampling extends MinSynthesis
 {
-	/** simulator engine for instantiating the PSE model */
-	private SimulatorEngine simulatorEngine;
-	/** constructor of explicit models for instantiating the PSE model */
-	private explicit.ConstructModel constructModel;
-	/** model checker for analysing the instantiated model */
-	private CTMCModelChecker ctmcModelChecker;
+	PSEModelExplorer modelExplorer;
+	PSEModel pointModel;
+	PSEModelChecker pointMC;
 	/** list of sample points used for demarcation */
 	private LinkedList<Point> samples;
 
-	public MinSynthesisSampling(double probTolerance, SimulatorEngine simulatorEngine)
+	public MinSynthesisSampling(double probTolerance, PSEModelExplorer modelExplorer)
 	{
 		super(probTolerance);
-		this.simulatorEngine = simulatorEngine;
+		this.modelExplorer = modelExplorer;
 	}
 
 	@Override
@@ -63,10 +57,17 @@ public final class MinSynthesisSampling extends MinSynthesis
 			throws PrismException
 	{
 		super.initialiseModelChecking(modelChecker, model, propExpr);
-		constructModel = new explicit.ConstructModel(modelChecker, simulatorEngine);
-		ctmcModelChecker = new CTMCModelChecker(modelChecker);
-		ctmcModelChecker.setModulesFileAndPropertiesFile(modelChecker.getModulesFile(), modelChecker.getPropertiesFile());
-		ctmcModelChecker.setVerbosity(0);
+
+		PSEModelBuilder builder = new PSEModelBuilder(modelChecker, modelExplorer);
+		builder.build();
+		pointModel = builder.getModel();
+		// Allow the builder to be garbage-collected
+		builder = null;
+
+		pointMC = new PSEModelChecker(modelChecker);
+		pointMC.setModulesFileAndPropertiesFile(modelChecker.getModulesFile(), modelChecker.getPropertiesFile());
+		//pointMC.setVerbosity(0);
+
 		samples = new LinkedList<Point>();
 	}
 
@@ -86,15 +87,19 @@ public final class MinSynthesisSampling extends MinSynthesis
 			}
 		}
 		/* TODO: If the region found above is the same as the previously found region
-		 * for the X-th time (where X is a PRISM setting, configurable via CLI), then
-		 * don't even attempt to generate more samples, and simply return the last
-		 * minimal sample probability. */
+		 * for the X-th time (where X is the value of a PRISM setting, configurable
+		 * via CLI), then don't even attempt to generate more samples, and simply
+		 * return the last minimal sample probability. */
 
 		double minimalSampleProb = Double.POSITIVE_INFINITY;
 		Point minimalSample = null;
+		DecompositionProcedure noDecomposing = SimpleDecompositionProcedure.NoDecomposing.getInstance();
 		for (Point sample : minimalUpperBoundRegion.generateSamplePoints()) {
-			CTMC ctmc = model.instantiate(sample, modelChecker.getModulesFile(), constructModel);
-			double currentSampleProb = (Double) ctmcModelChecker.checkExpression(ctmc, propExpr).getValue(initState);
+			pointModel.setParameterSpace(sample.asRegion());
+			BoxRegionValues sampleResult = pointMC.checkExpression(pointModel, propExpr, noDecomposing);
+			assert sampleResult.getNumRegions() == 1;
+			// getMin() and getMax() are identical for point regions
+			double currentSampleProb = (Double) sampleResult.lastEntry().getValue().getMin().getValue(initState);
 			if (currentSampleProb < minimalSampleProb) {
 				minimalSampleProb = currentSampleProb;
 				minimalSample = sample;
