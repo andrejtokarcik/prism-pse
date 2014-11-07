@@ -72,7 +72,7 @@ public final class PSEModelBuilder extends PrismComponent
 		time = System.currentTimeMillis();
 		ModulesFile modulesFile = (ModulesFile) explorer.getModulesFile();
 		model = constructModel(modulesFile);
-		model.configureParameterSpace(explorer.getRegionFactory().completeSpace());
+		model.configureParameterSpace(explorer.getCompleteSpace());
 		time = System.currentTimeMillis() - time;
 
 		mainLog.println("\nTime for model construction: " + time / 1000.0 + " seconds.");
@@ -159,7 +159,7 @@ public final class PSEModelBuilder extends PrismComponent
 		List<State> statesList = states.toPermutedArrayList(permut);
 		model.setStatesList(statesList);
 		model.addInitialState(permut[0]);
-		Values upperParams = explorer.getRegionFactory().completeSpace().getUpperBounds();
+		Values upperParams = explorer.getCompleteSpace().getUpperBounds();
 		for (State state : statesList) {
 			explorer.queryState(state);
 			int numChoices = explorer.getNumChoices();

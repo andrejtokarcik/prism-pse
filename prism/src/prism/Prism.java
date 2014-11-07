@@ -3413,11 +3413,11 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	/**
 	 * Print introductory information for PSE methods.
 	 */
-	private void printPSEIntro(PrismLog log, String intro, pse.BoxRegionFactory regionFactory, PropertiesFile propertiesFile, double accuracy)
+	private void printPSEIntro(PrismLog log, String intro, PSEModel model, PropertiesFile propertiesFile, double accuracy)
 	{
 		log.printSeparator();
 		log.println("\n" + intro);
-		log.println("Parameter space: " + regionFactory.completeSpace());
+		log.println("Parameter space: " + model.getCompleteSpace());
 		if (currentDefinedMFConstants != null && currentDefinedMFConstants.getNumValues() > 0)
 			log.println("Model constants: " + currentDefinedMFConstants);
 		if (propertiesFile != null) {
@@ -3462,44 +3462,42 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		}
 
 		// Build model
-		PSEModelExplorer modelExplorer = new PSEModelExplorer(currentModulesFile);
-		modelExplorer.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
-		pse.BoxRegionFactory regionFactory = modelExplorer.getRegionFactory();
-
-		PSEModelBuilder builder = new PSEModelBuilder(this, modelExplorer);
+		PSEModelExplorer explorer = new PSEModelExplorer(currentModulesFile);
+		explorer.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
+		PSEModelBuilder builder = new PSEModelBuilder(this, explorer);
 		builder.build();
 		PSEModel model = builder.getModel();
-		// Allow the builder to be garbage-collected
+		// Allow builder to be garbage-collected
 		builder = null;
 
-		PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
+		PSEModelChecker mc = new PSEModelChecker(this);
 		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
 
 		// Determine the decomposition procedure
 		pse.DecompositionProcedure decompositionProcedure;
 		switch (decompositionType) {
 		case SIMPLE:
-			printPSEIntro(mainLog, "PSE model checking: " + prop, regionFactory, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE model checking: " + prop, model, propertiesFile, accuracy);
 			decompositionProcedure = new pse.SimpleDecompositionProcedure(accuracy);
 			break;
 		case THRESHOLD:
-			printPSEIntro(mainLog, "PSE threshold synthesis: " + prop, regionFactory, propertiesFile, accuracy);
-			decompositionProcedure = new pse.ThresholdSynthesis(accuracy, model.getFirstInitialState(), regionFactory.completeSpace());
+			printPSEIntro(mainLog, "PSE threshold synthesis: " + prop, model, propertiesFile, accuracy);
+			decompositionProcedure = new pse.ThresholdSynthesis(accuracy, model.getFirstInitialState(), model.getCompleteSpace());
 			break;
 		case MIN_NAIVE:
-			printPSEIntro(mainLog, "PSE min synthesis (naive): " + prop, regionFactory, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE min synthesis (naive): " + prop, model, propertiesFile, accuracy);
 			decompositionProcedure = new pse.MinSynthesisNaive(accuracy, model.getFirstInitialState());
 			break;
 		case MIN_SAMPLING:
-			printPSEIntro(mainLog, "PSE min synthesis (sampling): " + prop, regionFactory, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE min synthesis (sampling): " + prop, model, propertiesFile, accuracy);
 			decompositionProcedure = new pse.MinSynthesisSampling(accuracy, model.getFirstInitialState(), getSimulator());
 			break;
 		case MAX_NAIVE:
-			printPSEIntro(mainLog, "PSE max synthesis (naive): " + prop, regionFactory, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE max synthesis (naive): " + prop, model, propertiesFile, accuracy);
 			decompositionProcedure = new pse.MaxSynthesisNaive(accuracy, model.getFirstInitialState());
 			break;
 		case MAX_SAMPLING:
-			printPSEIntro(mainLog, "PSE max synthesis (sampling): " + prop, regionFactory, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE max synthesis (sampling): " + prop, model, propertiesFile, accuracy);
 			decompositionProcedure = new pse.MaxSynthesisSampling(accuracy, model.getFirstInitialState(), getSimulator());
 			break;
 		default:
@@ -3543,17 +3541,15 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			constlist.removeValue(paramNames[pnr]);
 		}
 
-		PSEModelExplorer modelExplorer = new PSEModelExplorer(currentModulesFile);
-		modelExplorer.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
-		pse.BoxRegionFactory regionFactory = modelExplorer.getRegionFactory();
-
 		PSEModel model = null;
+		PSEModelExplorer explorer = new PSEModelExplorer(currentModulesFile);
+		explorer.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
 		boolean doFAU = settings.getString(PrismSettings.PRISM_TRANSIENT_METHOD).equals("Fast adaptive uniformisation");
 		if (!doFAU) {
-			PSEModelBuilder builder = new pse.PSEModelBuilder(this, modelExplorer);
+			PSEModelBuilder builder = new pse.PSEModelBuilder(this, explorer);
 			builder.build();
 			model = builder.getModel();
-			// Allow the builder to be garbage-collected
+			// Allow builder to be garbage-collected
 			builder = null;
 		}
 
@@ -3568,22 +3564,22 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 				throw new PrismException("Cannot perform parameter space exploration for negative time value");
 			}
 
-			printPSEIntro(mainLog, "Performing parameter space exploration (time = " + time + ")...", regionFactory, null, accuracy);
+			printPSEIntro(mainLog, "Performing parameter space exploration (time = " + time + ")...", model, null, accuracy);
 
 			long l = System.currentTimeMillis();
 
 			pse.BoxRegionValues regionValues;
 			if (doFAU) {
-				PSEFastAdaptiveUniformisationModelChecker mc = new PSEFastAdaptiveUniformisationModelChecker(this, regionFactory);
+				PSEFastAdaptiveUniformisationModelChecker mc = new PSEFastAdaptiveUniformisationModelChecker(this);
 				/*
 				if (i == 0) {
 					initDist = mc.readDistributionFromFile(fileIn, model);
 				}
 				*/
-				regionValues = mc.doTransient(modelExplorer, timeDouble - initTimeDouble, initDist,
+				regionValues = mc.doTransient(explorer, timeDouble - initTimeDouble, initDist,
 						new pse.SimpleDecompositionProcedure(accuracy));
 			} else {
-				PSEModelChecker mc = new PSEModelChecker(this, regionFactory);
+				PSEModelChecker mc = new PSEModelChecker(this);
 				if (i == 0) {
 					initDist = mc.readDistributionFromFile(fileIn, model);
 				}

@@ -50,8 +50,6 @@ import simulator.SimulatorEngine;
  */
 public class PSEFastAdaptiveUniformisationModelChecker extends PrismComponent
 {
-	// Region factory
-	private BoxRegionFactory regionFactory;
 	// Model file
 	private ModulesFile modulesFile;
 	// Properties file
@@ -66,10 +64,9 @@ public class PSEFastAdaptiveUniformisationModelChecker extends PrismComponent
 	/**
 	 * Constructor.
 	 */
-	public PSEFastAdaptiveUniformisationModelChecker(PrismComponent parent, BoxRegionFactory regionFactory)
+	public PSEFastAdaptiveUniformisationModelChecker(PrismComponent parent)
 	{
 		super(parent);
-		this.regionFactory = regionFactory;
 	}
 
 	public void setModulesFileAndPropertiesFile(ModulesFile modulesFile, PropertiesFile propertiesFile)
@@ -153,7 +150,7 @@ public class PSEFastAdaptiveUniformisationModelChecker extends PrismComponent
 
 		// For decomposing of the parameter space
 		LinkedList<BoxRegion> regions = new LinkedList<BoxRegion>();
-		regions.add(regionFactory.completeSpace());
+		regions.add(modelExplorer.getCompleteSpace());
 
 		// Start bounded probabilistic reachability
 		long timer = System.currentTimeMillis();

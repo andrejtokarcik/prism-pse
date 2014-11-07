@@ -66,9 +66,6 @@ import explicit.rewards.MCRewards;
  */
 public final class PSEModelChecker extends PrismComponent
 {
-	/** parameter region factory */
-	private BoxRegionFactory regionFactory;
-
 	/** modules file, for instantiating of the PSE model */
 	private ModulesFile modulesFile = null;
 
@@ -85,10 +82,9 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Constructor.
 	 */
-	public PSEModelChecker(PrismComponent parent, BoxRegionFactory regionFactory)
+	public PSEModelChecker(PrismComponent parent)
 	{
 		super(parent);
-		this.regionFactory = regionFactory;
 		this.stateChecker = new StateModelChecker(this);
 	}
 
@@ -197,7 +193,7 @@ public final class PSEModelChecker extends PrismComponent
 		}
 		// Let explicit.StateModelChecker take care of other kinds of expressions
 		StateValues vals = stateChecker.checkExpression(model, expr);
-		return new BoxRegionValues(model, regionFactory.completeSpace(), vals, vals);
+		return new BoxRegionValues(model, model.getCompleteSpace(), vals, vals);
 	}
 
 	/**
@@ -221,8 +217,8 @@ public final class PSEModelChecker extends PrismComponent
 
 		BoxRegionValues filterRgnVals = checkExpression(model, filter, decompositionProcedure);
 		assert filterRgnVals.getNumRegions() == 1;
-		BitSet bsFilterMin = filterRgnVals.getMin(regionFactory.completeSpace()).getBitSet();
-		BitSet bsFilterMax = filterRgnVals.getMax(regionFactory.completeSpace()).getBitSet();
+		BitSet bsFilterMin = filterRgnVals.getMin(model.getCompleteSpace()).getBitSet();
+		BitSet bsFilterMax = filterRgnVals.getMax(model.getCompleteSpace()).getBitSet();
 		boolean filterInit = (filter instanceof ExpressionLabel && ((ExpressionLabel) filter).getName().equals("init"));
 		boolean filterInitSingle = filterInit & model.getNumInitialStates() == 1;
 		if (bsFilterMin.isEmpty()) {
@@ -574,10 +570,10 @@ public final class PSEModelChecker extends PrismComponent
 		BoxRegionValues op1RgnVals = checkExpression(model, expr.getOperand1(), decompositionProcedure);
 		BoxRegionValues op2RgnVals = checkExpression(model, expr.getOperand2(), decompositionProcedure);
 		assert op1RgnVals.getNumRegions() == 1 && op2RgnVals.getNumRegions() == 1;
-		b1Min = op1RgnVals.getMin(regionFactory.completeSpace()).getBitSet();
-		b1Max = op1RgnVals.getMax(regionFactory.completeSpace()).getBitSet();
-		b2Min = op2RgnVals.getMin(regionFactory.completeSpace()).getBitSet();
-		b2Max = op2RgnVals.getMax(regionFactory.completeSpace()).getBitSet();
+		b1Min = op1RgnVals.getMin(model.getCompleteSpace()).getBitSet();
+		b1Max = op1RgnVals.getMax(model.getCompleteSpace()).getBitSet();
+		b2Min = op2RgnVals.getMin(model.getCompleteSpace()).getBitSet();
+		b2Max = op2RgnVals.getMax(model.getCompleteSpace()).getBitSet();
 
 		// compute probabilities
 
@@ -586,9 +582,9 @@ public final class PSEModelChecker extends PrismComponent
 			// prob is 1 in b2 states, 0 otherwise
 			probsMin = StateValues.createFromBitSetAsDoubles(b2Min, model);
 			probsMax = StateValues.createFromBitSetAsDoubles(b2Max, model);
-			regionValues = new BoxRegionValues(model, regionFactory.completeSpace(), probsMin, probsMax);
+			regionValues = new BoxRegionValues(model, model.getCompleteSpace(), probsMin, probsMax);
 		} else {
-			BoxRegionValues onesMultProbs = BoxRegionValues.createWithAllOnes(model, regionFactory.completeSpace());
+			BoxRegionValues onesMultProbs = BoxRegionValues.createWithAllOnes(model, model.getCompleteSpace());
 
 			// >= lTime
 			if (uTime == -1) {
@@ -944,7 +940,7 @@ public final class PSEModelChecker extends PrismComponent
 		}
 
 		BoxRegionValues oldRegionValues = null;
-		BoxRegionValues onesMultProbs = BoxRegionValues.createWithAllOnes(model, regionFactory.completeSpace());
+		BoxRegionValues onesMultProbs = BoxRegionValues.createWithAllOnes(model, model.getCompleteSpace());
 		while (true) {
 			try {
 				return computeCumulativeRewards(
@@ -1370,7 +1366,7 @@ public final class PSEModelChecker extends PrismComponent
 		mainLog.println("\nImporting probability distribution from file \"" + distFile + "\"...");
 		StateValues dist = new StateValues(TypeDouble.getInstance(), model);
 		dist.readFromFile(distFile);
-		return new BoxRegionValues(model, regionFactory.completeSpace(), dist, dist);
+		return new BoxRegionValues(model, model.getCompleteSpace(), dist, dist);
 	}
 
 	/**
@@ -1387,6 +1383,6 @@ public final class PSEModelChecker extends PrismComponent
 		for (int in : model.getInitialStates()) {
 			uniformInit.setDoubleValue(in, initVal);
 		}
-		return new BoxRegionValues(model, regionFactory.completeSpace(), uniformInit, uniformInit);
+		return new BoxRegionValues(model, model.getCompleteSpace(), uniformInit, uniformInit);
 	}
 }

@@ -50,14 +50,14 @@ import explicit.ModelExplorer;
  */
 public final class PSEModelExplorer implements ModelExplorer<Expression>
 {
+	/** complete parameter space */
+	private BoxRegion completeSpace;
 	/** symbolic engine providing essential methods */
 	private SymbolicEngine engine;
 	/** last queried state */
 	private State currentState;
 	/** transition list of last queried state */
 	private TransitionList transitionList;
-	/** parameter region factory */
-	private BoxRegionFactory regionFactory;
 	/** map from rate expression to respective rate parameters and population,
 	 *  the latter having been extracted from the former */
 	private Map<Expression, RateParametersAndPopulation> rateDataCache = new HashMap<Expression, RateParametersAndPopulation>();
@@ -100,7 +100,7 @@ public final class PSEModelExplorer implements ModelExplorer<Expression>
 
 	/**
 	 * Sets parameter information.
-	 * Obviously, all of {@code paramNames}, {@code lower}, {@code} upper
+	 * Obviously, all of {@code paramNames}, {@code lower}, {@code upper}
 	 * must have the same length, and {@code lower} bounds of parameters must
 	 * not be higher than {@code upper} bounds.
 	 * 
@@ -116,17 +116,17 @@ public final class PSEModelExplorer implements ModelExplorer<Expression>
 			lowerParams.addValue(paramNames[i], lower[i]);
 			upperParams.addValue(paramNames[i], upper[i]);
 		}
-		regionFactory = new BoxRegionFactory(lowerParams, upperParams);
+		completeSpace = new BoxRegion(lowerParams, upperParams);
 	}
 
 	/**
-	 * Gets the parameter region factory.
+	 * Gets the complete parameter space.
 	 * 
-	 * @return parameter region factory
+	 * @return complete parameter space
 	 */
-	public BoxRegionFactory getRegionFactory()
+	public BoxRegion getCompleteSpace()
 	{
-		return regionFactory;
+		return completeSpace;
 	}
 
 	/**
@@ -149,7 +149,7 @@ public final class PSEModelExplorer implements ModelExplorer<Expression>
 		final List<ExpressionConstant> containedParameters = new ArrayList<ExpressionConstant>();
 		rateExpression.accept(new ASTTraverse()
 		{
-			// TODO: visit() for doubles to handle rate population directly.
+			// TODO: visit() for ExpressionLiteral to capture rate population directly.
 			// Subsequently, the whole method could be made static and moved
 			// into pse.RateUtils or something.
 			public Object visit(ExpressionConstant e)
@@ -163,7 +163,7 @@ public final class PSEModelExplorer implements ModelExplorer<Expression>
 		for (ExpressionConstant parameterExpr : containedParameters) {
 			rateParameters = Expression.Times(rateParameters, parameterExpr);
 		}
-		double ratePopulation = Expression.Divide(rateExpression, rateParameters).evaluateDouble(regionFactory.completeSpace().getUpperBounds());
+		double ratePopulation = Expression.Divide(rateExpression, rateParameters).evaluateDouble(completeSpace.getUpperBounds());
 		RateParametersAndPopulation result = new RateParametersAndPopulation(rateParameters, ratePopulation);
 		rateDataCache.put(rateExpression, result);
 		return result;

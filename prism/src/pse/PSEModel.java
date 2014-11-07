@@ -47,6 +47,8 @@ import explicit.ModelExplicit;
  */
 public final class PSEModel extends ModelExplicit
 {
+	/** complete parameter space */
+	private BoxRegion completeSpace;
 	/** total number of probabilistic transitions over all states */
 	private int numTransitions;
 	/** begin and end of state transitions */
@@ -104,6 +106,11 @@ public final class PSEModel extends ModelExplicit
 	public ModelType getModelType()
 	{
 		return ModelType.CTMC;
+	}
+
+	public BoxRegion getCompleteSpace()
+	{
+		return completeSpace;
 	}
 
 	@Override
