@@ -649,11 +649,12 @@ public final class PSEModel extends ModelExplicit
 	{
 		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
 
-		subset = (BitSet)subset.clone();
 		if (subset == null) {
 			// Loop over all states
 			subset = new BitSet(numStates);
 			subset.set(0, numStates - 1);
+		} else {
+			subset = (BitSet)subset.clone();
 		}
 
 		if (complement) {
