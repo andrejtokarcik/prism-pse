@@ -3382,7 +3382,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			if (probs != null)
 				probs.print(tmpLog, fileOut == null, exportType == EXPORT_MATLAB, fileOut == null);
 			else if (!settings.getString(PrismSettings.PRISM_TRANSIENT_METHOD).equals("Fast adaptive uniformisation")) {
-				probsExpl.print(tmpLog, fileOut == null, exportType == EXPORT_MATLAB, fileOut == null, true);
+				probsExpl.print(tmpLog, fileOut == null, exportType == EXPORT_MATLAB, fileOut == null, fileOut == null);
 			} else {
 				// If full state space not computed, don't print vectors and always show states
 				probsExpl.print(tmpLog, fileOut == null, exportType == EXPORT_MATLAB, true, false);
