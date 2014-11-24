@@ -907,7 +907,13 @@ public class PrismCL implements PrismModelListener
 	{
 		if (pseTransient) {
 			try {
-				// TODO: PSE results export
+				// Choose destination for output (file or log)
+				File exportTransientFile = null;
+				if (exportTransientFilename == null || exportTransientFilename.equals("stdout")) {
+					exportTransientFile = null;
+				} else {
+					exportTransientFile = new File(exportTransientFilename);
+				}
 
 				// Parse time specification, store as UndefinedConstant for constant T
 				UndefinedConstants ucPSE = new UndefinedConstants(null, prism.parsePropertiesString(null, "const double T; T;"));
@@ -921,8 +927,8 @@ public class PrismCL implements PrismModelListener
 				}
 
 				// Do the PSE transient computation
-				prism.doTransientPSE(ucPSE, pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy,
-						importinitdist ? new File(importInitDistFilename) : null);
+				prism.doTransientPSE(ucPSE, exportType, pseNames, pseLowerBounds, pseUpperBounds, pseAccuracy,
+						exportTransientFile, importinitdist ? new File(importInitDistFilename) : null);
 			}
 			// In case of error, report it and proceed
 			catch (PrismException e) {

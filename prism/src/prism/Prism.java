@@ -3526,14 +3526,22 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	 * @see PSEModelChecker
 	 * @see SimpleDecompositionProcedure
 	 */
-	public void doTransientPSE(UndefinedConstants times, String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double accuracy, File fileIn)
-			throws PrismException
+	public void doTransientPSE(UndefinedConstants times, int exportType,
+			String[] paramNames, double[] paramLowerBounds, double[] paramUpperBounds, double accuracy,
+			File fileOut, File fileIn)
+		throws PrismException
 	{
 		if (paramNames == null) {
 			throw new PrismException("Must specify some parameters in order to perform the PSE-based techniques");
 		}
 		if (currentModelType != ModelType.CTMC) {
 			throw new PrismException("PSE-based techniques supported for CTMCs only");
+		}
+		if (exportType == EXPORT_MRMC) {
+			exportType = EXPORT_PLAIN; // no specific states format for MRMC
+		}
+		if (exportType == EXPORT_ROWS) {
+			exportType = EXPORT_PLAIN; // rows format does not apply to states output
 		}
 
 		Values constlist = currentModulesFile.getConstantValues();
@@ -3586,16 +3594,27 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 				regionValues = mc.doTransient(model, timeDouble - initTimeDouble, initDist,
 						new pse.SimpleDecompositionProcedure(accuracy));
 			}
+			l = System.currentTimeMillis() - l;
+
+			// If output is to a file and there are multiple points, change filename
+			File fileOutActual = null;
+			if (fileOut != null && times.getNumPropertyIterations() > 1) {
+				fileOutActual = new File(PrismUtils.addSuffixToFilename(fileOut.getPath(), time.toString()));
+			} else {
+				fileOutActual = fileOut;
+			}
+			PrismLog tmpLog = getPrismLogForFile(fileOutActual);
 
 			// Results report
-			mainLog.println("\nPrinting minimised & maximised transient probabilities:");
-			// TODO: printing to other log files (search for tmpLog used elsewhere)
-
-			// print out or export probabilities
-			regionValues.print(mainLog);
-
-			// print out computation time
-			l = System.currentTimeMillis() - l;
+			mainLog.println("\nPrinting minimised & maximised transient probabilities ");
+			mainLog.print(getStringForExportType(exportType) + " ");
+			mainLog.println(getDestinationStringForFile(fileOutActual));
+			if (!doFAU) {
+				regionValues.print(tmpLog, fileOut == null, exportType == EXPORT_MATLAB, fileOut == null, fileOut == null);
+			} else {
+				// If full state space not computed, don't print vectors and always show states
+				regionValues.print(tmpLog, fileOut == null, exportType == EXPORT_MATLAB, true, false);
+			}
 			mainLog.println("\nTime for parameter space exploration: " + l / 1000.0 + " seconds.");
 
 			// Prepare for next iteration

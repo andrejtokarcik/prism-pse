@@ -230,12 +230,19 @@ public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateVal
 	 */
 	public void print(PrismLog log)
 	{
+		print(log, true, false, true, true);
+	}
+
+	/**
+	 */
+	public void print(PrismLog log, boolean printSparse, boolean printMatlab, boolean printStates, boolean printIndices)
+	{
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : entrySet()) {
 			log.println("\n== Region " + entry.getKey() + " ==");
 			log.println("\n=== Minimised state values ===\n");
-			entry.getValue().getMin().print(log);
+			entry.getValue().getMin().print(log, printSparse, printMatlab, printStates, printIndices);
 			log.println("\n=== Maximised state values ===\n");
-			entry.getValue().getMax().print(log);
+			entry.getValue().getMax().print(log, printSparse, printMatlab, printStates, printIndices);
 		}
 	}
 
