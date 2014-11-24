@@ -3413,11 +3413,11 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	/**
 	 * Print introductory information for PSE methods.
 	 */
-	private void printPSEIntro(PrismLog log, String intro, PSEModel model, PropertiesFile propertiesFile, double accuracy)
+	private void printPSEIntro(PrismLog log, String intro, PSEModelExplorer explorer, PropertiesFile propertiesFile, double accuracy)
 	{
 		log.printSeparator();
 		log.println("\n" + intro);
-		log.println("Parameter space: " + model.getCompleteSpace());
+		log.println("Parameter space: " + explorer.getCompleteSpace());
 		if (currentDefinedMFConstants != null && currentDefinedMFConstants.getNumValues() > 0)
 			log.println("Model constants: " + currentDefinedMFConstants);
 		if (propertiesFile != null) {
@@ -3477,27 +3477,27 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		pse.DecompositionProcedure decompositionProcedure;
 		switch (decompositionType) {
 		case SIMPLE:
-			printPSEIntro(mainLog, "PSE model checking: " + prop, model, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE explorer checking: " + prop, explorer, propertiesFile, accuracy);
 			decompositionProcedure = new pse.SimpleDecompositionProcedure(accuracy);
 			break;
 		case THRESHOLD:
-			printPSEIntro(mainLog, "PSE threshold synthesis: " + prop, model, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE threshold synthesis: " + prop, explorer, propertiesFile, accuracy);
 			decompositionProcedure = new pse.ThresholdSynthesis(accuracy);
 			break;
 		case MIN_NAIVE:
-			printPSEIntro(mainLog, "PSE min synthesis (naive): " + prop, model, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE min synthesis (naive): " + prop, explorer, propertiesFile, accuracy);
 			decompositionProcedure = new pse.MinSynthesisNaive(accuracy);
 			break;
 		case MIN_SAMPLING:
-			printPSEIntro(mainLog, "PSE min synthesis (sampling): " + prop, model, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE min synthesis (sampling): " + prop, explorer, propertiesFile, accuracy);
 			decompositionProcedure = new pse.MinSynthesisSampling(accuracy, explorer);
 			break;
 		case MAX_NAIVE:
-			printPSEIntro(mainLog, "PSE max synthesis (naive): " + prop, model, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE max synthesis (naive): " + prop, explorer, propertiesFile, accuracy);
 			decompositionProcedure = new pse.MaxSynthesisNaive(accuracy);
 			break;
 		case MAX_SAMPLING:
-			printPSEIntro(mainLog, "PSE max synthesis (sampling): " + prop, model, propertiesFile, accuracy);
+			printPSEIntro(mainLog, "PSE max synthesis (sampling): " + prop, explorer, propertiesFile, accuracy);
 			decompositionProcedure = new pse.MaxSynthesisSampling(accuracy, explorer);
 			break;
 		default:
@@ -3564,7 +3564,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 				throw new PrismException("Cannot perform parameter space exploration for negative time value");
 			}
 
-			printPSEIntro(mainLog, "Performing parameter space exploration (time = " + time + ")...", model, null, accuracy);
+			printPSEIntro(mainLog, "Performing parameter space exploration (time = " + time + ")...", explorer, null, accuracy);
 
 			long l = System.currentTimeMillis();
 
