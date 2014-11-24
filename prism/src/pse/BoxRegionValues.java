@@ -26,17 +26,22 @@
 
 package pse;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import parser.type.TypeDouble;
 import prism.Pair;
 import prism.PrismException;
 import prism.PrismLog;
-import explicit.Model;
 import explicit.StateValues;
 
 /**
@@ -51,7 +56,7 @@ import explicit.StateValues;
 public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateValuesPair> implements Iterable<Entry<BoxRegion, BoxRegionValues.StateValuesPair>>
 {
 	/** for {@link StateValues}' constructor */
-	private Model model;
+	private PSEModel model;
 
 	/**
 	 * Data structure holding a pair of {@link StateValues}. The pair's
@@ -83,6 +88,8 @@ public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateVal
 		}
 	}
 
+	// FIXME: The following two constructors don't set the property `model`,
+	// which some of the methods require for correct operation.
 	public BoxRegionValues()
 	{
 		super();
@@ -94,19 +101,19 @@ public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateVal
 		put(region, minValues, maxValues);
 	}
 
-	public BoxRegionValues(Model model)
+	public BoxRegionValues(PSEModel model)
 	{
 		super();
 		this.model = model;
 	}
 
-	public BoxRegionValues(Model model, BoxRegion region, StateValues minValues, StateValues maxValues)
+	public BoxRegionValues(PSEModel model, BoxRegion region, StateValues minValues, StateValues maxValues)
 	{
 		this(model);
 		put(region, minValues, maxValues);
 	}
 
-	public BoxRegionValues(Model model, BoxRegion region, double[] minValues, double[] maxValues)
+	public BoxRegionValues(PSEModel model, BoxRegion region, double[] minValues, double[] maxValues)
 	{
 		this(model);
 		put(region, minValues, maxValues);
@@ -121,7 +128,7 @@ public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateVal
 	 * @return region values with all ones
 	 * @throws PrismException in case the all-ones state values could not be created
 	 */
-	public static BoxRegionValues createWithAllOnes(Model model, BoxRegion region) throws PrismException
+	public static BoxRegionValues createWithAllOnes(PSEModel model, BoxRegion region) throws PrismException
 	{
 		StateValues ones = new StateValues(TypeDouble.getInstance(), new Double(1.0), model);
 		return new BoxRegionValues(model, region, ones, ones);
@@ -147,6 +154,13 @@ public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateVal
 			}
 		}
 		return true;
+	}
+
+	public StateValuesPair put(BoxRegion region) throws PrismException
+	{
+		// `empty` is all zeros, actually.
+		StateValues empty = new StateValues(TypeDouble.getInstance(), model);
+		return put(region, empty, empty);
 	}
 
 	public StateValuesPair put(BoxRegion region, StateValues minValues, StateValues maxValues)
@@ -222,6 +236,113 @@ public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateVal
 			entry.getValue().getMin().print(log);
 			log.println("\n=== Maximised state values ===\n");
 			entry.getValue().getMax().print(log);
+		}
+	}
+
+	/**
+	 */
+	public void readFromFile(File file) throws PrismException
+	{
+		int count = 0;
+		int lineNum = 0;
+
+		boolean firstParsed = false;
+		boolean canStartMin = false;
+		boolean canStartMax = false;
+		boolean processingMin = true;   // false implies processing max
+		boolean valuesFilled = true;
+
+		BoxRegion currentRegion = null;
+		Pattern regionPattern = Pattern.compile("== Region (.+) ==");
+		Pattern minPattern = Pattern.compile("=== Minimised state values ===");
+		Pattern maxPattern = Pattern.compile("=== Maximised state values ===");
+		Matcher m;
+
+		try {
+			BufferedReader in = new BufferedReader(new FileReader(file));
+			while (in.ready()) {
+				String s = in.readLine().trim();
+				lineNum++;
+				if (!("".equals(s))) {
+					if (!firstParsed) {
+						firstParsed = true;
+						// We could match with regionPattern here, the following, however,
+						// is faster and captures even possible malformed input.
+						if (s.charAt(0) != '=') {
+							// Below, just delegating to standard StateValues.readFromFile().
+							in.close();
+							StateValues dist = new StateValues(TypeDouble.getInstance(), model);
+							dist.readFromFile(file);
+							put(model.getCompleteSpace(), dist, dist);
+							return;
+						}
+					}
+
+					m = regionPattern.matcher(s);
+					if (m.find()) {
+						if (!valuesFilled || canStartMin || canStartMax) {
+							in.close();
+							throw new PrismException("Cannot start new region " +
+													 "at line " + lineNum + " of file \"" + file + "\"");
+						}
+						currentRegion = BoxRegion.fromString(m.group(1));
+						put(currentRegion);
+						canStartMin = true;
+						canStartMax = true;
+						continue;
+					}
+
+					m = minPattern.matcher(s);
+					if (m.find()) {
+						if (!canStartMin || !valuesFilled) {
+							in.close();
+							throw new PrismException("Cannot start new minimised values " +
+													 "at line " + lineNum + " of file \"" + file + "\"");
+						}
+						canStartMin = false;
+						processingMin = true;
+						valuesFilled = false;
+						count = 0;
+						continue;
+					}
+
+					m = maxPattern.matcher(s);
+					if (m.find()) {
+						if (!canStartMax || !valuesFilled) {
+							in.close();
+							throw new PrismException("Cannot start new maximised values " +
+													 "at line " + lineNum + " of file \"" + file + "\"");
+						}
+						canStartMax = false;
+						processingMin = false;
+						valuesFilled = false;
+						count = 0;
+						continue;
+					}
+
+					// An error is triggered from within readElementFromFile() if valuesFilled.
+					if (processingMin) {
+						getMin(currentRegion).readElementFromFile(file, s, count);
+						count++;
+					} else {
+						getMax(currentRegion).readElementFromFile(file, s, count);
+						count++;
+					}
+
+					assert getMin(currentRegion).getSize() == getMax(currentRegion).getSize();
+					if (count == getMin(currentRegion).getSize()) {
+						valuesFilled = true;
+					}
+				}
+			}
+			in.close();
+			if (!valuesFilled) {
+				throw new PrismException("Too few values in file \"" + file + "\"");
+			}
+		} catch (IOException e) {
+			throw new PrismException("File I/O error reading from \"" + file + "\"");
+		} catch (NumberFormatException e) {
+			throw new PrismException("Error detected at line " + lineNum + " of file \"" + file + "\"");
 		}
 	}
 

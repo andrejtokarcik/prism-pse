@@ -52,14 +52,31 @@ final class BoxRegion implements Comparable<BoxRegion>
 	/**
 	 * Constructs a new box region.
 	 * 
-	 * @param boundsLower region's lower bounds
-	 * @param boundsUpper region's upper bounds
+	 * @param lowerBounds region's lower bounds
+	 * @param upperBounds region's upper bounds
 	 */
-	public BoxRegion(Values boundsLower, Values boundsUpper)
+	public BoxRegion(Values lowerBounds, Values upperBounds)
 	{
-		assert boundsLower.compareTo(boundsUpper) <= 0;
-		this.lowerBounds = boundsLower;
-		this.upperBounds = boundsUpper;
+		assert lowerBounds.compareTo(upperBounds) <= 0;
+		this.lowerBounds = lowerBounds;
+		this.upperBounds = upperBounds;
+	}
+
+	/**
+	 * Creates a new box region with data parsed from string description
+	 * given in the format reminiscent of {@link #toString()}.
+	 */
+	public static BoxRegion fromString(String regionDesc)
+	{
+		Values lowerBounds = new Values();
+		Values upperBounds = new Values();
+		for (String paramDesc : regionDesc.split(",")) {
+			String[] paramDescParts = paramDesc.split("=|:");
+			String paramName = paramDescParts[0].trim();
+			lowerBounds.addValue(paramName, Double.parseDouble(paramDescParts[1].trim()));
+			upperBounds.addValue(paramName, Double.parseDouble(paramDescParts[2].trim()));
+		}
+		return new BoxRegion(lowerBounds, upperBounds);
 	}
 
 	/**

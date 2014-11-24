@@ -1281,24 +1281,13 @@ public class StateValues implements StateVector
 			s = in.readLine();
 			lineNum++;
 			while (s != null) {
-				s = s.trim();
-				if (!("".equals(s))) {
-					if (count + 1 > size) {
-						in.close();
-						throw new PrismException("Too many values in file \"" + file + "\" (more than " + size + ")");
-					}
-					if (type instanceof TypeInt) {
-						int i = Integer.parseInt(s);
-						setIntValue(count, i);
-					} else if (type instanceof TypeDouble) {
-						double d = Double.parseDouble(s);
-						setDoubleValue(count, d);
-					} else if (type instanceof TypeBool) {
-						boolean b = Boolean.parseBoolean(s);
-						setBooleanValue(count, b);
-					}
-					count++;
+				try {
+					readElementFromFile(file, s, count);
+				} catch (PrismException e) {
+					in.close();
+					throw e;
 				}
+				count++;
 				s = in.readLine();
 				lineNum++;
 			}
@@ -1311,6 +1300,26 @@ public class StateValues implements StateVector
 			throw new PrismException("File I/O error reading from \"" + file + "\"");
 		} catch (NumberFormatException e) {
 			throw new PrismException("Error detected at line " + lineNum + " of file \"" + file + "\"");
+		}
+	}
+
+	public void readElementFromFile(File file, String s, int count) throws PrismException
+	{
+		s = s.trim();
+		if (!("".equals(s.trim()))) {
+			if (count + 1 > size) {
+				throw new PrismException("Too many values in file \"" + file + "\" (more than " + size + ")");
+			}
+			if (type instanceof TypeInt) {
+				int i = Integer.parseInt(s);
+				setIntValue(count, i);
+			} else if (type instanceof TypeDouble) {
+				double d = Double.parseDouble(s);
+				setDoubleValue(count, d);
+			} else if (type instanceof TypeBool) {
+				boolean b = Boolean.parseBoolean(s);
+				setBooleanValue(count, b);
+			}
 		}
 	}
 
