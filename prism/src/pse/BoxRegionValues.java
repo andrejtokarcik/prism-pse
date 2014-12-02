@@ -131,7 +131,7 @@ public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateVal
 	public static BoxRegionValues createWithAllOnes(PSEModel model, BoxRegion region) throws PrismException
 	{
 		StateValues ones = new StateValues(TypeDouble.getInstance(), new Double(1.0), model);
-		return new BoxRegionValues(model, region, ones, ones);
+		return new BoxRegionValues(model, region, ones, ones.deepCopy());
 	}
 
 	/**
@@ -160,7 +160,7 @@ public class BoxRegionValues extends TreeMap<BoxRegion, BoxRegionValues.StateVal
 	{
 		// `empty` is all zeros, actually.
 		StateValues empty = new StateValues(TypeDouble.getInstance(), model);
-		return put(region, empty, empty);
+		return put(region, empty, empty.deepCopy());
 	}
 
 	public StateValuesPair put(BoxRegion region, StateValues minValues, StateValues maxValues)

@@ -193,7 +193,7 @@ public final class PSEModelChecker extends PrismComponent
 		}
 		// Let explicit.StateModelChecker take care of other kinds of expressions
 		StateValues vals = stateChecker.checkExpression(model, expr);
-		return new BoxRegionValues(model, model.getCompleteSpace(), vals, vals);
+		return new BoxRegionValues(model, model.getCompleteSpace(), vals, vals.deepCopy());
 	}
 
 	/**
@@ -1379,6 +1379,6 @@ public final class PSEModelChecker extends PrismComponent
 		for (int in : model.getInitialStates()) {
 			uniformInit.setDoubleValue(in, initVal);
 		}
-		return new BoxRegionValues(model, model.getCompleteSpace(), uniformInit, uniformInit);
+		return new BoxRegionValues(model, model.getCompleteSpace(), uniformInit, uniformInit.deepCopy());
 	}
 }
