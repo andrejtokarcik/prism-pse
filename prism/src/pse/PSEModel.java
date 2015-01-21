@@ -652,13 +652,13 @@ public final class PSEModel extends ModelExplicit
 		if (subset == null) {
 			// Loop over all states
 			subset = new BitSet(numStates);
-			subset.set(0, numStates - 1);
+			subset.set(0, numStates);
 		} else {
 			subset = (BitSet)subset.clone();
 		}
 
 		if (complement) {
-			subset.flip(0, numStates - 1);
+			subset.flip(0, numStates);
 		}
 
 		VectorOfDouble matNPVal = new VectorOfDouble();
