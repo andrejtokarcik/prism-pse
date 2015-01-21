@@ -312,7 +312,7 @@ public class DTMCUniformisedSimple extends DTMCExplicit
 	{
 		String s = "";
 		s += "ctmc: " + ctmc;
-		s = ", q: " + q;
+		s += ", q: " + q;
 		return s;
 	}
 

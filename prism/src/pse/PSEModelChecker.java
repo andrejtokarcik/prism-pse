@@ -1064,8 +1064,6 @@ public final class PSEModelChecker extends PrismComponent
 			sumMax = new double[n];
 
 			// Initialise solution vectors.
-			// Vectors soln/soln2 are multProbs[i] for target states.
-			// Vector sum is all zeros (done by array creation).
 			for (i = 0; i < n; i++) {
 				solnMin[i] = mcRewards.getStateReward(i);
 				solnMax[i] = mcRewards.getStateReward(i);
