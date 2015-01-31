@@ -31,6 +31,7 @@ import java.util.Map.Entry;
 
 import parser.ast.Expression;
 import parser.ast.ExpressionProb;
+import parser.ast.ExpressionReward;
 import parser.ast.RelOp;
 import prism.PrismException;
 import prism.PrismLog;
@@ -87,11 +88,18 @@ abstract class OptimisingSynthesis extends DecompositionProcedure
 	protected void processPropertyExpression() throws PrismException
 	{
 		try {
-			ExpressionProb probExpr = (ExpressionProb) propExpr;
-			if (probExpr.getRelOp() != RelOp.EQ)
+			RelOp relOp;
+			try {
+				ExpressionProb probExpr = (ExpressionProb) propExpr;
+				relOp = probExpr.getRelOp();
+			} catch (ClassCastException e) {
+				ExpressionReward rewExpr = (ExpressionReward) propExpr;
+				relOp = rewExpr.getRelOp();
+			}
+			if (relOp != RelOp.EQ)
 				throw new ClassCastException();
 		} catch (ClassCastException e) {
-			throw new PrismException("Min and max syntheses require a P operator of the form P=?");
+			throw new PrismException("Min and max syntheses require an operator of the form P=? or R=?");
 		}
 	}
 
