@@ -110,18 +110,15 @@ public final class PSEModelBuilder extends PrismComponent
 			explorer.queryState(state);
 			int numChoices = explorer.getNumChoices();
 			for (int choiceNr = 0; choiceNr < numChoices; choiceNr++) {
-				int numSuccessors = explorer.getNumTransitions(choiceNr);
-				numTotalSuccessors += numSuccessors;
-				for (int succNr = 0; succNr < numSuccessors; succNr++) {
-					State stateNew = explorer.computeTransitionTarget(choiceNr, succNr);
-					if (states.add(stateNew)) {
-						numStates++;
-						explore.add(stateNew);
-					}
+				// CTMCs should have only a single transition within a choice
+				assert explorer.getNumTransitions(choiceNr) == 1;
+
+				numTotalSuccessors += 1;
+				State stateNew = explorer.computeTransitionTarget(choiceNr, 0);
+				if (states.add(stateNew)) {
+					numStates++;
+					explore.add(stateNew);
 				}
-			}
-			if (numChoices == 0) {
-				numTotalSuccessors++;
 			}
 		}
 
@@ -166,18 +163,18 @@ public final class PSEModelBuilder extends PrismComponent
 			int numChoices = explorer.getNumChoices();
 			Expression sumOut = Expression.Double(0.0);
 			for (int choiceNr = 0; choiceNr < numChoices; choiceNr++) {
-				int numSuccessors = explorer.getNumTransitions(choiceNr);
-				for (int succNr = 0; succNr < numSuccessors; succNr++) {
-					int index = explorer.getTotalIndexOfTransition(choiceNr, succNr);
-					int reaction = explorer.getReaction(index);
-					State stateNew = explorer.computeTransitionTarget(index);
-					Expression rateExpr = explorer.getTransitionProbability(index);
-					PSEModelExplorer.RateParametersAndPopulation paramsAndPopulation = explorer.extractRateParametersAndPopulation(rateExpr);
-					String action = explorer.getTransitionAction(index);
-					model.addTransition(reaction, permut[states.get(state)], permut[states.get(stateNew)],
-							paramsAndPopulation.first, paramsAndPopulation.second, action);
-					sumOut = Expression.Plus(sumOut, rateExpr);
-				}
+				// CTMCs should have only a single transition within a choice
+				assert explorer.getNumTransitions(choiceNr) == 1;
+
+				int succNr = explorer.getTotalIndexOfTransition(choiceNr, 0);
+				int reaction = explorer.getReaction(succNr);
+				State stateNew = explorer.computeTransitionTarget(succNr);
+				Expression rateExpr = explorer.getTransitionProbability(succNr);
+				PSEModelExplorer.RateParametersAndPopulation paramsAndPopulation = explorer.extractRateParametersAndPopulation(rateExpr);
+				String action = explorer.getTransitionAction(succNr);
+				model.addTransition(reaction, permut[states.get(state)], permut[states.get(stateNew)],
+						paramsAndPopulation.first, paramsAndPopulation.second, action);
+				sumOut = Expression.Plus(sumOut, rateExpr);
 			}
 			model.setSumLeaving(sumOut);
 			model.finishState();
