@@ -122,11 +122,11 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 			double lowerProbBound = (Double) entry.getValue().getMin().getValue(initState);
 			double upperProbBound = (Double) entry.getValue().getMax().getValue(initState);
 			if (lowerProbBound >= threshold) {
-				aboveRegions.add(entry.getKey(), "lower prob bound = " + lowerProbBound);
+				aboveRegions.add(entry.getKey(), "lower prob bound = " + lowerProbBound + ", upper prob bound = " + upperProbBound);
 			} else if (upperProbBound < threshold) {
-				belowRegions.add(entry.getKey(), "upper prob bound = " + upperProbBound);
+				belowRegions.add(entry.getKey(), "lower prob bound = " + lowerProbBound + ", upper prob bound = " + upperProbBound);
 			} else {
-				undecidedRegions.add(entry.getKey());
+				undecidedRegions.add(entry.getKey(), "lower prob bound = " + lowerProbBound + ", upper prob bound = " + upperProbBound);
 				double currentVolume = entry.getKey().volume();
 				undecidedVolume += currentVolume;
 				if (currentVolume > greatestVolume) {
