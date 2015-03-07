@@ -175,10 +175,23 @@ public abstract class DecompositionProcedure
 			throws DecompositionNeeded, PrismException
 	{
 		try {
+			handleNaN(region, probsMin, probsMax);
 			verifySingleRegion(region, probsMin, probsMax);
 		} catch (DecompositionNeeded e) {
 			e.setExaminedRegionValues(regionValues);
 			throw e;
+		}
+	}
+
+	protected void handleNaN(BoxRegion region, double probsMin[], double probsMax[])
+			throws DecompositionNeeded
+	{
+		assert probsMin.length == probsMax.length;
+		for (int state = 0; state < probsMin.length; state++) {
+			// probsMin cannot contain a NaN if probsMax doesn't contain one as well, I guess
+			if (Double.isNaN(probsMax[state])) {
+				throw new DecompositionNeeded("NaN was found in state " + state, region, "NaN");
+			}
 		}
 	}
 
