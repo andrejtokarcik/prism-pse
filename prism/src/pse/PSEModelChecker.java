@@ -247,22 +247,22 @@ public final class PSEModelChecker extends PrismComponent
 				if (expr.getType() instanceof TypeBool) {
 					mainLog.print("\nSatisfying states");
 					mainLog.println(filterTrue ? ":" : " that are also in filter " + filter + ":");
-					mainLog.println("\nmin\n");
+					mainLog.println("\n=== Minimised ===\n");
 					subRgnValsMin.printFiltered(mainLog, bsFilterMin);
-					mainLog.println("\nmax\n");
+					mainLog.println("\n=== Maximised ===\n");
 					subRgnValsMax.printFiltered(mainLog, bsFilterMax);
 				} else {
 					if (op == FilterOperator.PRINT) {
 						mainLog.println("\nResults (non-zero only) for filter " + filter + ":");
-						mainLog.println("\nmin\n");
+						mainLog.println("\n=== Minimised ===\n");
 						subRgnValsMin.printFiltered(mainLog, bsFilterMin);
-						mainLog.println("\nmax\n");
+						mainLog.println("\n=== Maximised ===\n");
 						subRgnValsMax.printFiltered(mainLog, bsFilterMax);
 					} else {
 						mainLog.println("\nResults (including zeros) for filter " + filter + ":");
-						mainLog.println("\nmin\n");
+						mainLog.println("\n=== Minimised ===\n");
 						subRgnValsMin.printFiltered(mainLog, bsFilterMin, false, false, true, true);
-						mainLog.println("\nmax\n");
+						mainLog.println("\n=== Maximised ===\n");
 						subRgnValsMax.printFiltered(mainLog, bsFilterMax, false, false, true, true);
 					}
 				}
