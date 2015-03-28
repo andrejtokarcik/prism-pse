@@ -566,26 +566,6 @@ public final class PSEModel extends ModelExplicit
 		}
 	}
 
-	private double mvMultMidSumEvalMin(int trans, double vectMinPred, double vectMinState, double q)
-	{
-		double midSumNumeratorMin = ratePopulations[trans] * vectMinPred - ratePopulations[trans] * vectMinState;
-		if (midSumNumeratorMin > 0.0) {
-			return rateParamsLowers[trans] * midSumNumeratorMin / q;
-		} else {
-			return rateParamsUppers[trans] * midSumNumeratorMin / q;
-		}
-	}
-
-	private double mvMultMidSumEvalMax(int trans, double vectMaxPred, double vectMaxState, double q)
-	{
-		double midSumNumeratorMax = ratePopulations[trans] * vectMaxPred - ratePopulations[trans] * vectMaxState;
-		if (midSumNumeratorMax > 0.0) {
-			return rateParamsUppers[trans] * midSumNumeratorMax / q;
-		} else {
-			return rateParamsLowers[trans] * midSumNumeratorMax / q;
-		}
-	}
-
 	/**
 	 * Does a matrix-vector multiplication for this parametrised CTMC's transition
 	 * probability matrix (uniformised with rate {@code q}) and the vector's min/max
@@ -625,37 +605,72 @@ public final class PSEModel extends ModelExplicit
 			resultMin[state] = vectMin[state];
 			resultMax[state] = vectMax[state];
 
-			// outTransitions sa tu podla vsetkeho interpretuju ako incoming
+			// Going backwards: outTransitions are interpreted as incoming
 			for (int trans : outTransitions.get(state)) {
-				int succ = toState(trans);
-				resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[succ], vectMin[state], q);
-				resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[succ], vectMax[state], q);
+				int pred = toState(trans);
+				double midSumNumeratorMin = ratePopulations[trans] * vectMin[pred] - ratePopulations[trans] * vectMin[state];
+				if (midSumNumeratorMin > 0.0) {
+					resultMin[state] += rateParamsLowers[trans] * midSumNumeratorMin / q;
+				} else {
+					resultMin[state] += rateParamsUppers[trans] * midSumNumeratorMin / q;
+				}
+
+				double midSumNumeratorMax = ratePopulations[trans] * vectMax[pred] - ratePopulations[trans] * vectMax[state];
+				if (midSumNumeratorMax > 0.0) {
+					resultMax[state] += rateParamsUppers[trans] * midSumNumeratorMax / q;
+				} else {
+					resultMax[state] += rateParamsLowers[trans] * midSumNumeratorMax / q;
+				}
 			}
 
 			for (Pair<Integer, Integer> transs : inoutTransitions.get(state)) {
 				int trans = transs.first;
-				int succTrans = transs.second;
+				int predTrans = transs.second;
 
 				assert toState(trans) == state;
-				assert fromState(succTrans) == state;
-				int succ = toState(succTrans);
+				assert fromState(predTrans) == state;
+				int pred = toState(predTrans);
 
 				if (!subset.get(fromState(trans))) {
 					// Reduce to the case of an incoming reaction
-					resultMin[state] += mvMultMidSumEvalMin(succTrans, vectMin[succ], vectMin[state], q);
-					resultMax[state] += mvMultMidSumEvalMax(succTrans, vectMax[succ], vectMax[state], q);
+
+					double midSumNumeratorMin = ratePopulations[predTrans] * vectMin[pred] - ratePopulations[predTrans] * vectMin[state];
+					if (midSumNumeratorMin > 0.0) {
+						resultMin[state] += rateParamsLowers[predTrans] * midSumNumeratorMin / q;
+					} else {
+						resultMin[state] += rateParamsUppers[predTrans] * midSumNumeratorMin / q;
+					}
+
+					double midSumNumeratorMax = ratePopulations[predTrans] * vectMax[pred] - ratePopulations[predTrans] * vectMax[state];
+					if (midSumNumeratorMax > 0.0) {
+						resultMax[state] += rateParamsUppers[predTrans] * midSumNumeratorMax / q;
+					} else {
+						resultMax[state] += rateParamsLowers[predTrans] * midSumNumeratorMax / q;
+					}
 					continue;
 				}
 
 				// The rate params of the two considered transitions must be identical
-				assert rateParamsLowers[succTrans] == rateParamsLowers[trans];
-				assert rateParamsUppers[succTrans] == rateParamsUppers[trans];
+				assert rateParamsLowers[predTrans] == rateParamsLowers[trans];
+				assert rateParamsUppers[predTrans] == rateParamsUppers[trans];
 
-				resultMin[state] += mvMultMidSumEvalMin(succTrans, vectMin[succ], vectMin[state], q);
-				resultMax[state] += mvMultMidSumEvalMax(succTrans, vectMax[succ], vectMax[state], q);
+				double midSumNumeratorMin = ratePopulations[predTrans] * vectMin[pred] - ratePopulations[predTrans] * vectMin[state];
+				if (midSumNumeratorMin > 0.0) {
+					resultMin[state] += rateParamsLowers[predTrans] * midSumNumeratorMin / q;
+				} else {
+					resultMin[state] += rateParamsUppers[predTrans] * midSumNumeratorMin / q;
+				}
+
+				double midSumNumeratorMax = ratePopulations[predTrans] * vectMax[pred] - ratePopulations[predTrans] * vectMax[state];
+				if (midSumNumeratorMax > 0.0) {
+					resultMax[state] += rateParamsUppers[predTrans] * midSumNumeratorMax / q;
+				} else {
+					resultMax[state] += rateParamsLowers[predTrans] * midSumNumeratorMax / q;
+				}
 			}
 		}
 
+		/*
 		// Optimisation: Non-parametrised transitions
 		for (int trans = 0; trans < numTotalTransitions; trans++) {
 			if (isParametrised(trans))
@@ -671,6 +686,7 @@ public final class PSEModel extends ModelExplicit
 			resultMin[state] += rate * (vectMin[succ] - vectMin[state]) / q;
 			resultMax[state] += rate * (vectMax[succ] - vectMax[state]) / q;
 		}
+		*/
 	}
 
 	/**
