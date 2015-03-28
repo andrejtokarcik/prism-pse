@@ -336,7 +336,8 @@ public final class PSEModel extends ModelExplicit
 	 */
 	boolean isParametrised(int trans)
 	{
-		return parametrisedTransitions[trans];
+		return true;
+		//return parametrisedTransitions[trans];
 	}
 
 	/**
@@ -612,11 +613,11 @@ public final class PSEModel extends ModelExplicit
 		if (subset == null) {
 			// Will loop over all states
 			subset = new BitSet(numStates);
-			subset.set(0, numStates - 1);
+			subset.set(0, numStates);
 		}
 
 		if (complement) {
-			subset.flip(0, numStates - 1);
+			subset.flip(0, numStates);
 		}
 
 		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
@@ -624,6 +625,7 @@ public final class PSEModel extends ModelExplicit
 			resultMin[state] = vectMin[state];
 			resultMax[state] = vectMax[state];
 
+			// outTransitions sa tu podla vsetkeho interpretuju ako incoming
 			for (int trans : outTransitions.get(state)) {
 				int succ = toState(trans);
 				resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[succ], vectMin[state], q);
@@ -635,12 +637,13 @@ public final class PSEModel extends ModelExplicit
 				int succTrans = transs.second;
 
 				assert toState(trans) == state;
+				assert fromState(succTrans) == state;
 				int succ = toState(succTrans);
 
 				if (!subset.get(fromState(trans))) {
 					// Reduce to the case of an incoming reaction
-					resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[succ], vectMin[state], q);
-					resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[succ], vectMax[state], q);
+					resultMin[state] += mvMultMidSumEvalMin(succTrans, vectMin[succ], vectMin[state], q);
+					resultMax[state] += mvMultMidSumEvalMax(succTrans, vectMax[succ], vectMax[state], q);
 					continue;
 				}
 
