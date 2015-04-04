@@ -866,9 +866,6 @@ public final class PSEModel extends ModelExplicit
 			trRateUpper[trans] = rateParams[trans].evaluateDouble(region.getUpperBounds());
 			parametrisedTransitions[trans] = trRateLower[trans] != trRateUpper[trans];
 		}
-		for (int state = 0; state < numStates; state++) {
-			exitRates[state] = exitRatesExpr[state].evaluateDouble(region.getUpperBounds());
-		}
 		modelVM = null; // This marks the model as dirty (i.e. it needs to be rebuilt)
 		modelMV = null;
 	}
@@ -879,5 +876,8 @@ public final class PSEModel extends ModelExplicit
 	{
 		completeSpace = region;
 		evaluateParameters(region);
+		for (int state = 0; state < numStates; state++) {
+			exitRates[state] = exitRatesExpr[state].evaluateDouble(region.getUpperBounds());
+		}
 	}
 }
